@@ -34,14 +34,16 @@ pub fn disable_context_menu() -> Result<(), std::io::Error> {
 }
 
 pub fn restart_explorer() {
-    let _ = Command::new("taskkill")
-        .creation_flags(CREATE_NO_WINDOW.0)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .arg("/f")
-        .arg("/im")
-        .arg("explorer.exe")
-        .spawn();
-    std::thread::sleep(std::time::Duration::from_millis(1000));
-    let _ = Command::new("explorer.exe").spawn();
+    std::thread::spawn(|| {
+        let _ = Command::new("taskkill")
+            .creation_flags(CREATE_NO_WINDOW.0)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .arg("/f")
+            .arg("/im")
+            .arg("explorer.exe")
+            .spawn();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        let _ = Command::new("explorer.exe").spawn();
+    });
 }
