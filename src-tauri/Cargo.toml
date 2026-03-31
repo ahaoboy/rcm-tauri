@@ -23,4 +23,16 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 winreg = "0.56"
-
+windows = { version = "0.62", features = [
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Graphics_Gdi",
+  "Win32_Foundation",
+  "Win32_UI_Shell",
+  "Win32_System_Threading",
+  "Win32_System_Memory",
+  "Win32_System_LibraryLoader",
+  "Management_Deployment",
+  "ApplicationModel",
+  "Graphics",
+  "Win32_System_SystemInformation",
+] }
