@@ -1,0 +1,62 @@
+name: "release"
+
+on:
+  push:
+    branches:
+      - release
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# This workflow will trigger on each push to `release` branch to create or update a GitHub release, build your app, and upload artifacts to release.
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+jobs:
+  # Desktop and Mobile builds
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "windows-latest"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.mobile == 'android' && 'aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android' || (matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '') }}
+
+      - name: install frontend dependencies
+        run: |
+          pnpm install
+
+      - name: Build
+        uses: tauri-apps/tauri-action@e839bb55b23d177d8cb537c2e10f41decb2d1089
+        with:
+          tagName: app-v__VERSION__
+          releaseName: "App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
+          args: ${{ matrix.args }}
+          mobile: ${{ matrix.mobile }}
+          uploadWorkflowArtifacts: true
+          uploadPlainBinary: true
+          releaseDraft: false
+          prerelease: false
