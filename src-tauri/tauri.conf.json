@@ -14,7 +14,22 @@
       {
         "title": "rcm-tauri",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "x": 0,
+        "y": 0,
+        "visible": true,
+        "fullscreen": false,
+        "closable": true,
+        "resizable": true,
+        "minimizable": true,
+        "decorations": false,
+        "maximizable": true,
+        "transparent": true,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "focus": false,
+        "shadow": false,
+        "backgroundColor": "#00000000"
       }
     ],
     "security": {
@@ -22,6 +37,7 @@
     }
   },
   "bundle": {
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
     "icon": [
@@ -30,6 +46,22 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "compression": "none"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "windows": {
+        "installMode": "passive"
+      },
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVCQzVCOEVEQTMyODlGMDYKUldRR255aWo3YmpGV3k1M1J6VXE4WGlXSEs2UStIMWJJQ3FLdDFZL1hGQU1ha2s3bkxVMExTeWsK",
+      "endpoints": [
+        "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

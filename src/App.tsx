@@ -1,50 +1,98 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow, cursorPosition, LogicalSize } from "@tauri-apps/api/window";
 import "./App.css";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export type ButtonType = "Left" | "Right" | "Middle";
+export type InputEvent = {
+  event_type: {
+    ButtonPress?: ButtonType;
+    ButtonRelease?: ButtonType;
+  };
+};
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+function App() {
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  useEffect(() => {
+    let unlistenFn: (() => void) | undefined;
+
+    const setupListener = async () => {
+      const win = getCurrentWindow();
+
+      // Resize window to dynamically fit the context menu and its ambient shadow.
+      await win.setSize(new LogicalSize(280, 400));
+
+      const unlisten = await listen<InputEvent>("input-event", async (event) => {
+        console.log('event', event)
+        if (event.payload.event_type.ButtonPress === "Right") {
+          const pos = await cursorPosition();
+
+          await win.setPosition(pos);
+          await win.show();
+          await win.setFocus();
+          setMenuVisible(true);
+        } else if (event.payload.event_type.ButtonPress === "Left") {
+          // Add a short delay to allow React to process UI clicks before hiding the entire webview
+          setTimeout(async () => {
+            await win.hide();
+            setMenuVisible(false);
+          }, 150);
+        }
+      });
+      return unlisten;
+    };
+
+    setupListener().then(fn => { unlistenFn = fn; });
+
+    return () => {
+      if (unlistenFn) unlistenFn();
+    };
+  }, []);
+
+  const handleAction = async (actionName: string) => {
+    console.log(`Action triggered: ${actionName}`);
+    // Replace this logic with actual implementation, e.g. invoke("create_folder") for New.
+    // We hide the window after executing the action.
+    const win = getCurrentWindow();
+    await win.hide();
+    setMenuVisible(false);
+  };
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="context-menu" style={{ display: menuVisible ? 'flex' : 'flex' }}>
+      <div className="menu-item" onClick={() => handleAction('New')}>
+        <span className="icon">📄</span>
+        <span>新建 (New)</span>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      <div className="menu-separator"></div>
+      <div className="menu-item" onClick={() => handleAction('Copy')}>
+        <span className="icon">📋</span>
+        <span>复制 (Copy)</span>
+      </div>
+      <div className="menu-item" onClick={() => handleAction('Cut')}>
+        <span className="icon">✂️</span>
+        <span>剪切 (Cut)</span>
+      </div>
+      <div className="menu-item" onClick={() => handleAction('Paste')}>
+        <span className="icon">📋</span>
+        <span>粘贴 (Paste)</span>
+      </div>
+      <div className="menu-separator"></div>
+      <div className="menu-item" onClick={() => handleAction('Compress')}>
+        <span className="icon">🗜️</span>
+        <span>压缩 (Compress)</span>
+      </div>
+      <div className="menu-item" onClick={() => handleAction('Delete')}>
+        <span className="icon">🗑️</span>
+        <span>删除 (Delete)</span>
+      </div>
+      <div className="menu-separator"></div>
+      <div className="menu-item" onClick={() => handleAction('Properties')}>
+        <span className="icon">⚙️</span>
+        <span>属性 (Properties)</span>
+      </div>
+    </div>
   );
 }
 
