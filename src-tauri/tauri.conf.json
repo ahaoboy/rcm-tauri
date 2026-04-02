@@ -58,7 +58,7 @@
       "windows": {
         "installMode": "passive"
       },
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVCQzVCOEVEQTMyODlGMDYKUldRR255aWo3YmpGV3k1M1J6VXE4WGlXSEs2UStIMWJJQ3FLdDFZL1hGQU1ha2s3bkxVMExTeWsK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM1NTA0MTFDNzY0NDQ5MzEKUldReFNVUjJIRUZReFdHTmdydE84SnJaNnNqWWJWclA5QUd0Q2FObmU1a0wyT1NMUHRMV0cvYzkK",
       "endpoints": [
         "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/latest.json"
       ]
