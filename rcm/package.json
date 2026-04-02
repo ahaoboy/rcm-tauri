@@ -12,8 +12,7 @@
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm",
-    "build": "tsc -p ./tsconfig.build.json",
+    "build": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm",
     "dev": "tsc -p ./tsconfig.build.json -w"
   },
   "keywords": [],
