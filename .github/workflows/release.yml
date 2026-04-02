@@ -48,6 +48,10 @@ jobs:
         run: |
           pnpm install
 
+          cd rcm
+
+          pnpm build
+
       - name: Build
         uses: tauri-apps/tauri-action@e839bb55b23d177d8cb537c2e10f41decb2d1089
         with:
