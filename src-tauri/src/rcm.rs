@@ -1,12 +1,31 @@
+use std::collections::HashMap;
 use rquickjs::{
-    Context, Module, Runtime,
     loader::{BuiltinLoader, BuiltinResolver},
+    Context, Module, Runtime, Result,
 };
 
 const LIB_MODULE: &str = include_str!("../../rcm/dist/index.js");
 const DEFAULT_MODULE: &str = include_str!("../../rcm/dist/default.js");
 
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileInfo {
+    pub name: String,
+    pub path: String,
+    #[serde(rename = "isDir")]
+    pub is_dir: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InvokeProps {
+    pub files: Vec<FileInfo>,
+    pub cwd: String,
+    pub env: HashMap<String, String>,
+    pub admin: bool,
+    #[serde(rename = "type")]
+    pub type_name: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
@@ -17,6 +36,7 @@ pub struct Item {
     pub label: String,
     pub disable: Option<bool>,
     pub admin: Option<bool>,
+    pub window: Option<String>,
     pub items: Option<Vec<Item>>,
 }
 
@@ -28,6 +48,7 @@ pub struct IconItem {
     pub icon: Option<String>,
     pub disable: Option<bool>,
     pub admin: Option<bool>,
+    pub window: Option<String>,
     pub items: Option<Vec<Item>>,
 }
 
@@ -74,12 +95,35 @@ pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
             // Extract the default exported object (the Menu instance)
             let default_export: rquickjs::Value = eval_module.get("default")?;
 
+            // Generate contextual InvokeProps attributes reflecting system bindings 
+            let mut env = HashMap::new();
+            env.insert("OS".to_string(), "Windows".to_string());
+            let props = InvokeProps {
+                files: vec![],
+                cwd: "C:\\".to_string(),
+                env,
+                admin: false,
+                type_name: "Desktop".to_string(),
+            };
+
+            let props_str = serde_json::to_string(&props).map_err(|e| e.to_string())?;
+
             // Fetch global JSON object and stringify method
             let json_obj: rquickjs::Object = ctx.globals().get("JSON")?;
+            let parse: rquickjs::Function = json_obj.get("parse")?;
             let stringify: rquickjs::Function = json_obj.get("stringify")?;
 
-            // Execute JSON.stringify(menu)
-            let json_str: String = stringify.call((default_export,))?;
+            // Safely parse properties string converting to QuickJS object values
+            let js_props: rquickjs::Value = parse.call((props_str,))?;
+
+            // Mount values implicitly to Global avoiding Function instance this binding loss bounds
+            ctx.globals().set("__menu_target__", default_export)?;
+            ctx.globals().set("__menu_props__", js_props)?;
+            
+            let invoke_result: rquickjs::Value = ctx.eval("__menu_target__.invoke(__menu_props__)")?;
+
+            // Execute JSON.stringify mapping explicit results gracefully
+            let json_str: String = stringify.call((invoke_result,))?;
 
             let menu_data: Menu = serde_json::from_str(&json_str)?;
 

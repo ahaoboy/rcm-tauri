@@ -1,3 +1,4 @@
 packages:
+  - 'rcm-sys'
   - 'rcm'
   - 'src'

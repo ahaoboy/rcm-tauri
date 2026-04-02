@@ -10,13 +10,24 @@ export type FileInfo = {
 /**
  * Environmental context
  */
-export type Env = Record<string, any>;
+export type Env = Record<string, string>;
 
 /**
- * Callback function types
+ * Unified properties provided to menu items during evaluation
  */
-export type MatchCallback = (files: FileInfo[], dir: string, env: Env) => boolean;
-export type ActionCallback = (files: FileInfo[], dir: string, env: Env) => void | Promise<void>;
+export interface InvokeProps {
+  files: FileInfo[];
+  cwd: string;
+  env: Env;
+  admin: boolean;
+  type: string; // The namespace classification (e.g., 'File', 'Desktop', 'Directory')
+}
+
+/**
+ * Callback function types mapped against unified properties
+ */
+export type MatchCallback = (props: InvokeProps) => boolean;
+export type ActionCallback = (props: InvokeProps) => void;
 
 /**
  * Basic configuration options for actionable items
@@ -29,19 +40,48 @@ export interface ActionableOptions {
   action?: ActionCallback; // The callback triggered upon clicking
   disable?: boolean;
   admin?: boolean; // Indicates if the command should be run with administrator privileges
+  window?: 'Hidden' | 'Show' | 'Visible' | 'Minimized' | 'Maximized'; // Controls execution window visibility
 }
 
-/**
- * Abstract base class for menu action items
- */
+// ------------------------------------
+// Core Return Snapshots
+// ------------------------------------
+
+export interface ItemSnapshot {
+  type: string;
+  key?: string;
+  icon?: string;
+  label?: string;
+  disable?: boolean;
+  admin?: boolean;
+  window?: string;
+  items?: ItemSnapshot[];
+}
+
+export interface GroupSnapshot {
+  type: 'Group';
+  items: ItemSnapshot[];
+}
+
+export interface MenuSnapshot {
+  type: 'Menu';
+  iconItems: ItemSnapshot[];
+  groups: GroupSnapshot[];
+}
+
+// ------------------------------------
+// Internal Models
+// ------------------------------------
+
 export abstract class MenuActionable {
   public key?: string;
   public icon?: string;
-  public items?: Item[]; // Supports nested sub-menus
+  public items?: Item[];
   public match?: MatchCallback;
   public action?: ActionCallback;
   public disable?: boolean;
   public admin?: boolean;
+  public window?: 'Hidden' | 'Show' | 'Visible' | 'Minimized' | 'Maximized';
 
   constructor(options: ActionableOptions = {}) {
     this.key = options.key;
@@ -51,46 +91,41 @@ export abstract class MenuActionable {
     this.action = options.action;
     this.disable = options.disable;
     this.admin = options.admin;
+    this.window = options.window;
   }
 
-  /**
-   * Determine if this menu item should be shown in the current context
-   */
-  public isMatch(files: FileInfo[], dir: string, env: Env): boolean {
+  public isMatch(props: InvokeProps): boolean {
     if (this.match) {
-      return this.match(files, dir, env);
+      return this.match(props); // Delegate correctly to JS custom business logic boundaries
     }
-    return true; // Default to visible
+    return true;
   }
 
-  /**
-   * Execute the action after clicking the menu item
-   */
-  public async execute(files: FileInfo[], dir: string, env: Env): Promise<void> {
+  public execute(props: InvokeProps): void {
     if (this.action) {
-      await this.action(files, dir, env);
+      this.action(props);
     }
   }
 
   /**
-   * Custom JSON serialization.
-   * Enables JSON.stringify() to produce a clean representation of the menu model structure.
+   * Translates the node recursively evaluating contexts creating a sanitized data schema natively
    */
-  public toJSON(): Record<string, any> {
+  public invoke(props: InvokeProps): ItemSnapshot {
     return {
       type: Object.getPrototypeOf(this).constructor.name,
       key: this.key,
       icon: this.icon,
       disable: this.disable,
       admin: this.admin,
-      items: this.items ? this.items.map(i => i.toJSON()) : undefined,
+      window: this.window,
+      label: (this as any).label,
+      items: this.items
+        ? this.items.filter(i => i.isMatch(props)).map(i => i.invoke(props))
+        : undefined,
     };
   }
 }
 
-/**
- * Item: A concrete clickable menu item
- */
 export class Item extends MenuActionable {
   public label: string;
 
@@ -98,27 +133,14 @@ export class Item extends MenuActionable {
     super(options);
     this.label = label;
   }
-
-  public toJSON(): Record<string, any> {
-    return {
-      ...super.toJSON(),
-      label: this.label,
-    };
-  }
 }
 
-/**
- * IconItem: A special menu item displayed as an icon at the top of the Menu
- */
 export class IconItem extends MenuActionable {
   constructor(icon: string, options: Omit<ActionableOptions, 'icon'> = {}) {
     super({ ...options, icon });
   }
 }
 
-/**
- * Group: A group of Items (visually separated in the UI)
- */
 export class Group {
   public items: Item[];
 
@@ -126,17 +148,14 @@ export class Group {
     this.items = items;
   }
 
-  public toJSON(): Record<string, any> {
+  public invoke(props: InvokeProps): GroupSnapshot {
     return {
       type: 'Group',
-      items: this.items.map(i => i.toJSON()),
+      items: this.items.filter(i => i.isMatch(props)).map(i => i.invoke(props)),
     };
   }
 }
 
-/**
- * Menu: The core model for the context menu
- */
 export class Menu {
   public iconItems: IconItem[];
   public groups: Group[];
@@ -146,14 +165,11 @@ export class Menu {
     this.groups = groups;
   }
 
-  /**
-   * Enables direct parsing into JSON via JSON.stringify()
-   */
-  public toJSON(): Record<string, any> {
+  public invoke(props: InvokeProps): MenuSnapshot {
     return {
       type: 'Menu',
-      iconItems: this.iconItems.map(i => i.toJSON()),
-      groups: this.groups.map(g => g.toJSON()),
+      iconItems: this.iconItems.filter(i => i.isMatch(props)).map(i => i.invoke(props)) as any,
+      groups: this.groups.map(g => g.invoke(props)).filter(g => g.items.length > 0),
     };
   }
 }
