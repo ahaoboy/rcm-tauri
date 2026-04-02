@@ -10,9 +10,11 @@
   "sideEffects": false,
   "description": "rcm",
   "main": "dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "scripts": {
-    "build": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm",
+    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm",
+    "dts": "tsc -p ./tsconfig.build.json --declaration --emitDeclarationOnly",
+    "build": "npm run dts && npm run bundle",
     "dev": "tsc -p ./tsconfig.build.json -w"
   },
   "keywords": [],
