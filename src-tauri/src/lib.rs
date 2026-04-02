@@ -3,6 +3,7 @@ use tauri::{AppHandle, Emitter, Manager};
 pub mod rcm;
 pub mod registry;
 pub mod tray;
+pub mod pipe;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
     use rdev::{Button, EventType, listen};
@@ -66,12 +67,17 @@ async fn create_window(app: tauri::AppHandle, label: String) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    if pipe::check_client_cli() {
+        return; // Execute as an IPC client CLI utility and exit immediately directly saving memory
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .setup(|app| {
             tray::setup_tray(app)?;
+            pipe::start_pipe_server(app.app_handle().clone());
             start_monitoring(app.app_handle().clone());
             Ok(())
         })

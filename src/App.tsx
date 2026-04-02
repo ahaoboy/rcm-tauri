@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { getCurrentWindow, cursorPosition, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow, cursorPosition, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
 import "./App.css";
 import type { Menu } from "rcm"
 
@@ -8,6 +8,8 @@ export type ButtonType = "Left" | "Right";
 export type InputEvent = {
   button: ButtonType
   menu: Menu
+  x?: number
+  y?: number
 };
 
 function App() {
@@ -25,7 +27,12 @@ function App() {
       const unlisten = await listen<InputEvent>("input-event", async (event) => {
         console.log('event', event)
         if (event.payload.button === "Right") {
-          const pos = await cursorPosition();
+          let pos;
+          if (event.payload.x != null && event.payload.y != null) {
+            pos = new PhysicalPosition(event.payload.x, event.payload.y);
+          } else {
+            pos = await cursorPosition();
+          }
 
           await win.setPosition(pos);
           await win.show();

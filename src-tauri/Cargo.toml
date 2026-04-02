@@ -43,3 +43,4 @@ rquickjs = { version = "0.11", features = [
   "full",
 ], git = "https://github.com/DelSkayn/rquickjs.git" }
 tokio = { version = "1", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
