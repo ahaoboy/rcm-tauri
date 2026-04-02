@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, cursorPosition, LogicalSize } from "@tauri-apps/api/window";
 import "./App.css";
+import type { Menu } from "rcm"
 
-export type ButtonType = "Left" | "Right" | "Middle";
+export type ButtonType = "Left" | "Right";
 export type InputEvent = {
-  event_type: {
-    ButtonPress?: ButtonType;
-    ButtonRelease?: ButtonType;
-  };
+  button: ButtonType
+  menu: Menu
 };
 
 function App() {
@@ -25,14 +24,14 @@ function App() {
 
       const unlisten = await listen<InputEvent>("input-event", async (event) => {
         console.log('event', event)
-        if (event.payload.event_type.ButtonPress === "Right") {
+        if (event.payload.button === "Right") {
           const pos = await cursorPosition();
 
           await win.setPosition(pos);
           await win.show();
           await win.setFocus();
           setMenuVisible(true);
-        } else if (event.payload.event_type.ButtonPress === "Left") {
+        } else if (event.payload.button === "Left") {
           // Add a short delay to allow React to process UI clicks before hiding the entire webview
           setTimeout(async () => {
             await win.hide();

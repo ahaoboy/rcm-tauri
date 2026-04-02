@@ -5,15 +5,25 @@ pub mod registry;
 pub mod tray;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
-    use rdev::{EventType, listen};
+    use rdev::{Button, EventType, listen};
+
     std::thread::spawn(move || {
-        if let Err(error) = listen(move |event| match event.event_type {
-            EventType::ButtonPress(_) | EventType::ButtonRelease(_) => {
-                println!("My callback {:?}", event);
-                println!("{:?}", rcm::rcm());
-                let _ = app_handle.emit("input-event", event);
-            }
-            _ => {}
+        if let Err(error) = listen(move |event| {
+            let (event_name, button_name) = match event.event_type {
+                EventType::ButtonPress(Button::Left) => ("ButtonPress", "Left"),
+                EventType::ButtonRelease(Button::Right) => ("ButtonRelease", "Right"),
+                _ => return,
+            };
+
+            let menu = rcm::rcm().ok();
+
+            let payload = serde_json::json!({
+                "event": event_name,
+                "button": button_name,
+                "menu": menu,
+            });
+
+            let _ = app_handle.emit("input-event", payload);
         }) {
             println!("Error: {error:?}")
         }

@@ -13,6 +13,7 @@
     "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged"
   },
   "dependencies": {
+    "rcm": "workspace:*",
     "@tauri-apps/api": "2.10.1",
     "@tauri-apps/plugin-opener": "2.5.3",
     "react": "19.1.0",
