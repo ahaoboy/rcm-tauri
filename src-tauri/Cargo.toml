@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [ "tray-icon" ] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -39,4 +39,7 @@ windows = { version = "0.62", features = [
 rdev = { git = "https://github.com/Narsil/rdev", features = ["serialize"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
-rquickjs = { version = "0.11", optional = true, git = "https://github.com/DelSkayn/rquickjs.git" }
+rquickjs = { version = "0.11", features = [
+  "full",
+], git = "https://github.com/DelSkayn/rquickjs.git" }
+tokio = { version = "1", features = ["full"] }

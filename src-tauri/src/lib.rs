@@ -1,5 +1,6 @@
 use tauri::window::Color;
 use tauri::{AppHandle, Emitter, Manager};
+pub mod rcm;
 pub mod registry;
 pub mod tray;
 
@@ -9,6 +10,7 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
         if let Err(error) = listen(move |event| match event.event_type {
             EventType::ButtonPress(_) | EventType::ButtonRelease(_) => {
                 println!("My callback {:?}", event);
+                println!("{:?}", rcm::rcm());
                 let _ = app_handle.emit("input-event", event);
             }
             _ => {}

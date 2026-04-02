@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["ESNext", "ES2022", "es2021", "DOM"],
+    "allowJs": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "noEmit": false,
+    "noEmitOnError": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "jsx": "react",
+    "declarationMap": false,
+    "sourceMap": false,
+    "paths": {
+      "rcm": ["./rcm/src"],
+    }
+  },
+  "include": ["**/src", "**/test", "**/example", "**/scripts"],
+  "exclude": ["**/dist"]
+}

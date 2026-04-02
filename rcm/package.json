@@ -1,0 +1,30 @@
+{
+  "name": "rcm",
+  "version": "0.1.0",
+  "homepage": "https://github.com/ahaoboy/rcm",
+  "files": [
+    "dist",
+    "readme.md",
+    "package.json"
+  ],
+  "sideEffects": false,
+  "description": "rcm",
+  "main": "dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm",
+    "build": "tsc -p ./tsconfig.build.json",
+    "dev": "tsc -p ./tsconfig.build.json -w"
+  },
+  "keywords": [],
+  "author": "ahaoboy <504595380@qq.com> (https://github.com/ahaoboy)",
+  "license": "MIT",
+  "dependencies": {
+    "esbuild": "0.27.4",
+    "type-fest": "5.4.4",
+    "typescript": "6.0.2"
+  },
+  "devDependencies": {
+    "rcm": "workspace:*"
+  }
+}
