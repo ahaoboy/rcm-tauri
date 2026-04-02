@@ -1,8 +1,8 @@
 use crate::registry::*;
 use tauri::{
+    App,
     menu::{CheckMenuItem, Menu, MenuItem},
     tray::TrayIconBuilder,
-    App,
 };
 
 pub const TOGGLE_CTX_ID: &str = "toggle_ctx";

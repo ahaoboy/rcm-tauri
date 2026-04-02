@@ -1,5 +1,5 @@
 use rquickjs::{
-    Context, Module, Result, Runtime,
+    Context, Module, Runtime,
     loader::{BuiltinLoader, BuiltinResolver},
 };
 

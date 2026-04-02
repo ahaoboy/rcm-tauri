@@ -1,9 +1,9 @@
 use tauri::window::Color;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{Emitter, Manager};
+pub mod pipe;
 pub mod rcm;
 pub mod registry;
 pub mod tray;
-pub mod pipe;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
     use rdev::{Button, EventType, listen};
