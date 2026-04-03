@@ -57,7 +57,7 @@ export class Menu {
     this.groups = groups;
   }
 
-  public invoke = (props: InvokeProps) => {
+  public invoke(props: InvokeProps) {
     const processItems = (items: MenuItem[]): MenuItem[] => {
       return items
         .filter(item => !item.match || item.match(props))
