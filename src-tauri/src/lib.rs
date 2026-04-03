@@ -4,6 +4,7 @@ pub mod pipe;
 pub mod rcm;
 pub mod registry;
 pub mod tray;
+pub mod vm;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
     use rdev::{Button, EventType, listen};
@@ -16,7 +17,16 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
                 _ => return,
             };
 
-            let menu = rcm::rcm().ok();
+            let menu = match rcm::rcm() {
+                Ok(a) => Some(a),
+                Err(e) => {
+                    print!("{:?}", e);
+
+                    None
+                }
+            };
+
+            println!("menu {:?}", menu);
 
             let payload = serde_json::json!({
                 "event": event_name,

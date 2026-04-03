@@ -39,8 +39,8 @@ windows = { version = "0.62", features = [
 rdev = { git = "https://github.com/Narsil/rdev", features = ["serialize"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
-rquickjs = { version = "0.11", features = [
-  "full",
-], git = "https://github.com/DelSkayn/rquickjs.git" }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
+rquickjs = { version = "0.11", features = ["loader"], default-features = false }
+anyhow = "1"
+llrt_modules = { git = "https://github.com/awslabs/llrt", features = [ ] }

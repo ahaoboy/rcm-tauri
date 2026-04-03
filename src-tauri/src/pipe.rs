@@ -74,30 +74,31 @@ pub fn start_pipe_server(app_handle: AppHandle) {
             if server.connect().await.is_ok() {
                 let mut buf = vec![0; 4096];
                 if let Ok(size) = server.read(&mut buf).await
-                    && let Ok(msg) = std::str::from_utf8(&buf[..size]) {
-                        // Parse JSON payloads locally
-                        for line in msg.lines() {
-                            if let Ok(payload) = serde_json::from_str::<PipePayload>(line.trim()) {
-                                let timestamp = SystemTime::now()
-                                    .duration_since(UNIX_EPOCH)
-                                    .map(|d| d.as_millis())
-                                    .unwrap_or(0);
+                    && let Ok(msg) = std::str::from_utf8(&buf[..size])
+                {
+                    // Parse JSON payloads locally
+                    for line in msg.lines() {
+                        if let Ok(payload) = serde_json::from_str::<PipePayload>(line.trim()) {
+                            let timestamp = SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .map(|d| d.as_millis())
+                                .unwrap_or(0);
 
-                                let menu = crate::rcm::rcm().ok();
+                            let menu = crate::rcm::rcm().ok();
 
-                                let event_payload = serde_json::json!({
-                                    "event": "ButtonRelease",
-                                    "button": "Right",
-                                    "timestamp": timestamp,
-                                    "menu": menu,
-                                    "x": payload.x,
-                                    "y": payload.y
-                                });
+                            let event_payload = serde_json::json!({
+                                "event": "ButtonRelease",
+                                "button": "Right",
+                                "timestamp": timestamp,
+                                "menu": menu,
+                                "x": payload.x,
+                                "y": payload.y
+                            });
 
-                                let _ = app_handle.emit("input-event", event_payload);
-                            }
+                            let _ = app_handle.emit("input-event", event_payload);
                         }
                     }
+                }
             }
             // Disconnect unbinds current client allowing identical instance hook next cycle
             server.disconnect().ok();
