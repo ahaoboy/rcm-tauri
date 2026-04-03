@@ -12,7 +12,7 @@
   "main": "dist/index.js",
   "types": "./src/index.ts",
   "scripts": {
-    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm --external:rcm-sys",
+    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm --external:rcm-sys --charset=utf8",
     "dts": "tsc -p ./tsconfig.build.json --declaration --emitDeclarationOnly",
     "build": "npm run dts && npm run bundle",
     "dev": "tsc -p ./tsconfig.build.json -w"
