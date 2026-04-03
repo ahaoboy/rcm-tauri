@@ -32,7 +32,7 @@ export interface Command {
 }
 
 export type MatchCallback = (props: InvokeProps) => boolean;
-export type ActionCallback = (props: InvokeProps) => Command | void;
+export type ActionCallback = (props: InvokeProps) => Command | Command[] | void;
 
 export interface MenuItem {
   key?: string;
@@ -44,7 +44,7 @@ export interface MenuItem {
   items?: MenuItem[];
   match?: MatchCallback;
   action?: ActionCallback;
-  command?: Command;
+  command?: Command | Command[];
 }
 
 export class Menu {

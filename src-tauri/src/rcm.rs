@@ -36,8 +36,27 @@ pub struct Item {
     pub disable: Option<bool>,
     pub admin: Option<bool>,
     pub window: Option<String>,
-    pub command: Option<CommandPayload>,
+    #[serde(default, deserialize_with = "deserialize_command")]
+    pub command: Option<Vec<CommandPayload>>,
     pub items: Option<Vec<Item>>,
+}
+
+fn deserialize_command<'de, D>(deserializer: D) -> std::result::Result<Option<Vec<CommandPayload>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum SingleOrVec {
+        Single(CommandPayload),
+        Vec(Vec<CommandPayload>),
+    }
+
+    match Option::<SingleOrVec>::deserialize(deserializer)? {
+        Some(SingleOrVec::Single(c)) => Ok(Some(vec![c])),
+        Some(SingleOrVec::Vec(v)) => Ok(Some(v)),
+        None => Ok(None),
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
