@@ -129,44 +129,31 @@ pub struct InvokeProps {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandPayload {
+    pub exe: String,
+    pub args: Option<Vec<String>>,
+    pub cwd: Option<String>,
+    pub admin: Option<bool>,
+    pub window: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
-    #[serde(rename = "type")]
-    pub type_name: Option<String>,
     pub key: Option<String>,
     pub icon: Option<String>,
-    pub label: String,
+    pub label: Option<String>,
     pub disable: Option<bool>,
     pub admin: Option<bool>,
     pub window: Option<String>,
+    pub command: Option<CommandPayload>,
     pub items: Option<Vec<Item>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct IconItem {
-    #[serde(rename = "type")]
-    pub type_name: Option<String>,
-    pub key: Option<String>,
-    pub icon: Option<String>,
-    pub disable: Option<bool>,
-    pub admin: Option<bool>,
-    pub window: Option<String>,
-    pub items: Option<Vec<Item>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Group {
-    #[serde(rename = "type")]
-    pub type_name: Option<String>,
-    pub items: Vec<Item>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Menu {
-    #[serde(rename = "type")]
-    pub type_name: Option<String>,
     #[serde(rename = "iconItems")]
-    pub icon_items: Vec<IconItem>,
-    pub groups: Vec<Group>,
+    pub icon_items: Vec<Item>,
+    pub groups: Vec<Item>,
 }
 
 pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
