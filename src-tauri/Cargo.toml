@@ -18,12 +18,13 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+rquickjs = { version = "0.11", features = ["loader"] ,git = "https://github.com/DelSkayn/rquickjs"}
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 winreg = "0.56"
-windows = { version = "0.62", features = [
+windows = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_Graphics_Gdi",
   "Win32_Foundation",
@@ -36,12 +37,10 @@ windows = { version = "0.62", features = [
   "Graphics",
   "Win32_System_SystemInformation",
 ] }
-rdev = { git = "https://github.com/Narsil/rdev", features = ["serialize"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
-rquickjs = { version = "0.11", features = ["loader"] }
 anyhow = "1"
 llrt_modules = { git = "https://github.com/awslabs/llrt", features = [] }
 rcm-com = { version = "0.1.0", git = "https://github.com/ahaoboy/rcm-com.git" }

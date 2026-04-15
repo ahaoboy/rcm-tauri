@@ -7,13 +7,11 @@ pub mod tray;
 pub mod vm;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
-    use rdev::{Button, EventType, listen};
-
     std::thread::spawn(move || {
-        if let Err(error) = listen(move |event| {
-            let (event_name, button_name) = match event.event_type {
-                EventType::ButtonPress(Button::Left) => ("ButtonPress", "Left"),
-                EventType::ButtonRelease(Button::Right) => ("ButtonRelease", "Right"),
+          rcm_com::server::listen(move |event| {
+            let (event_name, button_name) = match event.event {
+                rcm_com::Event::LeftClickSelect { flags } => ("LeftClickSelect", flags.to_string()),
+                rcm_com::Event::RightClickMenu { flags } => ("RightClickMenu", flags.to_string()),
                 _ => return,
             };
 
@@ -21,7 +19,6 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
                 Ok(a) => Some(a),
                 Err(e) => {
                     print!("{:?}", e);
-
                     None
                 }
             };
@@ -35,9 +32,7 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
             });
 
             let _ = app_handle.emit("input-event", payload);
-        }) {
-            println!("Error: {error:?}")
-        }
+        })
     });
 }
 
