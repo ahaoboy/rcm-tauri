@@ -47,9 +47,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "binaries/rcm_com.dll"
-    ],
+    "resources": {
+      "binaries/": ""
+    },
     "windows": {
       "nsis": {
         "compression": "none"
