@@ -11,6 +11,8 @@ fn main() {
     }
 
     // Find rcm_com-*.dll (the hash suffix varies between builds)
+    let dest = binaries_dir.join("rcm_com.dll");
+    let mut found = false;
     if let Ok(entries) = std::fs::read_dir(&target_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name();
@@ -19,7 +21,6 @@ fn main() {
                 && name_str.ends_with(".dll")
                 && !name_str.contains(".dll.")
             {
-                let dest = binaries_dir.join("rcm_com.dll");
                 if let Err(e) = std::fs::copy(entry.path(), &dest) {
                     eprintln!("cargo:warning=Failed to copy rcm_com DLL: {e}");
                 } else {
@@ -28,10 +29,18 @@ fn main() {
                         entry.path().display(),
                         dest.display()
                     );
+                    found = true;
                 }
                 break;
             }
         }
+    }
+
+    // In CI clean builds, rcm-com hasn't been compiled yet when the build script runs.
+    // Create a placeholder so tauri_build::build() resource validation passes.
+    if !found && !dest.exists() {
+        eprintln!("cargo:warning=rcm_com DLL not found in deps, creating placeholder");
+        let _ = std::fs::write(&dest, b"");
     }
 
     tauri_build::build();

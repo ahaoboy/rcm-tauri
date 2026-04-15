@@ -52,6 +52,14 @@ jobs:
 
           pnpm build
 
+      - name: Pre-build rcm-com DLL
+        working-directory: src-tauri
+        run: |
+          cargo build --release
+          mkdir -p binaries
+          cp target/release/deps/rcm_com-*.dll binaries/rcm_com.dll || true
+        shell: bash
+
       - name: Build
         uses: tauri-apps/tauri-action@e839bb55b23d177d8cb537c2e10f41decb2d1089
         with:
