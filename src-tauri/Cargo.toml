@@ -45,5 +45,5 @@ tauri-plugin-updater = "2"
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"
-llrt_modules = { git = "https://github.com/awslabs/llrt", features = [] }
+llrt_modules = { git = "https://github.com/awslabs/llrt", features = [], version = "0.8"}
 rcm-com = { version = "0.1.0", git = "https://github.com/ahaoboy/rcm-com.git" }
