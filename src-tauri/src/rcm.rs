@@ -79,3 +79,32 @@ pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
 
     invoke(props)
 }
+
+/// Build a menu from real right-click context data received via the pipe.
+pub fn rcm_from_info(info: &rcm_com::ContextMenuInfo) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+    let mut env = HashMap::new();
+    env.insert("OS".to_string(), "Windows".to_string());
+
+    let files: Vec<FileInfo> = info.files.iter().map(|path| {
+        let p = std::path::Path::new(path);
+        FileInfo {
+            name: p.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string(),
+            path: path.clone(),
+            is_dir: p.is_dir(),
+        }
+    }).collect();
+
+    let props = InvokeProps {
+        files,
+        cwd: info.dir.clone(),
+        env,
+        admin: false,
+        type_name: if info.bg { "Background".to_string() } else { "File".to_string() },
+        lang: crate::lang::system_lang(),
+    };
+
+    invoke(props)
+}

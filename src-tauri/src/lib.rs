@@ -19,10 +19,10 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
                 rcm_com::Event::Shift { flags } => ("Shift", flags.to_string()),
             };
 
-            let menu = match rcm::rcm() {
+            let menu = match rcm::rcm_from_info(&event) {
                 Ok(a) => Some(a),
                 Err(e) => {
-                    print!("{:?}", e);
+                    eprint!("rcm error: {:?}", e);
                     None
                 }
             };
