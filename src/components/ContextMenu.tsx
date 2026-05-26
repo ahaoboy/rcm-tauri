@@ -27,6 +27,7 @@ async function handleItemClick(item: MenuItem): Promise<void> {
 
   if (item.command) {
     try {
+      console.log('handleItemClick', item)
       await invoke("execute", { cmd: item.command });
     } catch (err) {
       console.error("Command execution failed:", err);

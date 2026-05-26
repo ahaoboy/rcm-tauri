@@ -22,3 +22,6 @@ export { setLocale, getLocale, t, addMessages } from './i18n';
 // ── Configs ────────────────────────────────────────────────────────
 export * as win11 from './configs/win11';
 export * as custom from './configs/custom';
+
+// ── System commands ────────────────────────────────────────────────
+export * as SysCmd from './system-commands';

@@ -5,6 +5,7 @@ pub mod lang;
 pub mod pipe;
 pub mod rcm;
 pub mod registry;
+pub mod system_cmd;
 pub mod tray;
 pub mod vm;
 

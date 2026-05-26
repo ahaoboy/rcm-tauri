@@ -1,4 +1,5 @@
 use crate::registry::*;
+use std::io::Write;
 use tauri::{
     App,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
@@ -19,6 +20,8 @@ pub const APPLY_ID: &str = "apply";
 pub const REGISTER_ID: &str = "register";
 /// Unregister the shell extension DLL (MenuItem).
 pub const UNREGISTER_ID: &str = "unregister";
+/// Dump all environment variables to a .env file next to the exe (MenuItem).
+pub const DUMP_ENV_ID: &str = "dump_env";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
 
@@ -31,6 +34,7 @@ pub const WIN11_TEXT: &str = "Win11";
 pub const CLASSIC_TEXT: &str = "Classic";
 pub const REGISTER_TEXT: &str = "Register";
 pub const UNREGISTER_TEXT: &str = "Unregister";
+pub const DUMP_ENV_TEXT: &str = "Dump Env";
 pub const APPLY_TEXT: &str = "Apply";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -53,6 +57,40 @@ fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &Chec
     let is_win11 = current_is_win11();
     let _ = win11.set_checked(is_win11);
     let _ = classic.set_checked(!is_win11);
+}
+
+/// Write all current process environment variables to `<exe_path>.env`.
+fn dump_env() {
+    let exe = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("dump_env: failed to get exe path: {e}");
+            return;
+        }
+    };
+
+    let env_path = {
+        let mut p = exe.clone();
+        p.set_extension("exe.env");
+        p
+    };
+
+    let mut vars: Vec<(String, String)> = std::env::vars().collect();
+    vars.sort_by(|a, b| a.0.cmp(&b.0));
+
+    let mut file = match std::fs::File::create(&env_path) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("dump_env: failed to create {}: {}", env_path.display(), e);
+            return;
+        }
+    };
+
+    for (key, value) in &vars {
+        let _ = writeln!(file, "{key}={value}");
+    }
+
+    println!("dump_env: wrote {} vars to {}", vars.len(), env_path.display());
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -95,12 +133,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Action items ─────────────────────────────────────────────────
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
+    let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
+    let sep4 = PredefinedMenuItem::separator(app)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -116,6 +156,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ─────────
     //     Register
     //     Unregister
+    //     Dump Env
     //   ─────────
     //     Apply
     //     Quit
@@ -129,7 +170,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &sep2,
             &register_i,
             &unregister_i,
+            &dump_env_i,
             &sep3,
+            &sep4,
             &apply_i,
             &quit_i,
         ],
@@ -178,6 +221,11 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 }
                 UNREGISTER_ID => {
                     let _ = rcm_com::cmd::unregister();
+                }
+
+                // ── Dump environment variables ────────────────────
+                DUMP_ENV_ID => {
+                    dump_env();
                 }
 
                 // ── Apply (restart Explorer) ─────────────────────

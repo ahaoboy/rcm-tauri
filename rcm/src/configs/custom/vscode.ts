@@ -13,7 +13,7 @@ export function vscode(labelKey = 'open.with.vscode'): MenuItem {
       const targets = props.files.length
         ? props.files.map(f => f.path)
         : ['.'];
-      return { exe: 'code', args: targets, cwd: props.cwd, window: 'Hidden' };
+      return { exe: 'code', args: targets, cwd: props.cwd, window: "Visible" };
     },
   };
 }
