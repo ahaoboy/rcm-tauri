@@ -9,8 +9,9 @@ pub mod tray;
 pub mod vm;
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
-    std::thread::spawn(move || {
-          rcm_com::server::listen(move |event| {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = rcm_com::server::listen(move |event| {
+            println!("{:?}", event);
             let (event_name, button_name) = match event.event {
                 rcm_com::Event::Click { flags } => ("Click", flags.to_string()),
                 rcm_com::Event::Menu { flags } => ("Menu", flags.to_string()),
@@ -35,6 +36,10 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
 
             let _ = app_handle.emit("input-event", payload);
         })
+        .await
+        {
+            eprintln!("rcm monitor error: {e}");
+        }
     });
 }
 
@@ -88,7 +93,11 @@ pub fn run() {
             start_monitoring(app.app_handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![create_window, cmd::execute, cmd::spawn_command])
+        .invoke_handler(tauri::generate_handler![
+            create_window,
+            cmd::execute,
+            cmd::spawn_command
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

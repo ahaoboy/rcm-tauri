@@ -15,6 +15,10 @@ pub const WIN11_STYLE_ID: &str = "style_win11";
 pub const CLASSIC_STYLE_ID: &str = "style_classic";
 /// Restart Windows Explorer to apply registry changes (MenuItem).
 pub const APPLY_ID: &str = "apply";
+/// Register the shell extension DLL (MenuItem).
+pub const REGISTER_ID: &str = "register";
+/// Unregister the shell extension DLL (MenuItem).
+pub const UNREGISTER_ID: &str = "unregister";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
 
@@ -25,6 +29,8 @@ pub const ENABLE_TEXT: &str = "Enable";
 pub const DISABLE_TEXT: &str = "Disable";
 pub const WIN11_TEXT: &str = "Win11";
 pub const CLASSIC_TEXT: &str = "Classic";
+pub const REGISTER_TEXT: &str = "Register";
+pub const UNREGISTER_TEXT: &str = "Unregister";
 pub const APPLY_TEXT: &str = "Apply";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -87,11 +93,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     )?;
 
     // ── Action items ─────────────────────────────────────────────────
+    let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
+    let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
+    let sep3 = PredefinedMenuItem::separator(app)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -105,6 +114,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ─────────
     //   ✓ Enable / Disable
     //   ─────────
+    //     Register
+    //     Unregister
+    //   ─────────
     //     Apply
     //     Quit
     let menu = Menu::with_items(
@@ -115,6 +127,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &sep1,
             &toggle_ctx_i,
             &sep2,
+            &register_i,
+            &unregister_i,
+            &sep3,
             &apply_i,
             &quit_i,
         ],
@@ -155,6 +170,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     let _ = toggle_ctx_clone.set_checked(new_state);
 
                     restart_explorer();
+                }
+
+                // ── Register / Unregister shell extension ────────
+                REGISTER_ID => {
+                    let _ = rcm_com::cmd::register();
+                }
+                UNREGISTER_ID => {
+                    let _ = rcm_com::cmd::unregister();
                 }
 
                 // ── Apply (restart Explorer) ─────────────────────
