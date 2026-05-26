@@ -1,6 +1,7 @@
 {
   "name": "rcm",
   "version": "0.1.0",
+  "type": "module",
   "homepage": "https://github.com/ahaoboy/rcm",
   "files": [
     "dist",
@@ -15,18 +16,20 @@
     "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm --external:rcm-sys --charset=utf8",
     "dts": "tsc -p ./tsconfig.build.json --declaration --emitDeclarationOnly",
     "build": "npm run dts && npm run bundle",
-    "dev": "tsc -p ./tsconfig.build.json -w"
+    "dev": "tsc -p ./tsconfig.build.json -w",
+    "test": "npx vitest run"
   },
   "keywords": [],
   "author": "ahaoboy <504595380@qq.com> (https://github.com/ahaoboy)",
   "license": "MIT",
   "dependencies": {
     "esbuild": "0.27.4",
-    "type-fest": "5.4.4",
     "rcm-sys": "workspace:*",
+    "type-fest": "5.4.4",
     "typescript": "6.0.2"
   },
   "devDependencies": {
-    "rcm": "workspace:*"
+    "rcm": "workspace:*",
+    "vitest": "^4.1.7"
   }
 }

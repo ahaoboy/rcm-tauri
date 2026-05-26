@@ -2,3 +2,5 @@ packages:
   - 'rcm-sys'
   - 'rcm'
   - 'src'
+allowBuilds:
+  esbuild: true

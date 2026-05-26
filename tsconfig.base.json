@@ -4,7 +4,6 @@
     "useDefineForClassFields": true,
     "lib": ["ESNext", "ES2022", "es2021", "DOM"],
     "allowJs": true,
-    "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
