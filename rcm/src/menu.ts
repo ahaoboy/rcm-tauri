@@ -30,13 +30,12 @@ export class Menu {
       const resolved: MenuItem = { ...rest };
 
       const cmd = action?.(props);
-      if (cmd) resolved.command = cmd;
+      if (cmd) resolved.action = () => cmd;
 
       if (children) {
         const sub = this.#resolve(children, props);
         if (sub.length) resolved.items = sub;
-        // drop empty structural parents
-        else if (!resolved.label && !resolved.command) continue;
+        else if (!resolved.label && !resolved.action) continue;
       }
 
       result.push(resolved);

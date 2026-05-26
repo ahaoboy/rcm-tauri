@@ -17,6 +17,8 @@ export interface InvokeProps {
   env: Env;
   admin: boolean;
   type: string;
+  /** Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported. */
+  lang: string;
 }
 
 /** Executable command descriptor */
@@ -30,7 +32,7 @@ export interface Command {
 
 /** Callback signatures */
 export type MatchFn = (props: InvokeProps) => boolean;
-export type ActionFn = (props: InvokeProps) => Command | Command[] | void;
+export type ActionFn = (props: InvokeProps) => Command;
 
 /** A single item in the right-click menu */
 export interface MenuItem {
@@ -43,5 +45,4 @@ export interface MenuItem {
   items?: MenuItem[];
   match?: MatchFn;
   action?: ActionFn;
-  command?: Command | Command[];
 }

@@ -17,46 +17,39 @@ pub struct InvokeProps {
     pub admin: bool,
     #[serde(rename = "type")]
     pub type_name: String,
+    /// Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported.
+    pub lang: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandPayload {
     pub exe: String,
-    pub args: Option<Vec<String>>,
-    pub cwd: Option<String>,
-    pub admin: Option<bool>,
-    pub window: Option<String>,
+    #[serde(default)]
+    pub args: Vec<String>,
+    #[serde(default)]
+    pub cwd: String,
+    #[serde(default)]
+    pub admin: bool,
+    #[serde(default)]
+    pub window: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Item {
-    pub key: Option<String>,
-    pub icon: Option<String>,
-    pub label: Option<String>,
-    pub disable: Option<bool>,
-    pub admin: Option<bool>,
-    pub window: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_command")]
-    pub command: Option<Vec<CommandPayload>>,
-    pub items: Option<Vec<Item>>,
-}
-
-fn deserialize_command<'de, D>(deserializer: D) -> std::result::Result<Option<Vec<CommandPayload>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum SingleOrVec {
-        Single(CommandPayload),
-        Vec(Vec<CommandPayload>),
-    }
-
-    match Option::<SingleOrVec>::deserialize(deserializer)? {
-        Some(SingleOrVec::Single(c)) => Ok(Some(vec![c])),
-        Some(SingleOrVec::Vec(v)) => Ok(Some(v)),
-        None => Ok(None),
-    }
+    #[serde(default)]
+    pub key: String,
+    #[serde(default)]
+    pub icon: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub disable: bool,
+    #[serde(default)]
+    pub admin: bool,
+    #[serde(default)]
+    pub window: String,
+    #[serde(default)]
+    pub items: Vec<Item>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,6 +72,7 @@ pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
         env,
         admin: false,
         type_name: "Desktop".to_string(),
+        lang: crate::lang::system_lang(),
     };
 
     invoke(props)

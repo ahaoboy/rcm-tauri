@@ -1,5 +1,7 @@
 use tauri::window::Color;
 use tauri::{Emitter, Manager};
+pub mod cmd;
+pub mod lang;
 pub mod pipe;
 pub mod rcm;
 pub mod registry;
@@ -86,7 +88,7 @@ pub fn run() {
             start_monitoring(app.app_handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![create_window])
+        .invoke_handler(tauri::generate_handler![create_window, cmd::execute, cmd::spawn_command])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
