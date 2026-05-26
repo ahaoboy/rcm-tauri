@@ -12,9 +12,9 @@ fn start_monitoring(app_handle: tauri::AppHandle) {
     std::thread::spawn(move || {
           rcm_com::server::listen(move |event| {
             let (event_name, button_name) = match event.event {
-                rcm_com::Event::LeftClickSelect { flags } => ("LeftClickSelect", flags.to_string()),
-                rcm_com::Event::RightClickMenu { flags } => ("RightClickMenu", flags.to_string()),
-                _ => return,
+                rcm_com::Event::Click { flags } => ("Click", flags.to_string()),
+                rcm_com::Event::Menu { flags } => ("Menu", flags.to_string()),
+                rcm_com::Event::Shift { flags } => ("Shift", flags.to_string()),
             };
 
             let menu = match rcm::rcm() {

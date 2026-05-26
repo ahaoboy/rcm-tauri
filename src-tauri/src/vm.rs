@@ -1,4 +1,5 @@
 use crate::rcm::{InvokeProps, Menu};
+#[cfg(feature = "llrt")]
 use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule, url::UrlModule};
 use rquickjs::function::This;
 use rquickjs::{
@@ -113,6 +114,8 @@ impl ModuleDef for RcmSysModule {
 
 pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
     let rt = Runtime::new()?;
+
+    #[cfg(feature = "llrt")]
     let resolver = (BuiltinResolver::default()
         .with_module("rcm")
         .with_module("rcm-sys")
@@ -121,6 +124,12 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
         .with_module("url")
         .with_module("os"),);
 
+    #[cfg(not(feature = "llrt"))]
+    let resolver = (BuiltinResolver::default()
+        .with_module("rcm")
+        .with_module("rcm-sys"),);
+
+    #[cfg(feature = "llrt")]
     let loader = (
         BuiltinLoader::default().with_module("rcm", LIB_MODULE),
         ModuleLoader::default()
@@ -128,6 +137,12 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
             .with_module("path", PathModule)
             .with_module("url", UrlModule)
             .with_module("os", OsModule),
+    );
+
+    #[cfg(not(feature = "llrt"))]
+    let loader = (
+        BuiltinLoader::default().with_module("rcm", LIB_MODULE),
+        ModuleLoader::default(),
     );
 
     rt.set_loader(resolver, loader);

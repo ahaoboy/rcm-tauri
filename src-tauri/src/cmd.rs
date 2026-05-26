@@ -1,15 +1,12 @@
 //! Direct native command execution — bypasses the JS VM.
-//! Takes a `CommandPayload` from the frontend and runs it synchronously in Rust.
+//! Takes a `CommandPayload` from the frontend and runs it asynchronously via tokio.
 
 use crate::rcm::CommandPayload;
-use std::process::Command;
-
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use tokio::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-/// Result of a synchronous command execution.
+/// Result of a command execution.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ExecResult {
     pub success: bool,
@@ -18,15 +15,15 @@ pub struct ExecResult {
     pub exit_code: Option<i32>,
 }
 
-/// Execute a single command synchronously, returning stdout/stderr/exit code.
+/// Execute a single command asynchronously, returning stdout/stderr/exit code.
 ///
-/// Uses `output()` so the caller blocks until the child process completes.
+/// Uses `tokio::process::Command::output()` so it doesn't block the async runtime.
 /// For fire-and-forget launching, use `spawn_command` instead.
 #[tauri::command]
-pub fn execute(cmd: CommandPayload) -> ExecResult {
+pub async fn execute(cmd: CommandPayload) -> ExecResult {
     let mut command = build_command(&cmd);
 
-    match command.output() {
+    match command.output().await {
         Ok(output) => ExecResult {
             success: output.status.success(),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
@@ -45,7 +42,7 @@ pub fn execute(cmd: CommandPayload) -> ExecResult {
 /// Spawn a command as a detached child process (fire-and-forget).
 /// Returns immediately; the child runs independently.
 #[tauri::command]
-pub fn spawn_command(cmd: CommandPayload) -> Result<(), String> {
+pub async fn spawn_command(cmd: CommandPayload) -> Result<(), String> {
     let mut command = build_command(&cmd);
 
     command
@@ -54,7 +51,7 @@ pub fn spawn_command(cmd: CommandPayload) -> Result<(), String> {
         .map_err(|e| format!("Failed to spawn {}: {}", cmd.exe, e))
 }
 
-/// Build a `std::process::Command` from our payload descriptor.
+/// Build a `tokio::process::Command` from our payload descriptor.
 fn build_command(cmd: &CommandPayload) -> Command {
     let mut command = Command::new(&cmd.exe);
 
