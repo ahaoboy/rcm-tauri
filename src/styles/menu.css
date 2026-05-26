@@ -1,0 +1,322 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   RCM — Right-Click Menu Styles
+   Supports: nested submenus, icon ribbon, separators, light/dark themes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens (light theme) ─────────────────────────────────────── */
+:root {
+  --rcm-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --rcm-font-size: 13px;
+  --rcm-font-size-sm: 12px;
+
+  --rcm-bg: #fcfcfc;
+  --rcm-border: #d5d5d5;
+  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
+  --rcm-radius: 8px;
+  --rcm-padding: 4px;
+
+  --rcm-item-hover: #e8e8e8;
+  --rcm-item-active: #dcdcdc;
+  --rcm-item-height: 32px;
+  --rcm-item-radius: 5px;
+
+  --rcm-text: #1a1a1a;
+  --rcm-text-disabled: #a0a0a0;
+  --rcm-text-shortcut: #707070;
+
+  --rcm-separator: #e0e0e0;
+  --rcm-separator-margin: 4px 8px;
+
+  --rcm-icon-size: 18px;
+  --rcm-icon-gap: 10px;
+  --rcm-arrow-color: #888;
+
+  --rcm-ribbon-gap: 2px;
+  --rcm-ribbon-padding: 2px 4px 6px 4px;
+  --rcm-ribbon-border: #e8e8e8;
+
+  --rcm-submenu-offset: 4px;
+  --rcm-transition: 120ms ease;
+}
+
+/* ── Dark theme ──────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rcm-bg: #2c2c2c;
+    --rcm-border: #3d3d3d;
+    --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04);
+
+    --rcm-item-hover: #3a3a3a;
+    --rcm-item-active: #444;
+
+    --rcm-text: #f0f0f0;
+    --rcm-text-disabled: #666;
+    --rcm-text-shortcut: #999;
+
+    --rcm-separator: #3d3d3d;
+    --rcm-ribbon-border: #3d3d3d;
+    --rcm-arrow-color: #999;
+  }
+}
+
+/* ── Theme class overrides (for programmatic toggling) ───────────────── */
+:root.rcm-light {
+  --rcm-bg: #fcfcfc;
+  --rcm-border: #d5d5d5;
+  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
+  --rcm-item-hover: #e8e8e8;
+  --rcm-item-active: #dcdcdc;
+  --rcm-text: #1a1a1a;
+  --rcm-text-disabled: #a0a0a0;
+  --rcm-text-shortcut: #707070;
+  --rcm-separator: #e0e0e0;
+  --rcm-ribbon-border: #e8e8e8;
+  --rcm-arrow-color: #888;
+}
+
+:root.rcm-dark {
+  --rcm-bg: #2c2c2c;
+  --rcm-border: #3d3d3d;
+  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04);
+  --rcm-item-hover: #3a3a3a;
+  --rcm-item-active: #444;
+  --rcm-text: #f0f0f0;
+  --rcm-text-disabled: #666;
+  --rcm-text-shortcut: #999;
+  --rcm-separator: #3d3d3d;
+  --rcm-ribbon-border: #3d3d3d;
+  --rcm-arrow-color: #999;
+}
+
+/* ── Global reset ────────────────────────────────────────────────────── */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--rcm-font-family);
+  font-size: var(--rcm-font-size);
+  background: transparent !important;
+  color: var(--rcm-text);
+  overflow: hidden;
+  user-select: none;
+}
+
+#root {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Context Menu — root container
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-root {
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  max-width: 320px;
+  background-color: var(--rcm-bg);
+  border: 1px solid var(--rcm-border);
+  border-radius: var(--rcm-radius);
+  box-shadow: var(--rcm-shadow);
+  padding: var(--rcm-padding);
+  /* Respect acrylic / mica backdrop on Windows */
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Icon Ribbon — top icon bar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rcm-ribbon-gap);
+  padding: var(--rcm-ribbon-padding);
+  border-bottom: 1px solid var(--rcm-ribbon-border);
+  margin-bottom: 4px;
+}
+
+.rcm-ribbon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--rcm-item-radius);
+  cursor: pointer;
+  transition: background-color var(--rcm-transition);
+  font-size: var(--rcm-icon-size);
+  position: relative;
+}
+
+.rcm-ribbon-btn:hover {
+  background-color: var(--rcm-item-hover);
+}
+
+.rcm-ribbon-btn:active {
+  background-color: var(--rcm-item-active);
+}
+
+.rcm-ribbon-btn[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Menu Group — vertical section of items
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-group {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Separator
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-separator {
+  height: 1px;
+  background-color: var(--rcm-separator);
+  margin: var(--rcm-separator-margin);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Menu Item Row — single clickable row
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-item {
+  display: flex;
+  align-items: center;
+  height: var(--rcm-item-height);
+  padding: 0 12px;
+  border-radius: var(--rcm-item-radius);
+  cursor: pointer;
+  transition: background-color var(--rcm-transition);
+  position: relative;
+  white-space: nowrap;
+}
+
+.rcm-item:hover {
+  background-color: var(--rcm-item-hover);
+}
+
+.rcm-item:active {
+  background-color: var(--rcm-item-active);
+}
+
+.rcm-item[aria-disabled="true"] {
+  color: var(--rcm-text-disabled);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ── Icon ─────────────────────────────────────────────────────────── */
+.rcm-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: var(--rcm-icon-gap);
+  font-size: var(--rcm-icon-size);
+  flex-shrink: 0;
+}
+
+/* ── Label ────────────────────────────────────────────────────────── */
+.rcm-item-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Shortcut hint ────────────────────────────────────────────────── */
+.rcm-item-shortcut {
+  margin-left: 24px;
+  font-size: var(--rcm-font-size-sm);
+  color: var(--rcm-text-shortcut);
+  flex-shrink: 0;
+}
+
+/* ── Submenu arrow ────────────────────────────────────────────────── */
+.rcm-item-arrow {
+  margin-left: 8px;
+  color: var(--rcm-arrow-color);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Submenu — flyout panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-submenu {
+  display: none;
+  position: absolute;
+  /* Position to the right of the parent item */
+  left: calc(100% + var(--rcm-submenu-offset));
+  top: calc(-1 * var(--rcm-padding));
+  min-width: 200px;
+  max-width: 300px;
+  background-color: var(--rcm-bg);
+  border: 1px solid var(--rcm-border);
+  border-radius: var(--rcm-radius);
+  box-shadow: var(--rcm-shadow);
+  padding: var(--rcm-padding);
+  z-index: 1000;
+  flex-direction: column;
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+/* Show submenu on hover */
+.rcm-item:hover > .rcm-submenu,
+.rcm-submenu:hover {
+  display: flex;
+}
+
+/* Keep submenu visible when hovering over it */
+.rcm-submenu:hover {
+  display: flex;
+}
+
+/* Edge case: submenu that would overflow to the right → flip left */
+.rcm-submenu.rcm-flip {
+  left: auto;
+  right: calc(100% + var(--rcm-submenu-offset));
+}
+
+/* Nested submenus inside submenus */
+.rcm-submenu .rcm-submenu {
+  top: calc(-1 * var(--rcm-padding));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Accessibility & focus
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rcm-item:focus-visible,
+.rcm-ribbon-btn:focus-visible {
+  outline: 2px solid #60cdff;
+  outline-offset: -2px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes rcm-fade-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.rcm-root {
+  animation: rcm-fade-in 100ms ease-out;
+}
+
+@keyframes rcm-submenu-in {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.rcm-submenu {
+  animation: rcm-submenu-in 100ms ease-out;
+}

@@ -11,14 +11,18 @@ import * as customModule from '../configs/custom/index';
 import defaultMenu from '../default';
 
 // ── Shared test props ──────────────────────────────────────────────
-const makeProps = (overrides: Partial<InvokeProps> = {}): InvokeProps => ({
-  files: [],
-  cwd: 'C:\\Users\\test',
-  env: {},
-  admin: false,
-  type: 'file',
-  ...overrides,
-});
+const makeProps = (overrides: Partial<InvokeProps> = {}): InvokeProps => {
+  const { lang = 'en', ...rest } = overrides;
+  return {
+    files: [],
+    cwd: 'C:\\Users\\test',
+    env: {},
+    admin: false,
+    type: 'file',
+    lang,
+    ...rest,
+  };
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // Win11 default right-click menu data structure

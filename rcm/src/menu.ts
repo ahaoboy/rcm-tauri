@@ -30,7 +30,7 @@ export class Menu {
       const resolved: MenuItem = { ...rest };
 
       const cmd = action?.(props);
-      if (cmd) resolved.action = () => cmd;
+      if (cmd) resolved.command = cmd;
 
       if (children) {
         const sub = this.#resolve(children, props);

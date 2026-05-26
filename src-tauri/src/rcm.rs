@@ -50,6 +50,8 @@ pub struct Item {
     pub window: String,
     #[serde(default)]
     pub items: Vec<Item>,
+    #[serde(default)]
+    pub command: Option<CommandPayload>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

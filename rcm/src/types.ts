@@ -32,7 +32,7 @@ export interface Command {
 
 /** Callback signatures */
 export type MatchFn = (props: InvokeProps) => boolean;
-export type ActionFn = (props: InvokeProps) => Command;
+export type ActionFn = (props: InvokeProps) => Command | undefined;
 
 /** A single item in the right-click menu */
 export interface MenuItem {
@@ -45,4 +45,6 @@ export interface MenuItem {
   items?: MenuItem[];
   match?: MatchFn;
   action?: ActionFn;
+  /** Serializable command payload produced by action() — survives JSON.stringify. */
+  command?: Command;
 }
