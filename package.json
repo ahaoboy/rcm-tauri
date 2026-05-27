@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "pnpm run build:rcm && vite",
+    "build:rcm": "cd rcm && npm run build",
+    "build": "pnpm run build:rcm && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "pnpm run lint-ts && pnpm run lint-rs",

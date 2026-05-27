@@ -56,6 +56,7 @@ anyhow = "1"
 llrt_modules = { git = "https://github.com/awslabs/llrt", features = [
 ], optional = true }
 rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
+easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = ["encode", "decode", "cli"] }
 
 [patch."https://github.com/DelSkayn/rquickjs.git"]
 rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }

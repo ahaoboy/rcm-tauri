@@ -16,6 +16,8 @@ export default new Menu(
         win11.open(),
         win11.openWith(),
         custom.terminal(),
+        custom.unzip(),
+        custom.zip(),
         win11.edit(),
         win11.print(),
         custom.mpv(),
