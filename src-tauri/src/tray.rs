@@ -1,14 +1,11 @@
 use crate::registry::*;
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{
     App,
     Emitter,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
 };
-
-static DEV_MODE: AtomicBool = AtomicBool::new(false);
 
 // ── Menu item IDs ────────────────────────────────────────────────────────
 
@@ -147,9 +144,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
-    let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, crate::vm::is_lite_menu(), None::<&str>)?;
-    let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !crate::vm::is_lite_menu(), None::<&str>)?;
-    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, DEV_MODE.load(Ordering::Relaxed), None::<&str>)?;
+    let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, crate::config::is_lite(), None::<&str>)?;
+    let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !crate::config::is_lite(), None::<&str>)?;
+    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, crate::config::is_dev(), None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
@@ -258,20 +255,20 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Menu mode switching ─────────────────────────
                 MENU_LITE_ID => {
-                    crate::vm::set_lite_menu(true);
+                    crate::config::set_lite(true);
                     let _ = menu_lite_clone.set_checked(true);
                     let _ = menu_full_clone.set_checked(false);
                 }
                 MENU_FULL_ID => {
-                    crate::vm::set_lite_menu(false);
+                    crate::config::set_lite(false);
                     let _ = menu_lite_clone.set_checked(false);
                     let _ = menu_full_clone.set_checked(true);
                 }
 
                 // ── Toggle dev mode ──────────────────────────────
                 DEV_ID => {
-                    let new_val = !DEV_MODE.load(Ordering::Relaxed);
-                    DEV_MODE.store(new_val, Ordering::Relaxed);
+                    let new_val = !crate::config::is_dev();
+                    crate::config::set_dev(new_val);
                     let _ = dev_clone.set_checked(new_val);
                     let _ = app.emit("dev-mode", new_val);
                 }

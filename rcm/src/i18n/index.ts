@@ -56,7 +56,7 @@ addMessages('en', {
   'new': 'New',
   'new.folder': 'Folder',
   'new.text.document': 'Text Document',
-  'open.in.terminal': 'Open in Terminal',
+  'open.in.terminal': 'Terminal',
   'refresh': 'Refresh',
   'select.all': 'Select all',
   'undo.delete': 'Undo Delete',
@@ -70,7 +70,7 @@ addMessages('en', {
   'open.with.vscode': 'Open with VS Code',
   'open.in.vscode': 'Open in VS Code',
   'open.with.mpv': 'Open with mpv',
-  'open.in.wt': 'Open in Windows Terminal',
+  'open.in.wt': 'Terminal',
   'ssh.connect': 'SSH Connect',
   'extract.here': 'Extract Here',
 });

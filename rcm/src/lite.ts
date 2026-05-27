@@ -17,6 +17,7 @@ export default new Menu(
     },
     {
       items: [
+        custom.vscode(),
         custom.terminal(),
         custom.unzip(),
         custom.zip(),

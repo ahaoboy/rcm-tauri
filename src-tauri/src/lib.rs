@@ -1,6 +1,7 @@
 use tauri::window::Color;
 use tauri::{Emitter, Manager};
 pub mod cmd;
+pub mod config;
 pub mod lang;
 pub mod pipe;
 pub mod rcm;
@@ -89,6 +90,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .setup(|app| {
+            config::init();
             tray::setup_tray(app)?;
             pipe::start_pipe_server(app.app_handle().clone());
             start_monitoring(app.app_handle().clone());

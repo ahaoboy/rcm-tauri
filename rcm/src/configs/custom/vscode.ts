@@ -4,7 +4,7 @@ import { t } from '../../i18n';
 /**
  * "Open with VS Code" menu item.
  */
-export function vscode(labelKey = 'open.with.vscode'): MenuItem {
+export function vscode(labelKey = 'code'): MenuItem {
   return {
     key: 'vscode',
     label: t(labelKey),

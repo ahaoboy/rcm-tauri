@@ -1,5 +1,4 @@
 use crate::rcm::{InvokeProps, Menu};
-use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(feature = "llrt")]
 use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule, url::UrlModule};
 use rquickjs::function::This;
@@ -20,18 +19,6 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 const LIB_MODULE: &str = include_str!("../../rcm/dist/index.js");
 const DEFAULT_MODULE: &str = include_str!("../../rcm/dist/default.js");
 const LITE_MODULE: &str = include_str!("../../rcm/dist/lite.js");
-
-static USE_LITE: AtomicBool = AtomicBool::new(true);
-
-/// Switch to lite (`true`) or full (`false`) menu.
-pub fn set_lite_menu(lite: bool) {
-    USE_LITE.store(lite, Ordering::Relaxed);
-}
-
-/// Check whether lite menu is active.
-pub fn is_lite_menu() -> bool {
-    USE_LITE.load(Ordering::Relaxed)
-}
 
 fn print(s: String) {
     println!("{s}")
@@ -180,7 +167,7 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
             promise.finish::<()>()?;
 
             // Declare the default.js / lite.js menu module
-            let menu_src = if USE_LITE.load(Ordering::Relaxed) { LITE_MODULE } else { DEFAULT_MODULE };
+            let menu_src = if crate::config::is_lite() { LITE_MODULE } else { DEFAULT_MODULE };
             let module = Module::declare(ctx.clone(), "menu", menu_src)?;
             let (eval_module, promise) = module.eval()?;
             promise.finish::<()>()?;
