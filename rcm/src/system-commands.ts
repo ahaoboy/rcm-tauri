@@ -36,6 +36,9 @@ export const DELETE = '@delete';
 /** Open the Windows file/folder properties dialog. */
 export const PROPERTIES = '@properties';
 
+/** Copy file(s) to clipboard as file-drop data (like Ctrl+C in Explorer). */
+export const COPY = '@copy';
+
 // ── Utilities ────────────────────────────────────────────────────────
 
 /** Open Windows "Open With" dialog for the selected file. */
@@ -56,6 +59,7 @@ export const ALL: ReadonlySet<string> = new Set([
   TRASH,
   DELETE,
   PROPERTIES,
+  COPY,
   OPEN_WITH,
   COPY_PATH,
 ]);

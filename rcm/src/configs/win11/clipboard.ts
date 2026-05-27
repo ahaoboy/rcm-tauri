@@ -6,9 +6,18 @@ export function cut(): MenuItem {
   return { key: 'cut', label: t('cut'), icon: '✂️' };
 }
 
-/** Win11 "Copy" */
+/** Win11 "Copy" — copy file(s) to clipboard (only shown when files are selected) */
 export function copy(): MenuItem {
-  return { key: 'copy', label: t('copy'), icon: '📋' };
+  return {
+    key: 'copy',
+    label: t('copy'),
+    icon: '📋',
+    match: (props: InvokeProps) => props.files.length > 0,
+    action: (props: InvokeProps) => ({
+      exe: '@copy',
+      args: props.files.map(f => f.path),
+    }),
+  };
 }
 
 /** Win11 "Paste" */
@@ -25,7 +34,7 @@ export function rename(): MenuItem {
 export function trash(): MenuItem {
   return {
     key: 'trash',
-    label: t('delete'),
+    label: t('trash'),
     icon: '🗑️',
     match: (props: InvokeProps) => props.files.length > 0,
     action: (props: InvokeProps) => ({

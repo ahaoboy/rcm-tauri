@@ -51,6 +51,7 @@ addMessages('en', {
   'copy.as.path': 'Copy as path',
   'create.shortcut': 'Create shortcut',
   'delete': 'Delete',
+  'trash': "Trash",
   'rename': 'Rename',
   'properties': 'Properties',
   'new': 'New',
