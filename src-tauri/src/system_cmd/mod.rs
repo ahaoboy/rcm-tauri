@@ -18,6 +18,7 @@ use crate::rcm::CommandPayload;
 use std::str::FromStr;
 
 pub mod copy_path;
+pub mod delete;
 pub mod new_file;
 pub mod new_folder;
 pub mod open_with;
@@ -52,6 +53,8 @@ pub enum SystemCommand {
     OpenWith,
     /// Copy selected paths to clipboard (`@copy-path`).
     CopyPath,
+    /// Fast parallel permanent delete (`@delete`).
+    Delete,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -71,6 +74,7 @@ impl FromStr for SystemCommand {
             "@trash" => Ok(Self::Trash),
             "@open-with" => Ok(Self::OpenWith),
             "@copy-path" => Ok(Self::CopyPath),
+            "@delete" => Ok(Self::Delete),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -101,6 +105,7 @@ impl SystemCommand {
             Self::Trash => trash::run(cmd),
             Self::OpenWith => open_with::run(cmd),
             Self::CopyPath => copy_path::run(cmd),
+            Self::Delete => delete::run(cmd),
         }
     }
 }

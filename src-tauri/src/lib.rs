@@ -328,7 +328,8 @@ impl MenuManager {
         let _ = self.app.emit("menu-hide-all", true);
     }
 
-    /// Hide all submenu windows strictly deeper than `depth`.
+    /// Hide all submenu windows strictly deeper than `depth`,
+    /// then update DEEPEST_DEPTH to reflect the new reality.
     fn hide_deeper_than(&self, depth: usize) {
         for d in (depth + 1)..=MAX_SUBMENU_DEPTH {
             let label = window_label(d);
@@ -337,6 +338,9 @@ impl MenuManager {
                 let _ = win.set_position(OFF_SCREEN);
             }
         }
+        // After hiding deeper windows, `depth` is now the deepest visible
+        log::info("Rust::hide_deeper_than", &format!("hid >{depth}, DEEPEST_DEPTH→{depth}"));
+        DEEPEST_DEPTH.store(depth, Ordering::SeqCst);
     }
 
     /// Create a transparent submenu window.

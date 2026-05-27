@@ -30,6 +30,9 @@ export const NEW_FOLDER = '@new-folder';
 /** Move file(s) to the recycle bin. */
 export const TRASH = '@trash';
 
+/** Permanently delete file(s)/folder(s) in parallel (fast, for multi-select). */
+export const DELETE = '@delete';
+
 // ── Utilities ────────────────────────────────────────────────────────
 
 /** Open Windows "Open With" dialog for the selected file. */
@@ -48,6 +51,7 @@ export const ALL: ReadonlySet<string> = new Set([
   NEW_FILE,
   NEW_FOLDER,
   TRASH,
+  DELETE,
   OPEN_WITH,
   COPY_PATH,
 ]);
