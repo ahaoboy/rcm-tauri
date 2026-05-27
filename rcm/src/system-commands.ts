@@ -33,6 +33,9 @@ export const TRASH = '@trash';
 /** Permanently delete file(s)/folder(s) in parallel (fast, for multi-select). */
 export const DELETE = '@delete';
 
+/** Open the Windows file/folder properties dialog. */
+export const PROPERTIES = '@properties';
+
 // ── Utilities ────────────────────────────────────────────────────────
 
 /** Open Windows "Open With" dialog for the selected file. */
@@ -52,6 +55,7 @@ export const ALL: ReadonlySet<string> = new Set([
   NEW_FOLDER,
   TRASH,
   DELETE,
+  PROPERTIES,
   OPEN_WITH,
   COPY_PATH,
 ]);

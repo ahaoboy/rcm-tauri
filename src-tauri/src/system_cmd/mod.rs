@@ -22,6 +22,7 @@ pub mod delete;
 pub mod new_file;
 pub mod new_folder;
 pub mod open_with;
+pub mod properties;
 pub mod rename;
 pub mod trash;
 pub mod unzip;
@@ -55,6 +56,8 @@ pub enum SystemCommand {
     CopyPath,
     /// Fast parallel permanent delete (`@delete`).
     Delete,
+    /// Open file/folder properties dialog (`@properties`).
+    Properties,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -75,6 +78,7 @@ impl FromStr for SystemCommand {
             "@open-with" => Ok(Self::OpenWith),
             "@copy-path" => Ok(Self::CopyPath),
             "@delete" => Ok(Self::Delete),
+            "@properties" => Ok(Self::Properties),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -106,6 +110,7 @@ impl SystemCommand {
             Self::OpenWith => open_with::run(cmd),
             Self::CopyPath => copy_path::run(cmd),
             Self::Delete => delete::run(cmd),
+            Self::Properties => properties::run(cmd),
         }
     }
 }
