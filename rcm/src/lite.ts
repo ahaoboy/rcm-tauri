@@ -19,6 +19,7 @@ export default new Menu(
       items: [
         custom.vscode(),
         custom.terminal(),
+        custom.ssh(),
         custom.unzip(),
         custom.zip(),
         custom.mpv(),

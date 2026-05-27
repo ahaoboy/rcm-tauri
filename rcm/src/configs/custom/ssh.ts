@@ -1,41 +1,84 @@
 import type { MenuItem, InvokeProps } from '../../types';
-import { t } from '../../i18n';
+// @ts-ignore — rquickjs builtins
+import * as fs from 'fs';
+// @ts-ignore
+import * as path from 'path';
+// @ts-ignore
+import * as os from 'os';
 
-/** Options for an SSH connection menu item. */
-export interface SshOptions {
-  host: string;
-  port?: number;
-  pwd?: string;
-  identity?: string;
-  tty?: boolean;
+// rquickjs globals
+declare function print(s: string): void;
+
+interface WtProfile {
+  name: string;
+  commandline: string;
+  guid?: string;
+  icon?: string;
 }
 
-/**
- * "SSH Connect" menu item — opens an SSH session to a remote host.
- */
-export function ssh(labelKey = 'ssh.connect', opts: SshOptions): MenuItem {
-  return {
-    key: `ssh-${opts.host}`,
-    label: t(labelKey),
-    icon: '🖥️',
-    action: (props: InvokeProps) => {
-      const args: string[] = [];
+function readWtSshProfiles(): WtProfile[] {
+  try {
+    // @ts-ignore — os.homedir() in LLRT
+    const home: string = os.homedir();
+    const localAppData = path.join(home, 'AppData', 'Local');
+    print('[ssh] localAppData: ' + localAppData);
 
-      if (opts.tty) args.push('-t');
-      args.push('-p', String(opts.port ?? 22));
-      if (opts.identity) args.push('-i', opts.identity);
-      args.push(opts.host);
+    const wtBase = path.join(localAppData, 'Packages');
+    let settingsPath = '';
 
-      if (opts.pwd) {
-        return {
-          exe: 'sshpass',
-          args: ['-p', opts.pwd, 'ssh', ...args],
-          cwd: props.cwd,
-          window: 'Show',
-        };
+    try {
+      const dirs: string[] = fs.readdirSync(wtBase);
+      const wtDir = dirs.find((d: string) => d.startsWith('Microsoft.WindowsTerminal'));
+      if (wtDir) {
+        settingsPath = path.join(wtBase, wtDir, 'LocalState', 'settings.json');
       }
+    } catch {
+      print('[ssh] failed to scan WT packages');
+      return [];
+    }
 
-      return { exe: 'ssh', args, cwd: props.cwd, window: 'Show' };
-    },
-  };
+    if (!settingsPath) { print('[ssh] no settings.json found'); return []; }
+
+    // LLRT readFileSync with encoding returns string directly
+    const raw: string = fs.readFileSync(settingsPath, 'utf8');
+    const cfg = JSON.parse(raw);
+    const profiles: WtProfile[] = cfg?.profiles?.list ?? [];
+
+    return profiles.filter(
+      (p) => p.name && p.commandline && p.commandline.includes('ssh'),
+    );
+  } catch (e: any) {
+    print('[ssh] error: ' + String(e.message || e));
+    return [];
+  }
+}
+
+export function ssh(): MenuItem {
+  try {
+    const profiles = readWtSshProfiles();
+    print('[ssh] found ' + profiles.length + ' profiles');
+
+    if (profiles.length === 0) {
+      return { key: 'ssh', label: 'SSH', icon: '🖥️' };
+    }
+
+    return {
+      key: 'ssh',
+      label: 'SSH',
+      icon: '🖥️',
+      items: profiles.map((p) => ({
+        key: `ssh-${p.name}`,
+        label: p.name,
+        icon: '🖥️',
+        action: (_props: InvokeProps) => ({
+          exe: 'wt',
+          args: ['-w', '0', 'new-tab', '--profile', p.name],
+          window: 'Show',
+        }),
+      })),
+    };
+  } catch (e: any) {
+    print('[ssh] fatal: ' + String(e.message || e));
+    return { key: 'ssh', label: 'SSH', icon: '🖥️' };
+  }
 }

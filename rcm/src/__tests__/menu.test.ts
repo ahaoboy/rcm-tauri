@@ -324,35 +324,11 @@ describe('Custom config items', () => {
   });
 
   describe('ssh', () => {
-    it('builds basic ssh command', () => {
-      const item = customModule.ssh('ssh.connect', { host: 'example.com' });
-      const result = item.action!(makeProps());
-      expect(result).toEqual({
-        exe: 'ssh',
-        args: ['-p', '22', 'example.com'],
-        cwd: 'C:\\Users\\test',
-        window: 'Show',
-      });
-    });
-
-    it('uses sshpass when password provided', () => {
-      const item = customModule.ssh('ssh.connect', { host: 'example.com', pwd: 'secret' });
-      const result = item.action!(makeProps());
-      expect((result as any).exe).toBe('sshpass');
-      expect((result as any).args).toEqual(['-p', 'secret', 'ssh', '-p', '22', 'example.com']);
-    });
-
-    it('respects custom port and identity', () => {
-      const item = customModule.ssh('ssh.connect', {
-        host: 'example.com',
-        port: 2222,
-        identity: '~/.ssh/id_rsa',
-        tty: true,
-      });
-      const result = item.action!(makeProps());
-      expect((result as any).args).toEqual([
-        '-t', '-p', '2222', '-i', '~/.ssh/id_rsa', 'example.com',
-      ]);
+    it('returns minimal item when no WT profiles found', () => {
+      const item = customModule.ssh();
+      expect(item.key).toBe('ssh');
+      expect(item.label).toBe('SSH');
+      expect(item.icon).toBe('🖥️');
     });
   });
 
