@@ -14,6 +14,7 @@ import { MenuSeparator } from "./MenuSeparator";
 interface ContextMenuProps {
   iconItems: MenuItem[];
   groups: MenuItem[];
+  showIcons?: boolean;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
@@ -46,6 +47,7 @@ async function handleItemClick(item: MenuItem): Promise<void> {
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   iconItems,
   groups,
+  showIcons = false,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 280, height: 400 });
@@ -83,14 +85,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
   return (
     <div className="rcm-root" ref={rootRef} role="menu">
-      {hasIconItems && (
+      {showIcons && hasIconItems && (
         <IconRibbon items={iconItems} onItemClick={handleItemClick} />
       )}
 
       {visibleGroups.map((group, gi) => (
         <React.Fragment key={gi}>
           {gi > 0 && <MenuSeparator />}
-          <MenuGroup group={group} onItemClick={handleItemClick} />
+          <MenuGroup group={group} onItemClick={handleItemClick} showIcons={showIcons} />
         </React.Fragment>
       ))}
     </div>

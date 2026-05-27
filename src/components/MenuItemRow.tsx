@@ -7,6 +7,7 @@ import { SubMenu } from "./SubMenu";
 interface MenuItemRowProps {
   item: MenuItem;
   onItemClick: (item: MenuItem) => void;
+  showIcons?: boolean;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -14,7 +15,7 @@ interface MenuItemRowProps {
    Renders icon, label, optional shortcut, submenu arrow.
    ═══════════════════════════════════════════════════════════════════════ */
 
-export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick }) => {
+export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick, showIcons }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [submenuOpen, setSubmenuOpen] = useState(false);
   const [submenuFlip, setSubmenuFlip] = useState(false);
@@ -67,7 +68,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick }) =
       onMouseLeave={handleMouseLeave}
     >
       {/* Icon */}
-      {item.icon && <span className="rcm-item-icon">{item.icon}</span>}
+      {showIcons !== false && item.icon && <span className="rcm-item-icon">{item.icon}</span>}
 
       {/* Label */}
       <span className="rcm-item-label">{item.label || item.key}</span>
@@ -80,7 +81,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick }) =
 
       {/* Nested submenu */}
       {hasChildren && submenuOpen && (
-        <SubMenu items={item.items!} flip={submenuFlip} onItemClick={onItemClick} />
+        <SubMenu items={item.items!} flip={submenuFlip} onItemClick={onItemClick} showIcons={showIcons} />
       )}
     </div>
   );

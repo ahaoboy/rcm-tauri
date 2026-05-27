@@ -1,5 +1,6 @@
 use tauri::window::Color;
 use tauri::{Emitter, Manager};
+use serde::Serialize;
 pub mod cmd;
 pub mod config;
 pub mod lang;
@@ -9,6 +10,23 @@ pub mod registry;
 pub mod system_cmd;
 pub mod tray;
 pub mod vm;
+
+/// Config snapshot sent to the frontend.
+#[derive(Debug, Clone, Serialize)]
+struct ConfigPayload {
+    dev: bool,
+    icons: bool,
+    menu: &'static str,
+}
+
+#[tauri::command]
+fn get_config() -> ConfigPayload {
+    ConfigPayload {
+        dev: config::is_dev(),
+        icons: config::is_icons(),
+        menu: if config::is_lite() { "lite" } else { "full" },
+    }
+}
 
 fn start_monitoring(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
@@ -98,6 +116,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             create_window,
+            get_config,
             cmd::execute,
             cmd::spawn_command
         ])

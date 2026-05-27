@@ -29,6 +29,10 @@ pub const DEV_ID: &str = "dev";
 pub const MENU_LITE_ID: &str = "menu_lite";
 /// Switch to full menu (CheckMenuItem).
 pub const MENU_FULL_ID: &str = "menu_full";
+/// Toggle icon ribbon visibility (CheckMenuItem).
+pub const ICONS_ID: &str = "icons";
+/// Reset all config and menu files to embedded defaults (MenuItem).
+pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
 
@@ -45,6 +49,8 @@ pub const DUMP_ENV_TEXT: &str = "Dump Env";
 pub const DEV_TEXT: &str = "Dev Mode";
 pub const MENU_LITE_TEXT: &str = "Lite Menu";
 pub const MENU_FULL_TEXT: &str = "Full Menu";
+pub const ICONS_TEXT: &str = "Icons";
+pub const RESET_TEXT: &str = "Reset to defaults";
 pub const APPLY_TEXT: &str = "Apply";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -147,6 +153,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, crate::config::is_lite(), None::<&str>)?;
     let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !crate::config::is_lite(), None::<&str>)?;
     let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, crate::config::is_dev(), None::<&str>)?;
+    let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, crate::config::is_icons(), None::<&str>)?;
+    let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
@@ -155,6 +163,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let sep3 = PredefinedMenuItem::separator(app)?;
     let sep4 = PredefinedMenuItem::separator(app)?;
     let sep5 = PredefinedMenuItem::separator(app)?;
+    let sep6 = PredefinedMenuItem::separator(app)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -163,6 +172,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let dev_clone = dev_i.clone();
     let menu_lite_clone = menu_lite_i.clone();
     let menu_full_clone = menu_full_i.clone();
+    let icons_clone = icons_i.clone();
 
     // ── Build menu ───────────────────────────────────────────────────
     // Layout:
@@ -177,9 +187,11 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ─────────
     //   ✓ Lite Menu
     //   ✓ Full Menu
+    //   ✓ Icons
     //   ✓ Dev Mode
     //   ─────────
     //     Apply
+    //     Reset to defaults
     //     Quit
     let menu = Menu::with_items(
         app,
@@ -195,10 +207,13 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &sep3,
             &menu_lite_i,
             &menu_full_i,
+            &icons_i,
             &sep4,
             &dev_i,
             &sep5,
             &apply_i,
+            &sep6,
+            &reset_i,
             &quit_i,
         ],
     )?;
@@ -265,6 +280,17 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     let _ = menu_full_clone.set_checked(true);
                 }
 
+                // ── Toggle icons ────────────────────────────────
+                ICONS_ID => {
+                    let new_val = !crate::config::is_icons();
+                    crate::config::set_icons(new_val);
+                    let _ = icons_clone.set_checked(new_val);
+                    match app.emit("icons-changed", new_val) {
+                        Ok(()) => println!("icons-changed: emitted {new_val}"),
+                        Err(e) => eprintln!("icons-changed: emit failed: {e}"),
+                    }
+                }
+
                 // ── Toggle dev mode ──────────────────────────────
                 DEV_ID => {
                     let new_val = !crate::config::is_dev();
@@ -276,6 +302,11 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 // ── Apply (restart Explorer) ─────────────────────
                 APPLY_ID => {
                     let _ = rcm_com::restart_explorer();
+                }
+
+                // ── Reset to defaults ────────────────────────────
+                RESET_ID => {
+                    crate::config::reset();
                 }
 
                 _ => {}

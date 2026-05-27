@@ -21,6 +21,9 @@ struct ConfigFile {
     /// Dev mode flag
     #[serde(default)]
     dev: bool,
+    /// Show icon ribbon at top of menu
+    #[serde(default)]
+    icons: bool,
 }
 
 fn default_menu() -> String {
@@ -32,6 +35,7 @@ impl Default for ConfigFile {
         Self {
             menu: default_menu(),
             dev: false,
+            icons: false,
         }
     }
 }
@@ -42,6 +46,7 @@ impl Default for ConfigFile {
 
 static IS_LITE: AtomicBool = AtomicBool::new(true);
 static DEV_MODE: AtomicBool = AtomicBool::new(false);
+static SHOW_ICONS: AtomicBool = AtomicBool::new(false);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Init — called once at startup
@@ -64,11 +69,13 @@ pub fn init() {
 
     IS_LITE.store(cfg.menu == "lite", Ordering::Relaxed);
     DEV_MODE.store(cfg.dev, Ordering::Relaxed);
+    SHOW_ICONS.store(cfg.icons, Ordering::Relaxed);
 
     println!(
-        "config: menu={} dev={}  ({})",
+        "config: menu={} dev={} icons={} ({})",
         if is_lite() { "lite" } else { "full" },
         is_dev(),
+        is_icons(),
         path.display(),
     );
 }
@@ -85,6 +92,10 @@ pub fn is_dev() -> bool {
     DEV_MODE.load(Ordering::Relaxed)
 }
 
+pub fn is_icons() -> bool {
+    SHOW_ICONS.load(Ordering::Relaxed)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Setters — update memory + persist to disk
 // ═══════════════════════════════════════════════════════════════════════════
@@ -97,6 +108,21 @@ pub fn set_lite(lite: bool) {
 pub fn set_dev(dev: bool) {
     DEV_MODE.store(dev, Ordering::Relaxed);
     save();
+}
+
+pub fn set_icons(icons: bool) {
+    SHOW_ICONS.store(icons, Ordering::Relaxed);
+    save();
+}
+
+/// Reset all config and menu files to embedded defaults.
+pub fn reset() {
+    IS_LITE.store(true, Ordering::Relaxed);
+    DEV_MODE.store(false, Ordering::Relaxed);
+    SHOW_ICONS.store(false, Ordering::Relaxed);
+    save();
+    crate::vm::write_menu_defaults();
+    println!("config: reset to defaults");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -113,6 +139,7 @@ fn save() {
     let cfg = ConfigFile {
         menu: if IS_LITE.load(Ordering::Relaxed) { "lite".into() } else { "full".into() },
         dev: DEV_MODE.load(Ordering::Relaxed),
+        icons: SHOW_ICONS.load(Ordering::Relaxed),
     };
     save_inner(&config_path(), &cfg);
 }
