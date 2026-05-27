@@ -33,6 +33,8 @@ pub const MENU_FULL_ID: &str = "menu_full";
 pub const ICONS_ID: &str = "icons";
 /// Toggle file logging — when on, all logs are appended to <exe>.log (CheckMenuItem).
 pub const LOG_ID: &str = "log";
+/// Toggle autostart — when on, the app launches at Windows startup (CheckMenuItem).
+pub const AUTOSTART_ID: &str = "autostart";
 /// Reset all config and menu files to embedded defaults (MenuItem).
 pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
@@ -47,13 +49,14 @@ pub const WIN11_TEXT: &str = "Win11";
 pub const CLASSIC_TEXT: &str = "Classic";
 pub const REGISTER_TEXT: &str = "Register";
 pub const UNREGISTER_TEXT: &str = "Unregister";
-pub const DUMP_ENV_TEXT: &str = "Dump Env";
-pub const DEV_TEXT: &str = "Dev Mode";
-pub const MENU_LITE_TEXT: &str = "Lite Menu";
-pub const MENU_FULL_TEXT: &str = "Full Menu";
+pub const DUMP_ENV_TEXT: &str = "DumpEnv";
+pub const DEV_TEXT: &str = "Dev";
+pub const MENU_LITE_TEXT: &str = "Lite";
+pub const MENU_FULL_TEXT: &str = "Full";
 pub const ICONS_TEXT: &str = "Icons";
 pub const LOG_TEXT: &str = "Log";
-pub const RESET_TEXT: &str = "Reset to defaults";
+pub const AUTOSTART_TEXT: &str = "Startup";
+pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -158,6 +161,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, crate::config::is_dev(), None::<&str>)?;
     let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, crate::config::is_icons(), None::<&str>)?;
     let log_i = CheckMenuItem::with_id(app, LOG_ID, LOG_TEXT, true, crate::log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed), None::<&str>)?;
+    let autostart_i = CheckMenuItem::with_id(app, AUTOSTART_ID, AUTOSTART_TEXT, true, crate::registry::is_autostart_enabled(), None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -169,6 +173,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let sep5 = PredefinedMenuItem::separator(app)?;
     let sep6 = PredefinedMenuItem::separator(app)?;
     let sep7 = PredefinedMenuItem::separator(app)?;
+    let sep8 = PredefinedMenuItem::separator(app)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -179,6 +184,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let menu_full_clone = menu_full_i.clone();
     let icons_clone = icons_i.clone();
     let log_clone = log_i.clone();
+    let autostart_clone = autostart_i.clone();
 
     // ── Build menu ───────────────────────────────────────────────────
     // Layout:
@@ -193,6 +199,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Dev Mode
     //   ─────────
     //   ✓ Log
+    //   ─────────
+    //   ✓ Auto Start
     //   ─────────
     //     Apply / Reset / Quit
     let menu = Menu::with_items(
@@ -215,8 +223,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &sep5,
             &log_i,
             &sep6,
-            &apply_i,
+            &autostart_i,
             &sep7,
+            &apply_i,
+            &sep8,
             &reset_i,
             &quit_i,
         ],
@@ -312,6 +322,27 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     crate::log::info("Tray", &format!("file logging {} (path: {})",
                         if new_val { "ON" } else { "OFF" },
                         crate::log::log_path_display()));
+                }
+
+                // ── Toggle autostart ──────────────────────────
+                AUTOSTART_ID => {
+                    if crate::registry::is_autostart_enabled() {
+                        match crate::registry::disable_autostart() {
+                            Ok(()) => {
+                                let _ = autostart_clone.set_checked(false);
+                                crate::log::info("Tray", "autostart disabled");
+                            }
+                            Err(e) => crate::log::error("Tray", &format!("disable autostart failed: {e}")),
+                        }
+                    } else {
+                        match crate::registry::enable_autostart() {
+                            Ok(()) => {
+                                let _ = autostart_clone.set_checked(true);
+                                crate::log::info("Tray", "autostart enabled");
+                            }
+                            Err(e) => crate::log::error("Tray", &format!("enable autostart failed: {e}")),
+                        }
+                    }
                 }
 
                 // ── Apply (restart Explorer) ─────────────────────
