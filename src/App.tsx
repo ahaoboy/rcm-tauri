@@ -7,6 +7,7 @@ import { ContextMenu } from "./components";
 
 function App() {
   const [menu, setMenu] = useState<MenuData | null>(null);
+  const [devMode, setDevMode] = useState(false);
   const theme = useTheme();
 
   useEffect(() => {
@@ -17,6 +18,8 @@ function App() {
 
   useEffect(() => {
     let unlistenFn: (() => void) | undefined;
+    let unlistenFocus: (() => void) | undefined;
+    let unlistenDev: (() => void) | undefined;
 
     const setupListener = async () => {
       const win = getCurrentWindow();
@@ -24,9 +27,23 @@ function App() {
       // Set initial window size to accommodate menu + shadow
       await win.setSize(new LogicalSize(300, 450));
 
+      // ── Hide menu when window loses focus (unless dev mode) ────
+      unlistenFocus = await win.onFocusChanged(({ payload: focused }) => {
+        if (!focused && !devMode) {
+          win.hide();
+          setMenu(null);
+        }
+      });
+
+      // ── Listen for dev-mode toggle from tray ──────────────────
+      unlistenDev = await listen<boolean>("dev-mode", (event) => {
+        setDevMode(event.payload);
+      });
+
+      // ── Listen for right-click events from the backend ───────────
       const unlisten = await listen<InputEventPayload>("input-event", async (event) => {
         console.log('event', event)
-        if (event.payload.event === "Menu" || event.payload.event === "Shift") {
+        if (event.payload.event === "Menu") {
           // Update menu data FIRST so React renders before window is shown
           if (event.payload.menu) {
             setMenu(event.payload.menu);
@@ -55,6 +72,8 @@ function App() {
 
     return () => {
       if (unlistenFn) unlistenFn();
+      if (unlistenFocus) unlistenFocus();
+      if (unlistenDev) unlistenDev();
     };
   }, []);
 

@@ -2,6 +2,7 @@ use crate::registry::*;
 use std::io::Write;
 use tauri::{
     App,
+    Emitter,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
 };
@@ -22,6 +23,8 @@ pub const REGISTER_ID: &str = "register";
 pub const UNREGISTER_ID: &str = "unregister";
 /// Dump all environment variables to a .env file next to the exe (MenuItem).
 pub const DUMP_ENV_ID: &str = "dump_env";
+/// Toggle dev mode — when on, the menu window stays open on focus loss (CheckMenuItem).
+pub const DEV_ID: &str = "dev";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
 
@@ -35,6 +38,7 @@ pub const CLASSIC_TEXT: &str = "Classic";
 pub const REGISTER_TEXT: &str = "Register";
 pub const UNREGISTER_TEXT: &str = "Unregister";
 pub const DUMP_ENV_TEXT: &str = "Dump Env";
+pub const DEV_TEXT: &str = "Dev Mode";
 pub const APPLY_TEXT: &str = "Apply";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
@@ -134,6 +138,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
+    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, false, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
@@ -146,6 +151,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let win11_clone = win11_i.clone();
     let classic_clone = classic_i.clone();
     let toggle_ctx_clone = toggle_ctx_i.clone();
+    let dev_clone = dev_i.clone();
 
     // ── Build menu ───────────────────────────────────────────────────
     // Layout:
@@ -157,6 +163,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //     Register
     //     Unregister
     //     Dump Env
+    //   ─────────
+    //   ✓ Dev Mode
     //   ─────────
     //     Apply
     //     Quit
@@ -172,6 +180,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &unregister_i,
             &dump_env_i,
             &sep3,
+            &dev_i,
             &sep4,
             &apply_i,
             &quit_i,
@@ -226,6 +235,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 // ── Dump environment variables ────────────────────
                 DUMP_ENV_ID => {
                     dump_env();
+                }
+
+                // ── Toggle dev mode ──────────────────────────────
+                DEV_ID => {
+                    let checked = dev_clone.is_checked().unwrap_or(false);
+                    let new_val = !checked;
+                    let _ = dev_clone.set_checked(new_val);
+                    let _ = app.emit("dev-mode", new_val);
                 }
 
                 // ── Apply (restart Explorer) ─────────────────────

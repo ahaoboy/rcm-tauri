@@ -12,7 +12,7 @@ pub mod vm;
 fn start_monitoring(app_handle: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {
-            println!("{:?}", event);
+            println!("listen {:?}", event);
             let (event_name, button_name) = match event.event {
                 rcm_com::Event::Click { flags } => ("Click", flags.to_string()),
                 rcm_com::Event::Menu { flags } => ("Menu", flags.to_string()),
