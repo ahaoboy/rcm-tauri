@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { MenuItem } from "../types/menu";
-import { invoke } from "@tauri-apps/api/core";
+import type { MenuData, MenuItem, IndexPath } from "../types/menu";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 /* ── Sub-components ─────────────────────────────────────────────────── */
@@ -12,51 +11,87 @@ import { MenuSeparator } from "./MenuSeparator";
 /* ── Props ──────────────────────────────────────────────────────────── */
 
 interface ContextMenuProps {
-  iconItems: MenuItem[];
-  groups: MenuItem[];
+  /** Window depth: 0 = root. */
+  depth: number;
+  /** Index path to the submenu this window renders. Empty = root. */
+  indexPath: IndexPath;
+  /** Full menu data — every window has the complete tree. */
+  menu: MenuData;
   showIcons?: boolean;
 }
 
-/* ── Helpers ────────────────────────────────────────────────────────── */
+/* ── Navigation helpers ─────────────────────────────────────────────── */
 
 /**
- * Execute a command payload via the Tauri `execute` backend command,
- * then hide the window.
+ * Navigate the menu tree following `path` and return the items to display.
+ * - Empty path → root (iconItems + groups)
+ * - Non-empty → the `.items` of the MenuItem at that path
  */
-async function handleItemClick(item: MenuItem): Promise<void> {
-  if (item.disable) return;
+function navigateMenu(menu: MenuData, path: IndexPath): {
+  type: "root";
+  iconItems: MenuItem[];
+  groups: MenuItem[];
+} | {
+  type: "submenu";
+  items: MenuItem[];
+} | null {
+  if (path.length === 0) {
+    return { type: "root", iconItems: menu.iconItems, groups: menu.groups };
+  }
 
-  if (item.command) {
-    try {
-      console.log('handleItemClick', item)
-      await invoke("execute", { cmd: item.command });
-    } catch (err) {
-      console.error("Command execution failed:", err);
+  // Walk the path to find the target item
+  const [first, ...rest] = path;
+  let item: MenuItem | undefined;
+
+  if (first === -1) {
+    // Icon ribbon path: [-1, iconIdx, ...deeper]
+    const idx = rest[0];
+    if (idx === undefined) return null;
+    item = menu.iconItems[idx];
+    if (!item) return null;
+    // Walk deeper
+    for (let i = 1; i < rest.length; i++) {
+      item = item.items[rest[i]];
+      if (!item) return null;
+    }
+  } else {
+    // Group path: [groupIdx, itemIdx, ...deeper]
+    const groupIdx = first;
+    const itemIdx = rest[0];
+    if (itemIdx === undefined) return null;
+    item = menu.groups[groupIdx]?.items[itemIdx];
+    if (!item) return null;
+    // Walk deeper
+    for (let i = 1; i < rest.length; i++) {
+      item = item.items[rest[i]];
+      if (!item) return null;
     }
   }
 
-  // Hide window after action
-  const win = getCurrentWindow();
-  await win.hide();
+  // Return the item's children as a flat submenu
+  return { type: "submenu", items: item.items || [] };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   ContextMenu — root menu component
+   ContextMenu — renders root or submenu based on indexPath
    ═══════════════════════════════════════════════════════════════════════ */
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
-  iconItems,
-  groups,
+  depth,
+  indexPath,
+  menu,
   showIcons = false,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 280, height: 400 });
 
-  // Measure the rendered menu and resize the Tauri window to fit
+  // Resolve what to render
+  const resolved = navigateMenu(menu, indexPath);
+
+  // Resize window to fit content
   const resizeWindow = useCallback(async () => {
     if (!rootRef.current) return;
     const rect = rootRef.current.getBoundingClientRect();
-    // Add padding for the window shadow
     const w = Math.ceil(rect.width) + 16;
     const h = Math.ceil(rect.height) + 16;
     if (w === menuSize.width && h === menuSize.height) return;
@@ -69,32 +104,79 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   }, [menuSize]);
 
   useEffect(() => {
-    // Resize after initial render
     const raf = requestAnimationFrame(() => {
       resizeWindow();
     });
     return () => cancelAnimationFrame(raf);
-  }, [iconItems, groups, resizeWindow]);
+  }, [resolved, resizeWindow]);
 
-  const hasIconItems = iconItems && iconItems.length > 0;
+  if (!resolved) {
+    return <div className="rcm-root" />;
+  }
 
-  // Filter out groups that have no visible items
-  const visibleGroups = groups.filter(
-    (g) => g.items && g.items.length > 0,
-  );
+  // ── Root rendering ──────────────────────────────────────────────
+  if (resolved.type === "root") {
+    const { iconItems, groups } = resolved;
+    const hasIconItems = iconItems && iconItems.length > 0;
+    const visibleGroups = groups.filter((g) => g.items && g.items.length > 0);
 
+    return (
+      <div className="rcm-root" ref={rootRef} role="menu">
+        {showIcons && hasIconItems && (
+          <IconRibbon
+            items={iconItems}
+            iconBasePath={-1}
+          />
+        )}
+
+        {visibleGroups.map((group, gi) => (
+          <React.Fragment key={gi}>
+            {gi > 0 && <MenuSeparator />}
+            <MenuGroup
+              group={group}
+              depth={depth}
+              indexPath={indexPath}
+              groupIndex={gi}
+              showIcons={showIcons}
+            />
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  }
+
+  // ── Submenu rendering ───────────────────────────────────────────
   return (
     <div className="rcm-root" ref={rootRef} role="menu">
-      {showIcons && hasIconItems && (
-        <IconRibbon items={iconItems} onItemClick={handleItemClick} />
-      )}
-
-      {visibleGroups.map((group, gi) => (
-        <React.Fragment key={gi}>
-          {gi > 0 && <MenuSeparator />}
-          <MenuGroup group={group} onItemClick={handleItemClick} showIcons={showIcons} />
-        </React.Fragment>
+      {resolved.items.map((item, idx) => (
+        <MenuItemRowWrapper
+          key={item.key || `sub-${idx}`}
+          item={item}
+          depth={depth}
+          indexPath={[...indexPath, idx]}
+          showIcons={false}
+        />
       ))}
     </div>
+  );
+};
+
+/* ── Small wrapper to avoid circular imports ────────────────────────── */
+
+import { MenuItemRow } from "./MenuItemRow";
+
+const MenuItemRowWrapper: React.FC<{
+  item: MenuItem;
+  depth: number;
+  indexPath: IndexPath;
+  showIcons?: boolean;
+}> = ({ item, depth, indexPath, showIcons }) => {
+  return (
+    <MenuItemRow
+      item={item}
+      depth={depth}
+      indexPath={indexPath}
+      showIcons={showIcons}
+    />
   );
 };

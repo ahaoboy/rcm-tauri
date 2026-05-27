@@ -1,59 +1,88 @@
-import React, { useCallback, useRef, useState } from "react";
-import type { MenuItem } from "../types/menu";
-import { SubMenu } from "./SubMenu";
+import React, { useCallback, useRef } from "react";
+import type { MenuItem, IndexPath } from "../types/menu";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { emit } from "@tauri-apps/api/event";
+import { feLog } from "../feLog";
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
 interface MenuItemRowProps {
   item: MenuItem;
-  onItemClick: (item: MenuItem) => void;
+  /** Window depth (0 = root). */
+  depth: number;
+  /** Index path to this item in the full menu tree. */
+  indexPath: IndexPath;
   showIcons?: boolean;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    MenuItemRow — single row in the menu
-   Renders icon, label, optional shortcut, submenu arrow.
+   Sends hover/click events to Rust for centralized window management.
    ═══════════════════════════════════════════════════════════════════════ */
 
-export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick, showIcons }) => {
+export const MenuItemRow: React.FC<MenuItemRowProps> = ({
+  item,
+  depth,
+  indexPath,
+  showIcons,
+}) => {
   const rowRef = useRef<HTMLDivElement>(null);
-  const [submenuOpen, setSubmenuOpen] = useState(false);
-  const [submenuFlip, setSubmenuFlip] = useState(false);
-
   const hasChildren = item.items && item.items.length > 0;
 
-  // Check if submenu would overflow viewport → flip to left side
-  const handleMouseEnter = useCallback(() => {
-    if (!hasChildren || !rowRef.current) return;
+  // ── Hover: tell Rust about this item ────────────────────────────
+  const handleMouseEnter = useCallback(async () => {
+    if (!rowRef.current) return;
 
-    setSubmenuOpen(true);
+    const rect = rowRef.current.getBoundingClientRect();
+    const win = getCurrentWindow();
+    const pos = await win.outerPosition();
+    const size = await win.outerSize();
 
-    // Estimate submenu position
-    const rowRect = rowRef.current.getBoundingClientRect();
-    const estimatedWidth = 220;
-    const spaceOnRight = window.innerWidth - rowRect.right - 8;
+    feLog.eventSend("menu-hover", `depth=${depth} path=[${indexPath}] label='${item.label}' hasChildren=${hasChildren}`);
 
-    if (spaceOnRight < estimatedWidth) {
-      setSubmenuFlip(true);
-    } else {
-      setSubmenuFlip(false);
-    }
-  }, [hasChildren]);
+    await emit("menu-hover", {
+      depth,
+      path: indexPath,
+      parentX: pos.x,
+      parentY: pos.y,
+      parentW: size.width,
+      parentH: size.height,
+      itemX: rect.left,
+      itemY: rect.top,
+      itemW: rect.width,
+      itemH: rect.height,
+    });
+  }, [depth, indexPath, item.label, hasChildren]);
 
-  const handleMouseLeave = useCallback(() => {
-    setSubmenuOpen(false);
-  }, []);
+  // ── Hover out: tell Rust mouse left this item ───────────────────
+  const handleMouseLeave = useCallback(async () => {
+    await emit("menu-hover-out", { depth });
+  }, [depth]);
 
+  // ── Click: select (if has children) or execute ─────────────────
   const handleClick = useCallback(
-    (e: React.MouseEvent) => {
-      // If this item has children, do not fire the action — just toggle submenu
+    async (e: React.MouseEvent) => {
+      if (item.disable) return;
+
       if (hasChildren) {
+        // Has children → "select": same as hover (show submenu)
         e.stopPropagation();
+        await handleMouseEnter();
         return;
       }
-      onItemClick(item);
+
+      // No children → "execute"
+      if (item.command) {
+        feLog.eventSend("menu-execute", `path=[${indexPath}] exe='${item.command.exe}'`);
+        await emit("menu-execute", {
+          path: indexPath,
+          command: item.command,
+        });
+      } else {
+        feLog.warn("MenuItemRow", `click dead item path=[${indexPath}]`);
+      }
     },
-    [item, hasChildren, onItemClick],
+    [item, hasChildren, indexPath, handleMouseEnter],
   );
 
   return (
@@ -62,27 +91,22 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, onItemClick, sho
       className="rcm-item"
       role="menuitem"
       aria-disabled={item.disable}
+      aria-haspopup={hasChildren}
       tabIndex={item.disable ? -1 : 0}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Icon */}
-      {showIcons !== false && item.icon && <span className="rcm-item-icon">{item.icon}</span>}
+      {showIcons !== false && item.icon && (
+        <span className="rcm-item-icon">{item.icon}</span>
+      )}
 
       {/* Label */}
       <span className="rcm-item-label">{item.label || item.key}</span>
 
-      {/* Shortcut hint — reserved for future use */}
-      {/* <span className="rcm-item-shortcut">{item.shortcut}</span> */}
-
       {/* Submenu arrow */}
       {hasChildren && <span className="rcm-item-arrow">▶</span>}
-
-      {/* Nested submenu */}
-      {hasChildren && submenuOpen && (
-        <SubMenu items={item.items!} flip={submenuFlip} onItemClick={onItemClick} showIcons={showIcons} />
-      )}
     </div>
   );
 };

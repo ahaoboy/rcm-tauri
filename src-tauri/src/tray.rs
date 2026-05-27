@@ -31,6 +31,8 @@ pub const MENU_LITE_ID: &str = "menu_lite";
 pub const MENU_FULL_ID: &str = "menu_full";
 /// Toggle icon ribbon visibility (CheckMenuItem).
 pub const ICONS_ID: &str = "icons";
+/// Toggle file logging — when on, all logs are appended to <exe>.log (CheckMenuItem).
+pub const LOG_ID: &str = "log";
 /// Reset all config and menu files to embedded defaults (MenuItem).
 pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
@@ -50,6 +52,7 @@ pub const DEV_TEXT: &str = "Dev Mode";
 pub const MENU_LITE_TEXT: &str = "Lite Menu";
 pub const MENU_FULL_TEXT: &str = "Full Menu";
 pub const ICONS_TEXT: &str = "Icons";
+pub const LOG_TEXT: &str = "Log";
 pub const RESET_TEXT: &str = "Reset to defaults";
 pub const APPLY_TEXT: &str = "Apply";
 
@@ -154,6 +157,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !crate::config::is_lite(), None::<&str>)?;
     let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, crate::config::is_dev(), None::<&str>)?;
     let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, crate::config::is_icons(), None::<&str>)?;
+    let log_i = CheckMenuItem::with_id(app, LOG_ID, LOG_TEXT, true, crate::log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed), None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -164,6 +168,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let sep4 = PredefinedMenuItem::separator(app)?;
     let sep5 = PredefinedMenuItem::separator(app)?;
     let sep6 = PredefinedMenuItem::separator(app)?;
+    let sep7 = PredefinedMenuItem::separator(app)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -173,26 +178,23 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let menu_lite_clone = menu_lite_i.clone();
     let menu_full_clone = menu_full_i.clone();
     let icons_clone = icons_i.clone();
+    let log_clone = log_i.clone();
 
     // ── Build menu ───────────────────────────────────────────────────
     // Layout:
-    //   ✓ Win11
-    //   ✓ 经典样式 (Classic)
+    //   ✓ Win11 / Classic
     //   ─────────
     //   ✓ Enable / Disable
     //   ─────────
-    //     Register
-    //     Unregister
-    //     Dump Env
+    //     Register / Unregister / Dump Env
     //   ─────────
-    //   ✓ Lite Menu
-    //   ✓ Full Menu
-    //   ✓ Icons
+    //   ✓ Lite / Full / Icons
+    //   ─────────
     //   ✓ Dev Mode
     //   ─────────
-    //     Apply
-    //     Reset to defaults
-    //     Quit
+    //   ✓ Log
+    //   ─────────
+    //     Apply / Reset / Quit
     let menu = Menu::with_items(
         app,
         &[
@@ -211,8 +213,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             &sep4,
             &dev_i,
             &sep5,
-            &apply_i,
+            &log_i,
             &sep6,
+            &apply_i,
+            &sep7,
             &reset_i,
             &quit_i,
         ],
@@ -297,6 +301,17 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     crate::config::set_dev(new_val);
                     let _ = dev_clone.set_checked(new_val);
                     let _ = app.emit("dev-mode", new_val);
+                }
+
+                // ── Toggle file logging ─────────────────────────
+                LOG_ID => {
+                    use std::sync::atomic::Ordering;
+                    let new_val = !crate::log::FILE_LOGGING.load(Ordering::Relaxed);
+                    crate::log::FILE_LOGGING.store(new_val, Ordering::Relaxed);
+                    let _ = log_clone.set_checked(new_val);
+                    crate::log::info("Tray", &format!("file logging {} (path: {})",
+                        if new_val { "ON" } else { "OFF" },
+                        crate::log::log_path_display()));
                 }
 
                 // ── Apply (restart Explorer) ─────────────────────
