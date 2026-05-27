@@ -114,8 +114,8 @@ body {
 .rcm-root {
   display: flex;
   flex-direction: column;
-  min-width: 240px;
-  max-width: 320px;
+  width: max-content;
+  min-width: 120px;
   background-color: var(--rcm-bg);
   border: 1px solid var(--rcm-border);
   border-radius: var(--rcm-radius);

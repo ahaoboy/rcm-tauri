@@ -37,6 +37,8 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
     const win = getCurrentWindow();
     const pos = await win.outerPosition();
     const size = await win.outerSize();
+    // Absolute screen X of the viewport's right edge (content boundary, no shadow)
+    const contentRight = pos.x + (await win.innerSize()).width;
 
     feLog.eventSend("menu-hover", `depth=${depth} path=[${indexPath}] label='${item.label}' hasChildren=${hasChildren}`);
 
@@ -51,6 +53,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
       itemY: rect.top,
       itemW: rect.width,
       itemH: rect.height,
+      contentRight,
     });
   }, [depth, indexPath, item.label, hasChildren]);
 

@@ -102,6 +102,9 @@ struct MenuHoverPayload {
     item_w: f64,
     #[serde(rename = "itemH")]
     item_h: f64,
+    /// Absolute screen X of the parent window's content right edge (no shadow).
+    #[serde(default)]
+    content_right: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -231,8 +234,14 @@ impl MenuManager {
             return;
         }
 
-        // Compute submenu position: to the right of the parent item
-        let sub_x = payload.parent_x + payload.parent_w + 4.0;
+        // Position submenu flush against parent content (compensate shadow/padding)
+        // Position submenu at parent content right edge (no magic numbers)
+        let sub_x = if payload.content_right > 0.0 {
+            payload.content_right
+        } else {
+            // Fallback for old frontends that don't send contentRight
+            payload.parent_x + payload.parent_w - 28.0
+        };
         let sub_y = payload.parent_y + payload.item_y;
         let child_label = window_label(child_depth);
 
