@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow, cursorPosition, LogicalSize } from "@tauri-apps/api/window";
 import type { MenuData, InputEventPayload } from "./types/menu";
@@ -7,7 +7,7 @@ import { ContextMenu } from "./components";
 
 function App() {
   const [menu, setMenu] = useState<MenuData | null>(null);
-  const [devMode, setDevMode] = useState(false);
+  const devMode = useRef(false);
   const theme = useTheme();
 
   useEffect(() => {
@@ -29,7 +29,7 @@ function App() {
 
       // ── Hide menu when window loses focus (unless dev mode) ────
       unlistenFocus = await win.onFocusChanged(({ payload: focused }) => {
-        if (!focused && !devMode) {
+        if (!focused && !devMode.current) {
           win.hide();
           setMenu(null);
         }
@@ -37,7 +37,7 @@ function App() {
 
       // ── Listen for dev-mode toggle from tray ──────────────────
       unlistenDev = await listen<boolean>("dev-mode", (event) => {
-        setDevMode(event.payload);
+        devMode.current = event.payload;
       });
 
       // ── Listen for right-click events from the backend ───────────
