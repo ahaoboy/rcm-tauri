@@ -20,7 +20,7 @@
         "visible": true,
         "fullscreen": false,
         "closable": true,
-        "resizable": true,
+        "resizable": false,
         "minimizable": true,
         "decorations": false,
         "maximizable": true,
