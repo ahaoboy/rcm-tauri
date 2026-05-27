@@ -40,7 +40,7 @@ export default new Menu(
         win11.copyAsPath(),
         win11.paste(),
         win11.createShortcut(),
-        win11.deleteItem(),
+        win11.trash(),
         win11.rename(),
         win11.selectAll(),
       ],
@@ -60,6 +60,6 @@ export default new Menu(
     win11.paste(),
     win11.rename(),
     win11.share(),
-    win11.deleteItem(),
+    win11.trash(),
   ],
 );

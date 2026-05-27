@@ -12,7 +12,7 @@ export default new Menu(
         win11.newMenu(),
         win11.copy(),
         win11.copyAsPath(),
-        win11.deleteItem(),
+        win11.trash(),
       ],
     },
     {

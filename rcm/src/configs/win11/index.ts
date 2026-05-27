@@ -11,7 +11,7 @@ export { share } from './share';
 export { pinToStart } from './pin-to-start';
 export { pinToTaskbar } from './pin-to-taskbar';
 export { sendTo } from './send-to';
-export { cut, copy, paste, rename, deleteItem, selectAll, refresh } from './clipboard';
+export { cut, copy, paste, rename, trash, selectAll, refresh } from './clipboard';
 export { copyAsPath } from './copy-as-path';
 export { createShortcut } from './create-shortcut';
 export { properties } from './properties';

@@ -284,7 +284,7 @@ describe('Win11 config items', () => {
       expect(win11Module.copy().key).toBe('copy');
       expect(win11Module.paste().key).toBe('paste');
       expect(win11Module.rename().key).toBe('rename');
-      expect(win11Module.deleteItem().key).toBe('delete');
+      expect(win11Module.trash().key).toBe('trash');
     });
   });
 });

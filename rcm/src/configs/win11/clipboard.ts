@@ -21,10 +21,10 @@ export function rename(): MenuItem {
   return { key: 'rename', label: t('rename'), icon: '✏️' };
 }
 
-/** Win11 "Delete" — move to recycle bin (only shown when files are selected) */
-export function deleteItem(): MenuItem {
+/** Win11 "Trash" — move to recycle bin (only shown when files are selected) */
+export function trash(): MenuItem {
   return {
-    key: 'delete',
+    key: 'trash',
     label: t('delete'),
     icon: '🗑️',
     match: (props: InvokeProps) => props.files.length > 0,
