@@ -125,6 +125,7 @@ impl SystemCommand {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Run a PowerShell scriptlet and return its stdout on success.
+#[allow(dead_code)]
 pub(crate) fn powershell(script: &str) -> Result<String, String> {
     use std::os::windows::process::CommandExt;
 

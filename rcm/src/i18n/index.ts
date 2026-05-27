@@ -48,7 +48,7 @@ addMessages('en', {
   'cut': 'Cut',
   'copy': 'Copy',
   'paste': 'Paste',
-  'copy.as.path': 'Copy as path',
+  'copy.as.path': 'Copy path',
   'create.shortcut': 'Create shortcut',
   'delete': 'Delete',
   'trash': "Trash",

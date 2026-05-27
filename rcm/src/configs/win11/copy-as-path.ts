@@ -2,19 +2,21 @@ import type { MenuItem, InvokeProps } from '../../types';
 import { t } from '../../i18n';
 
 /**
- * Win11 "Copy as path" — copies the full path(s) to clipboard.
+ * Win11 "Copy as path" — copies path(s) to clipboard (slash-separated).
+ * Without a selection, copies the current folder path.
  */
 export function copyAsPath(): MenuItem {
   return {
     key: 'copy-as-path',
     label: t('copy.as.path'),
     icon: '📎',
-    match: (props: InvokeProps) => props.files.length > 0,
-    action: (props: InvokeProps) => ({
-      exe: 'cmd',
-      args: ['/c', 'echo', props.files.map(f => f.path).join('\n'), '|', 'clip'],
-      cwd: props.cwd,
-      window: 'Hidden',
-    }),
+    action: (props: InvokeProps) => {
+      const paths = props.files.map(f => f.path);
+      if (paths.length === 0) {
+        // No files selected → copy the current directory path
+        return { exe: '@copy-path', args: [] };
+      }
+      return { exe: '@copy-path', args: paths };
+    },
   };
 }
