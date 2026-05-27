@@ -21,22 +21,17 @@ export function rename(): MenuItem {
   return { key: 'rename', label: t('rename'), icon: '✏️' };
 }
 
-/** Win11 "Delete" — recycle bin for single, fast permanent for multi-select */
+/** Win11 "Delete" — move to recycle bin (only shown when files are selected) */
 export function deleteItem(): MenuItem {
   return {
     key: 'delete',
     label: t('delete'),
     icon: '🗑️',
-    action: (props: InvokeProps) => {
-      const paths = props.files.map(f => f.path);
-      if (paths.length === 0) return;
-      // Multi-file: fast parallel permanent deletion
-      if (paths.length > 1) {
-        return { exe: '@delete', args: paths };
-      }
-      // Single file: move to recycle bin
-      return { exe: '@trash', args: paths };
-    },
+    match: (props: InvokeProps) => props.files.length > 0,
+    action: (props: InvokeProps) => ({
+      exe: '@trash',
+      args: props.files.map(f => f.path),
+    }),
   };
 }
 
