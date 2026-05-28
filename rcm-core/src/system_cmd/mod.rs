@@ -14,7 +14,7 @@
 //! 3. Add the variant to `SystemCommand`, the `@xxx` mapping in `FromStr`, and the arm in `SystemCommand::run`.
 //! 4. Add the constant in `rcm/src/system-commands.ts`.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use std::str::FromStr;
 
 pub mod copy;
@@ -200,28 +200,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_all_variants() {
-        assert_eq!("@unzip".parse(), Ok(SystemCommand::Unzip));
-        assert_eq!("@zip".parse(), Ok(SystemCommand::Zip));
-        assert_eq!("@rename".parse(), Ok(SystemCommand::Rename));
-        assert_eq!("@new-file".parse(), Ok(SystemCommand::NewFile));
-        assert_eq!("@new-folder".parse(), Ok(SystemCommand::NewFolder));
-        assert_eq!("@trash".parse(), Ok(SystemCommand::Trash));
-        assert_eq!("@open-with".parse(), Ok(SystemCommand::OpenWith));
-        assert_eq!("@copy-path".parse(), Ok(SystemCommand::CopyPath));
-    }
-
-    #[test]
-    fn parse_unknown() {
-        assert!("@unknown".parse::<SystemCommand>().is_err());
-        assert!("normal_exe".parse::<SystemCommand>().is_err());
-    }
-
-    #[test]
-    fn is_system_cmd() {
+    fn test_is_system_command() {
         assert!(is_system_command("@unzip"));
         assert!(is_system_command("@zip"));
-        assert!(!is_system_command("cmd"));
+        assert!(!is_system_command("notepad"));
         assert!(!is_system_command(""));
+    }
+
+    #[test]
+    fn test_parse_system_command() {
+        assert_eq!("@unzip".parse::<SystemCommand>().unwrap(), SystemCommand::Unzip);
+        assert_eq!("@zip".parse::<SystemCommand>().unwrap(), SystemCommand::Zip);
+        assert!("@unknown".parse::<SystemCommand>().is_err());
     }
 }

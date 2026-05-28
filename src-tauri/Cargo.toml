@@ -17,58 +17,19 @@ authors = ["ahaoboy"]
 name = "rcm_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[features]
-default = ["llrt"]
-llrt = ["dep:llrt_modules"]
-
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-rquickjs = { features = [
-  "loader",
-], git = "https://github.com/DelSkayn/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644", default-features = false }
-tauri = { version = "2", features = ["tray-icon"] }
-tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-which = "8"
-trash = "5"
-clipboard-rs = "0.3"
-winreg = "0.56"
-# pin 0.61
-windows = { version = "0.61", features = [
-  "Win32_UI_WindowsAndMessaging",
-  "Win32_Graphics_Gdi",
-  "Win32_Foundation",
-  "Win32_UI_Shell",
-  "Win32_System_Threading",
-  "Win32_System_Memory",
-  "Win32_System_LibraryLoader",
-  "Management_Deployment",
-  "ApplicationModel",
-  "Graphics",
-  "Win32_System_SystemInformation",
-] }
-tauri-plugin-single-instance = "2"
-tauri-plugin-updater = "2"
-tokio = { version = "1", features = ["full"] }
-clap = { version = "4", features = ["derive"] }
-anyhow = "1"
-llrt_modules = { git = "https://github.com/awslabs/llrt", features = [
-], optional = true }
-rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
-easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = ["encode", "decode", "cli"] }
-
-[patch."https://github.com/DelSkayn/rquickjs.git"]
-rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-
-
-[patch.crates-io]
-rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rcm-core = { path = "../rcm-core" }
+rcm-vm = { path = "../rcm-vm" }
+tauri = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tauri-plugin-single-instance = { workspace = true }
+tauri-plugin-updater = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+clap = { workspace = true }
+which = { workspace = true }
+rcm-com = { workspace = true }

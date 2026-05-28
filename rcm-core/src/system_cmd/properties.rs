@@ -1,6 +1,6 @@
 //! `@properties` — Open the Windows file/folder properties dialog.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::SystemCmdResult;
 use windows::core::PCWSTR;
 use windows::Win32::UI::Shell::{ShellExecuteExW, SHELLEXECUTEINFOW};

@@ -1,6 +1,6 @@
 //! `@open-with` — Open the Windows "Open With" dialog.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::{SystemCmdResult, build_sys_cmd};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

@@ -121,7 +121,7 @@ pub fn reset() {
     DEV_MODE.store(false, Ordering::Relaxed);
     SHOW_ICONS.store(false, Ordering::Relaxed);
     save();
-    crate::vm::write_menu_defaults();
+    crate::menu_defaults::write_menu_defaults();
     println!("config: reset to defaults");
 }
 

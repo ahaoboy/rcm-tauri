@@ -1,0 +1,57 @@
+[workspace]
+members = ["src-tauri", "rcm-core", "rcm-vm"]
+resolver = "2"
+
+[workspace.dependencies]
+# ── Serde ──────────────────────────────────────────────────────────────
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── System utilities ───────────────────────────────────────────────────
+which = "8"
+trash = "5"
+clipboard-rs = "0.3"
+winreg = "0.56"
+anyhow = "1"
+tokio = "1"
+clap = { version = "4", features = ["derive"] }
+
+# ── Windows APIs ──────────────────────────────────────────────────────
+windows = { version = "0.61", features = [
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Graphics_Gdi",
+  "Win32_Foundation",
+  "Win32_UI_Shell",
+  "Win32_System_Threading",
+  "Win32_System_Memory",
+  "Win32_System_LibraryLoader",
+  "Management_Deployment",
+  "ApplicationModel",
+  "Graphics",
+  "Win32_System_SystemInformation",
+] }
+
+# ── Tauri ──────────────────────────────────────────────────────────────
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
+
+# ── Git dependencies ──────────────────────────────────────────────────
+rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
+easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = ["encode", "decode", "cli"] }
+rquickjs = { git = "https://github.com/DelSkayn/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644", default-features = false }
+llrt_modules = { git = "https://github.com/awslabs/llrt" }
+
+[patch."https://github.com/DelSkayn/rquickjs.git"]
+rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+
+[patch.crates-io]
+rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }

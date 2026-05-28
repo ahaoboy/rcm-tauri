@@ -4,7 +4,7 @@
 //! archive's stem (e.g. `foo.zip` → `foo/`).  If the directory
 //! already exists, a collision-safe name is chosen (`foo (2)/`, …).
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

@@ -4,7 +4,7 @@
 //! `New folder`).  The final path is resolved relative to
 //! `cmd.cwd` with collision avoidance.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

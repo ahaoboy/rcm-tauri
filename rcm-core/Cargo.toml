@@ -1,0 +1,20 @@
+[package]
+name = "rcm-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "RCM core — system & API calls, types, and utilities"
+authors = ["ahaoboy"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+which = { workspace = true }
+trash = { workspace = true }
+clipboard-rs = { workspace = true }
+winreg = { workspace = true }
+windows = { workspace = true }
+rcm-com = { workspace = true }
+easy-archive = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true, features = ["process"] }

@@ -84,7 +84,7 @@ pub fn start_pipe_server(app_handle: AppHandle) {
                                 .map(|d| d.as_millis())
                                 .unwrap_or(0);
 
-                            let menu = crate::rcm::rcm().ok();
+                            let menu = crate::rcm().ok();
 
                             let event_payload = serde_json::json!({
                                 "event": "ButtonRelease",

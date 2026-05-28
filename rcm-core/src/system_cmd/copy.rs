@@ -1,6 +1,6 @@
 //! `@copy` — Copy selected file(s) to the system clipboard as file-drop data.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::SystemCmdResult;
 use clipboard_rs::{Clipboard, ClipboardContext};
 

@@ -1,6 +1,6 @@
 //! `@trash` — Move file(s) to the recycle bin using the `trash` crate.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::SystemCmdResult;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

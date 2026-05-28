@@ -1,6 +1,6 @@
 //! `@rename` — Rename a file or folder with collision avoidance.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

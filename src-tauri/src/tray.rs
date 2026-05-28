@@ -1,4 +1,5 @@
-use crate::registry::*;
+use rcm_core::registry;
+use rcm_core::{config, log};
 use std::io::Write;
 use tauri::{
     App,
@@ -142,7 +143,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     )?;
 
     // ── Toggle context menu item ─────────────────────────────────────
-    let is_ctx_enabled = !get_context_menu_status();
+    let is_ctx_enabled = !registry::get_context_menu_status();
     let toggle_ctx_i = CheckMenuItem::with_id(
         app,
         TOGGLE_CTX_ID,
@@ -156,12 +157,12 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
-    let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, crate::config::is_lite(), None::<&str>)?;
-    let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !crate::config::is_lite(), None::<&str>)?;
-    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, crate::config::is_dev(), None::<&str>)?;
-    let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, crate::config::is_icons(), None::<&str>)?;
-    let log_i = CheckMenuItem::with_id(app, LOG_ID, LOG_TEXT, true, crate::log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed), None::<&str>)?;
-    let autostart_i = CheckMenuItem::with_id(app, AUTOSTART_ID, AUTOSTART_TEXT, true, crate::registry::is_autostart_enabled(), None::<&str>)?;
+    let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, config::is_lite(), None::<&str>)?;
+    let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !config::is_lite(), None::<&str>)?;
+    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, config::is_dev(), None::<&str>)?;
+    let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, config::is_icons(), None::<&str>)?;
+    let log_i = CheckMenuItem::with_id(app, LOG_ID, LOG_TEXT, true, log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed), None::<&str>)?;
+    let autostart_i = CheckMenuItem::with_id(app, AUTOSTART_ID, AUTOSTART_TEXT, true, registry::is_autostart_enabled(), None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -255,18 +256,18 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Toggle RCM context menu ───────────────────────
                 TOGGLE_CTX_ID => {
-                    let current_status = get_context_menu_status();
+                    let current_status = registry::get_context_menu_status();
                     if current_status {
-                        let _ = disable_context_menu();
+                        let _ = registry::disable_context_menu();
                     } else {
-                        let _ = enable_context_menu();
+                        let _ = registry::enable_context_menu();
                     }
 
-                    let new_state = !get_context_menu_status();
+                    let new_state = !registry::get_context_menu_status();
                     let _ = toggle_ctx_clone.set_text(get_toggle_text(new_state));
                     let _ = toggle_ctx_clone.set_checked(new_state);
 
-                    restart_explorer();
+                    registry::restart_explorer();
                 }
 
                 // ── Register / Unregister shell extension ────────
@@ -284,20 +285,20 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Menu mode switching ─────────────────────────
                 MENU_LITE_ID => {
-                    crate::config::set_lite(true);
+                    config::set_lite(true);
                     let _ = menu_lite_clone.set_checked(true);
                     let _ = menu_full_clone.set_checked(false);
                 }
                 MENU_FULL_ID => {
-                    crate::config::set_lite(false);
+                    config::set_lite(false);
                     let _ = menu_lite_clone.set_checked(false);
                     let _ = menu_full_clone.set_checked(true);
                 }
 
                 // ── Toggle icons ────────────────────────────────
                 ICONS_ID => {
-                    let new_val = !crate::config::is_icons();
-                    crate::config::set_icons(new_val);
+                    let new_val = !config::is_icons();
+                    config::set_icons(new_val);
                     let _ = icons_clone.set_checked(new_val);
                     match app.emit("icons-changed", new_val) {
                         Ok(()) => println!("icons-changed: emitted {new_val}"),
@@ -307,8 +308,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Toggle dev mode ──────────────────────────────
                 DEV_ID => {
-                    let new_val = !crate::config::is_dev();
-                    crate::config::set_dev(new_val);
+                    let new_val = !config::is_dev();
+                    config::set_dev(new_val);
                     let _ = dev_clone.set_checked(new_val);
                     let _ = app.emit("dev-mode", new_val);
                 }
@@ -316,31 +317,31 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 // ── Toggle file logging ─────────────────────────
                 LOG_ID => {
                     use std::sync::atomic::Ordering;
-                    let new_val = !crate::log::FILE_LOGGING.load(Ordering::Relaxed);
-                    crate::log::FILE_LOGGING.store(new_val, Ordering::Relaxed);
+                    let new_val = !log::FILE_LOGGING.load(Ordering::Relaxed);
+                    log::FILE_LOGGING.store(new_val, Ordering::Relaxed);
                     let _ = log_clone.set_checked(new_val);
-                    crate::log::info("Tray", &format!("file logging {} (path: {})",
+                    log::info("Tray", &format!("file logging {} (path: {})",
                         if new_val { "ON" } else { "OFF" },
-                        crate::log::log_path_display()));
+                        log::log_path_display()));
                 }
 
                 // ── Toggle autostart ──────────────────────────
                 AUTOSTART_ID => {
-                    if crate::registry::is_autostart_enabled() {
-                        match crate::registry::disable_autostart() {
+                    if registry::is_autostart_enabled() {
+                        match registry::disable_autostart() {
                             Ok(()) => {
                                 let _ = autostart_clone.set_checked(false);
-                                crate::log::info("Tray", "autostart disabled");
+                                log::info("Tray", "autostart disabled");
                             }
-                            Err(e) => crate::log::error("Tray", &format!("disable autostart failed: {e}")),
+                            Err(e) => log::error("Tray", &format!("disable autostart failed: {e}")),
                         }
                     } else {
-                        match crate::registry::enable_autostart() {
+                        match registry::enable_autostart() {
                             Ok(()) => {
                                 let _ = autostart_clone.set_checked(true);
-                                crate::log::info("Tray", "autostart enabled");
+                                log::info("Tray", "autostart enabled");
                             }
-                            Err(e) => crate::log::error("Tray", &format!("enable autostart failed: {e}")),
+                            Err(e) => log::error("Tray", &format!("enable autostart failed: {e}")),
                         }
                     }
                 }
@@ -352,7 +353,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Reset to defaults ────────────────────────────
                 RESET_ID => {
-                    crate::config::reset();
+                    config::reset();
                 }
 
                 _ => {}

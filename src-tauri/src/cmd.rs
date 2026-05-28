@@ -2,10 +2,10 @@
 //! Takes a `CommandPayload` from the frontend and runs it asynchronously via tokio.
 //!
 //! Commands whose `exe` starts with `@` (e.g. `@unzip`, `@zip`) are routed
-//! to [`crate::system_cmd::SystemCommand`] for native handling.
+//! to [`rcm_core::system_cmd::SystemCommand`] for native handling.
 
-use crate::rcm::CommandPayload;
-use crate::system_cmd;
+use rcm_core::CommandPayload;
+use rcm_core::system_cmd;
 use tokio::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;

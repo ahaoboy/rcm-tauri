@@ -1,0 +1,18 @@
+[package]
+name = "rcm-vm"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "RCM VM — JavaScript runtime execution engine for RCM menus"
+authors = ["ahaoboy"]
+
+[features]
+default = ["llrt"]
+llrt = ["dep:llrt_modules"]
+
+[dependencies]
+rcm-core = { path = "../rcm-core" }
+rquickjs = { workspace = true, features = ["loader"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+llrt_modules = { workspace = true, optional = true }

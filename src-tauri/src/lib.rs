@@ -3,16 +3,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::window::Color;
 use tauri::{Emitter, Listener, Manager, PhysicalPosition, WebviewUrl};
 use serde::{Deserialize, Serialize};
+use rcm_core::{CommandPayload, FileInfo, InvokeProps, Menu};
+use rcm_core::{config, lang, log};
+
 pub mod cmd;
-pub mod config;
-pub mod lang;
-pub mod log;
 pub mod pipe;
-pub mod rcm;
-pub mod registry;
-pub mod system_cmd;
 pub mod tray;
-pub mod vm;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants
@@ -54,7 +50,7 @@ fn get_config() -> ConfigPayload {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /// Holds the last built menu so hover/click handlers can navigate it.
-type MenuArc = Arc<Mutex<Option<rcm::Menu>>>;
+type MenuArc = Arc<Mutex<Option<Menu>>>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Event payloads — Rust → Frontend
@@ -63,7 +59,7 @@ type MenuArc = Arc<Mutex<Option<rcm::Menu>>>;
 #[derive(Debug, Clone, Serialize)]
 struct MenuShowPayload {
     /// Full menu data — every window gets the complete tree.
-    menu: rcm::Menu,
+    menu: Menu,
     /// Index path to render. Empty `[]` = root.
     path: Vec<i32>,
     /// Absolute screen position for the window.
@@ -120,7 +116,7 @@ struct MenuExecutePayload {
     /// Index path to the clicked item.
     path: Vec<i32>,
     /// Command to execute (sent directly from frontend).
-    command: rcm::CommandPayload,
+    command: CommandPayload,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -158,7 +154,7 @@ struct MenuManager {
 
 impl MenuManager {
     /// Show the root menu at the cursor position.
-    fn show_root(&self, menu: rcm::Menu, x: f64, y: f64) {
+    fn show_root(&self, menu: Menu, x: f64, y: f64) {
         log::info("Rust::show_root", &format!("pos=({x:.0},{y:.0}) groups={} icons={} max_depth={}",
             menu.groups.len(), menu.icon_items.len(), menu.max_depth()));
 
@@ -399,7 +395,7 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
 
             match &event.event {
                 rcm_com::Event::Menu { .. } => {
-                    let menu_data = match rcm::rcm_from_info(&event) {
+                    let menu_data = match rcm_from_info(&event) {
                         Ok(m) => m,
                         Err(e) => {
                             log::error("Rust::monitor", &format!("rcm error: {:?}", e));
@@ -431,6 +427,55 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
             log::error("Rust::monitor", &format!("ERROR: {e}"));
         }
     });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Menu builders — generate menu from context data
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Build a menu from a blank desktop context (no files selected).
+pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+    let mut env = std::collections::HashMap::new();
+    env.insert("OS".to_string(), "Windows".to_string());
+    let props = InvokeProps {
+        files: vec![],
+        cwd: "C:\\".to_string(),
+        env,
+        admin: false,
+        type_name: "Desktop".to_string(),
+        lang: lang::system_lang(),
+    };
+
+    rcm_vm::invoke(&props)
+}
+
+/// Build a menu from real right-click context data received via the pipe.
+pub fn rcm_from_info(info: &rcm_com::ContextMenuInfo) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+    let mut env = std::collections::HashMap::new();
+    env.insert("OS".to_string(), "Windows".to_string());
+
+    let files: Vec<FileInfo> = info.files.iter().map(|path| {
+        let p = std::path::Path::new(path);
+        FileInfo {
+            name: p.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("")
+                .to_string(),
+            path: path.clone(),
+            is_dir: p.is_dir(),
+        }
+    }).collect();
+
+    let props = InvokeProps {
+        files,
+        cwd: info.dir.clone(),
+        env,
+        admin: false,
+        type_name: if info.bg { "Background".to_string() } else { "File".to_string() },
+        lang: lang::system_lang(),
+    };
+
+    rcm_vm::invoke(&props)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

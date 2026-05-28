@@ -1,7 +1,7 @@
 //! `@copy-path` — Copy file path(s) to clipboard (slash-separated).
 //! Falls back to the current directory path when no files are selected.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::SystemCmdResult;
 use clipboard_rs::{Clipboard, ClipboardContext};
 

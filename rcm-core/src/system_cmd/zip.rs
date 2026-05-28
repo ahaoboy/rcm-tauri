@@ -5,7 +5,7 @@
 //! directory is archived.  The output name defaults to the directory
 //! name with a `.zip` extension, with collision avoidance.
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {

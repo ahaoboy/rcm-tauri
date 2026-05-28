@@ -5,7 +5,7 @@
 //! Each path is deleted in its own thread for maximum throughput on
 //! large selections (e.g. multiple `node_modules` folders).
 
-use crate::rcm::CommandPayload;
+use crate::types::CommandPayload;
 use super::SystemCmdResult;
 use std::thread;
 
