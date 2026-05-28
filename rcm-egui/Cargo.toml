@@ -1,0 +1,51 @@
+[package]
+name = "rcm-egui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "RCM egui — native context menu with egui UI and system tray"
+repository = "https://github.com/ahaoboy/rcm-tauri"
+homepage = "https://github.com/ahaoboy/rcm-tauri"
+authors = ["ahaoboy"]
+
+[dependencies]
+# Core
+rcm-core = { path = "../rcm-core" }
+rcm-vm = { path = "../rcm-vm" }
+rcm-com = { workspace = true }
+
+# egui / eframe
+egui = { workspace = true }
+eframe = { workspace = true }
+
+# System tray
+tray-icon = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true, features = ["full"] }
+
+# CLI argument parsing
+clap = { workspace = true }
+
+# System utilities
+which = { workspace = true }
+windows = { workspace = true }
+
+# Logging
+log = { workspace = true }
+env_logger = { workspace = true }
+
+# Cross-thread channel for tray event polling
+crossbeam-channel = { workspace = true }
+
+# Error handling
+anyhow = "1"
+
+# Web (wasm32) — not used natively, kept for egui compatibility
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3"

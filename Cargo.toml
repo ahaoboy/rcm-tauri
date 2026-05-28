@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri", "rcm-core", "rcm-vm"]
+members = ["src-tauri", "rcm-core", "rcm-vm", "rcm-egui"]
 resolver = "2"
 
 [profile.release]
@@ -48,6 +48,17 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-build = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
+
+# ── egui / eframe (native immediate-mode GUI) ───────────────────────────
+egui = "0.34"
+eframe = { version = "0.34", default-features = false, features = ["glow", "persistence"] }
+
+# ── Logging ─────────────────────────────────────────────────────────────
+log = "0.4"
+env_logger = "0.11"
+
+# ── Crossbeam (channel for tray-event polling) ──────────────────────────
+crossbeam-channel = "0.5"
 tauri-plugin-updater = "2"
 
 # ── Git dependencies ──────────────────────────────────────────────────
