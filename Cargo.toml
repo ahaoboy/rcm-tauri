@@ -2,6 +2,10 @@
 members = ["src-tauri", "rcm-core", "rcm-vm"]
 resolver = "2"
 
+[profile.release]
+codegen-units = 1
+lto = true
+
 [workspace.dependencies]
 # ── Serde ──────────────────────────────────────────────────────────────
 serde = { version = "1", features = ["derive"] }
@@ -17,6 +21,7 @@ tokio = "1"
 clap = { version = "4", features = ["derive"] }
 
 # ── Windows APIs ──────────────────────────────────────────────────────
+# pin 0.61
 windows = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_Graphics_Gdi",
@@ -30,6 +35,13 @@ windows = { version = "0.61", features = [
   "Graphics",
   "Win32_System_SystemInformation",
 ] }
+
+# ── Slint (native UI) ──────────────────────────────────────────────────
+slint = "1.14"
+slint-build = "1.14"
+
+# ── Tray icon (cross-platform system tray) ─────────────────────────────
+tray-icon = "0.24"
 
 # ── Tauri ──────────────────────────────────────────────────────────────
 tauri = { version = "2", features = ["tray-icon"] }

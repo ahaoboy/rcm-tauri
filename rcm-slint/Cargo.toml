@@ -1,0 +1,25 @@
+[package]
+name = "rcm-slint"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "RCM Slint — native context menu with Slint UI and system tray"
+repository = "https://github.com/ahaoboy/rcm-tauri"
+homepage = "https://github.com/ahaoboy/rcm-tauri"
+authors = ["ahaoboy"]
+
+[build-dependencies]
+slint-build = { workspace = true }
+
+[dependencies]
+rcm-core = { path = "../rcm-core" }
+rcm-vm = { path = "../rcm-vm" }
+rcm-com = { workspace = true }
+slint = { workspace = true }
+tray-icon = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+clap = { workspace = true }
+which = { workspace = true }
+windows = { workspace = true }
