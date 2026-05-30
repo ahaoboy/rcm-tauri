@@ -46,11 +46,14 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
     // Absolute screen X of the viewport's right edge (content boundary, no shadow)
     const contentRight = pos.x + innerSize.width;
 
-    // Parent menu content height (.rcm-root element's rendered height)
+    // Parent menu content dimensions (.rcm-root element's rendered size)
     const parentRoot = rowRef.current.closest('.rcm-root');
     const parentContentHeight = (parentRoot
       ? parentRoot.getBoundingClientRect().height
       : innerSize.height) * dpi;
+    const parentContentWidth = (parentRoot
+      ? parentRoot.getBoundingClientRect().width
+      : innerSize.width) * dpi;
 
     feLog.eventSend("menu-hover", `depth=${depth} path=[${indexPath}] label='${item.label}' hasChildren=${hasChildren}`);
 
@@ -62,6 +65,7 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
       parentW: size.width,
       parentH: size.height,
       parentContentHeight,
+      parentContentWidth,
       itemX: rect.left * dpi,
       itemY: rect.top * dpi,
       itemW: rect.width * dpi,

@@ -104,6 +104,9 @@ struct MenuHoverPayload {
     /// Height of the parent's .rcm-root content element (for boundary clamping).
     #[serde(rename = "parentContentHeight", default)]
     parent_content_h: f64,
+    /// Width of the parent's .rcm-root content element (for precise X alignment).
+    #[serde(rename = "parentContentWidth", default)]
+    parent_content_w: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -233,19 +236,23 @@ impl MenuManager {
             return;
         }
 
-        // Position submenu at parent content right edge.
-        let sub_x = if payload.content_right > 0.0 {
+        // ── Horizontal positioning ───────────────────────────────────────
+        // Position submenu at parent's .rcm-root right edge + gap.
+        // #root padding is identical in both windows, so it cancels out.
+        let sub_x = if payload.parent_content_w > 0.0 {
+            payload.parent_x + payload.parent_content_w + 8.0
+        } else if payload.content_right > 0.0 {
             payload.content_right
         } else {
-            // Fallback for old frontends that don't send contentRight
+            // Fallback for old frontends
             payload.parent_x + payload.parent_w - 28.0
         };
 
         // ── Vertical positioning ─────────────────────────────────────────
         // CSS tokens (keep in sync with menu.css):
-        //   --rcm-padding: 4px       top/bottom padding of .rcm-root
+        //   --rcm-padding: 2px       top/bottom padding of .rcm-root
         //   --rcm-item-height: 36px  height of each .rcm-item
-        const SUBMENU_PADDING: f64 = 4.0;
+        const SUBMENU_PADDING: f64 = 2.0;
         const ITEM_HEIGHT: f64 = 36.0;
 
         // Ideal Y: align submenu's first content pixel with parent item's top.
@@ -281,11 +288,12 @@ impl MenuManager {
 
         // ── Debug: log all positioning inputs ───────────────────────────
         log::info("Rust::handle_hover", &format!(
-            "pos_debug: parent=({:.0},{:.0}) parent_w={:.0} parent_h={:.0} parentContentH={:.0} | \
+            "pos_debug: parent=({:.0},{:.0}) parent_w={:.0} parent_h={:.0} parentCW={:.0} parentCH={:.0} | \
              item=({:.0},{:.0}) item_w={:.0} item_h={:.0} | \
              child_count={} | sub=({:.0},{:.0})",
             payload.parent_x, payload.parent_y,
-            payload.parent_w, payload.parent_h, payload.parent_content_h,
+            payload.parent_w, payload.parent_h,
+            payload.parent_content_w, payload.parent_content_h,
             payload.item_x, payload.item_y,
             payload.item_w, payload.item_h,
             child_count,

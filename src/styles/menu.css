@@ -23,7 +23,7 @@
     0 0 0 0.5px rgba(0, 0, 0, 0.06);
 
   --rcm-radius:          9px;
-  --rcm-padding:         4px;
+  --rcm-padding:         2px;
 
   --rcm-item-hover:      rgba(0, 0, 0, 0.038);
   --rcm-item-active:     rgba(0, 0, 0, 0.065);
@@ -42,7 +42,7 @@
   --rcm-arrow-color:     rgba(0, 0, 0, 0.36);
 
   --rcm-ribbon-gap:      2px;
-  --rcm-ribbon-padding:  4px 6px 6px 6px;
+  --rcm-ribbon-padding:  2px 4px 4px 4px;
   --rcm-ribbon-border:   rgba(0, 0, 0, 0.06);
 
   --rcm-submenu-offset:  6px;
@@ -136,7 +136,7 @@ body {
   align-items: flex-start;
   justify-content: flex-start;
   min-height: 100vh;
-  padding: 6px;
+  padding: 4px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
