@@ -27,7 +27,7 @@
 
   --rcm-item-hover:      rgba(0, 0, 0, 0.038);
   --rcm-item-active:     rgba(0, 0, 0, 0.065);
-  --rcm-item-height:     36px;
+  --rcm-item-height:     30px;
   --rcm-item-radius:     6px;
 
   --rcm-text:            #1b1b1b;
@@ -254,7 +254,7 @@ body {
   display: flex;
   align-items: center;
   height: var(--rcm-item-height);
-  padding: 0 12px;
+  padding: 0 6px;
   margin: 0 2px;
   border-radius: var(--rcm-item-radius);
   cursor: pointer;

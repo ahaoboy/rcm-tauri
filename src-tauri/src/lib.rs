@@ -249,40 +249,20 @@ impl MenuManager {
         };
 
         // ── Vertical positioning ─────────────────────────────────────────
-        // CSS tokens (keep in sync with menu.css):
-        //   --rcm-padding: 2px       top/bottom padding of .rcm-root
-        //   --rcm-item-height: 36px  height of each .rcm-item
-        const SUBMENU_PADDING: f64 = 2.0;
-        const ITEM_HEIGHT: f64 = 36.0;
+        // Frontend sends item_y in physical px (DPI-corrected), so we can
+        // position the submenu directly without CSS constant estimates.
+        let ideal_y = payload.parent_y + payload.item_y;
 
-        // Ideal Y: align submenu's first content pixel with parent item's top.
-        let ideal_y = payload.parent_y + payload.item_y - SUBMENU_PADDING;
-
-        // Estimate the submenu's rendered height from its child item count.
-        let child_count = item.items.len().max(1);
-        let est_submenu_h = SUBMENU_PADDING * 2.0 + child_count as f64 * ITEM_HEIGHT;
-
-        // Bottom boundary: use the parent window's real bottom edge.
-        // parent_h (outer size) > parentContentH because the window
-        // includes #root padding and may not yet be resized to fit.
-        // The submenu can safely extend into this slack space.
+        // Safety clamp: don't let the submenu start below the parent window.
         let parent_bottom = payload.parent_y + payload.parent_h;
-
-        // Clamp: if submenu would extend past the parent window's bottom,
-        // shift it upward so its bottom stays within bounds.
-        let overflow = (ideal_y + est_submenu_h) - parent_bottom;
-        let sub_y = if overflow > 0.0 {
-            let clamped = (ideal_y - overflow).max(payload.parent_y);
+        let sub_y = if ideal_y > parent_bottom {
+            let clamped = parent_bottom;
             log::info("Rust::handle_hover", &format!(
-                "pos: ideal_y={:.0} est_h={:.0} parent_bottom={:.0} overflow={:.0} → clamped_y={:.0}",
-                ideal_y, est_submenu_h, parent_bottom, overflow, clamped
+                "pos: ideal_y={:.0} parent_bottom={:.0} → clamped_y={:.0}",
+                ideal_y, parent_bottom, clamped
             ));
             clamped
         } else {
-            log::info("Rust::handle_hover", &format!(
-                "pos: ideal_y={:.0} est_h={:.0} parent_bottom={:.0} overflow=0 → no clamp",
-                ideal_y, est_submenu_h, parent_bottom
-            ));
             ideal_y
         };
 
@@ -290,13 +270,13 @@ impl MenuManager {
         log::info("Rust::handle_hover", &format!(
             "pos_debug: parent=({:.0},{:.0}) parent_w={:.0} parent_h={:.0} parentCW={:.0} parentCH={:.0} | \
              item=({:.0},{:.0}) item_w={:.0} item_h={:.0} | \
-             child_count={} | sub=({:.0},{:.0})",
+             children={} | sub=({:.0},{:.0})",
             payload.parent_x, payload.parent_y,
             payload.parent_w, payload.parent_h,
             payload.parent_content_w, payload.parent_content_h,
             payload.item_x, payload.item_y,
             payload.item_w, payload.item_h,
-            child_count,
+            item.items.len(),
             sub_x, sub_y
         ));
         let child_label = window_label(child_depth);
