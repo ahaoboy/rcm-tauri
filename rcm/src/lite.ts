@@ -12,8 +12,7 @@ export default new Menu(
         win11.newMenu(),
         win11.copy(),
         win11.copyAsPath(),
-        win11.openWith(),
-        win11.trash(),
+        // win11.trash(),
       ],
     },
     {
@@ -25,7 +24,13 @@ export default new Menu(
         // custom.mpv(),
         // custom.openFileLocation(),
         custom.ssh(),
-        win11.properties(),
+        {
+          label: 'More',
+          items: [
+            win11.openWith(),
+            win11.properties(),
+          ]
+        }
       ],
     },
   ],
