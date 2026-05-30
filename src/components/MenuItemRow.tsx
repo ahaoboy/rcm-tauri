@@ -35,10 +35,22 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
 
     const rect = rowRef.current.getBoundingClientRect();
     const win = getCurrentWindow();
-    const pos = await win.outerPosition();
-    const size = await win.outerSize();
+    const pos = await win.outerPosition();   // physical pixels
+    const size = await win.outerSize();       // physical pixels
+    const innerSize = await win.innerSize();  // physical pixels
+
+    // DPI scale factor: getBoundingClientRect returns CSS pixels,
+    // but outerPosition/outerSize are in physical pixels.
+    const dpi = window.devicePixelRatio || 1;
+
     // Absolute screen X of the viewport's right edge (content boundary, no shadow)
-    const contentRight = pos.x + (await win.innerSize()).width;
+    const contentRight = pos.x + innerSize.width;
+
+    // Parent menu content height (.rcm-root element's rendered height)
+    const parentRoot = rowRef.current.closest('.rcm-root');
+    const parentContentHeight = (parentRoot
+      ? parentRoot.getBoundingClientRect().height
+      : innerSize.height) * dpi;
 
     feLog.eventSend("menu-hover", `depth=${depth} path=[${indexPath}] label='${item.label}' hasChildren=${hasChildren}`);
 
@@ -49,10 +61,11 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({
       parentY: pos.y,
       parentW: size.width,
       parentH: size.height,
-      itemX: rect.left,
-      itemY: rect.top,
-      itemW: rect.width,
-      itemH: rect.height,
+      parentContentHeight,
+      itemX: rect.left * dpi,
+      itemY: rect.top * dpi,
+      itemW: rect.width * dpi,
+      itemH: rect.height * dpi,
       contentRight,
     });
   }, [depth, indexPath, item.label, hasChildren]);

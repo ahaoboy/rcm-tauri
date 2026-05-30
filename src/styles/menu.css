@@ -1,91 +1,120 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   RCM — Right-Click Menu Styles
+   RCM — Right-Click Menu Styles  ·  Win11 Fluent Design
    Supports: nested submenus, icon ribbon, separators, light/dark themes
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Design tokens (light theme) ─────────────────────────────────────── */
+/* ── Design tokens (Win11 light) ────────────────────────────────────── */
 :root {
-  --rcm-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --rcm-font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --rcm-font-size: 13px;
   --rcm-font-size-sm: 12px;
 
-  --rcm-bg: #fcfcfc;
-  --rcm-border: #d5d5d5;
-  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
-  --rcm-radius: 8px;
-  --rcm-padding: 4px;
+  /* Mica-like translucent surface */
+  --rcm-bg:              rgba(252, 252, 252, 0.82);
+  --rcm-bg-solid:        #f3f3f3;
+  --rcm-border:          rgba(0, 0, 0, 0.07);
+  --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
 
-  --rcm-item-hover: #e8e8e8;
-  --rcm-item-active: #dcdcdc;
-  --rcm-item-height: 32px;
-  --rcm-item-radius: 5px;
+  /* Shadow: layered, soft — Win11 Fluent */
+  --rcm-shadow:
+    0 0.3px 0.6px rgba(0, 0, 0, 0.028),
+    0 1.2px 2.4px rgba(0, 0, 0, 0.042),
+    0 4px 9px rgba(0, 0, 0, 0.07),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
 
-  --rcm-text: #1a1a1a;
-  --rcm-text-disabled: #a0a0a0;
-  --rcm-text-shortcut: #707070;
+  --rcm-radius:          9px;
+  --rcm-padding:         4px;
 
-  --rcm-separator: #e0e0e0;
-  --rcm-separator-margin: 4px 8px;
+  --rcm-item-hover:      rgba(0, 0, 0, 0.038);
+  --rcm-item-active:     rgba(0, 0, 0, 0.065);
+  --rcm-item-height:     36px;
+  --rcm-item-radius:     6px;
 
-  --rcm-icon-size: 18px;
-  --rcm-icon-gap: 10px;
-  --rcm-arrow-color: #888;
+  --rcm-text:            #1b1b1b;
+  --rcm-text-disabled:   rgba(27, 27, 27, 0.36);
+  --rcm-text-shortcut:   rgba(27, 27, 27, 0.52);
 
-  --rcm-ribbon-gap: 2px;
-  --rcm-ribbon-padding: 2px 4px 6px 4px;
-  --rcm-ribbon-border: #e8e8e8;
+  --rcm-separator:       rgba(0, 0, 0, 0.08);
+  --rcm-separator-margin: 4px 10px;
 
-  --rcm-submenu-offset: 4px;
-  --rcm-transition: 120ms ease;
+  --rcm-icon-size:       18px;
+  --rcm-icon-gap:        12px;
+  --rcm-arrow-color:     rgba(0, 0, 0, 0.36);
+
+  --rcm-ribbon-gap:      2px;
+  --rcm-ribbon-padding:  4px 6px 6px 6px;
+  --rcm-ribbon-border:   rgba(0, 0, 0, 0.06);
+
+  --rcm-submenu-offset:  6px;
+  --rcm-transition:      150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Dark theme ──────────────────────────────────────────────────────── */
+/* ── Dark theme (Win11 dark) ────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --rcm-bg: #2c2c2c;
-    --rcm-border: #3d3d3d;
-    --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04);
+    --rcm-bg:              rgba(44, 44, 44, 0.80);
+    --rcm-bg-solid:        #2c2c2c;
+    --rcm-border:          rgba(255, 255, 255, 0.06);
+    --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
 
-    --rcm-item-hover: #3a3a3a;
-    --rcm-item-active: #444;
+    --rcm-shadow:
+      0 0.3px 0.6px rgba(0, 0, 0, 0.16),
+      0 1.2px 2.4px rgba(0, 0, 0, 0.20),
+      0 4px 9px rgba(0, 0, 0, 0.32),
+      0 0 0 0.5px rgba(255, 255, 255, 0.06);
 
-    --rcm-text: #f0f0f0;
-    --rcm-text-disabled: #666;
-    --rcm-text-shortcut: #999;
+    --rcm-item-hover:      rgba(255, 255, 255, 0.045);
+    --rcm-item-active:     rgba(255, 255, 255, 0.075);
 
-    --rcm-separator: #3d3d3d;
-    --rcm-ribbon-border: #3d3d3d;
-    --rcm-arrow-color: #999;
+    --rcm-text:            #f4f4f4;
+    --rcm-text-disabled:   rgba(244, 244, 244, 0.36);
+    --rcm-text-shortcut:   rgba(244, 244, 244, 0.48);
+
+    --rcm-separator:       rgba(255, 255, 255, 0.08);
+    --rcm-ribbon-border:   rgba(255, 255, 255, 0.06);
+    --rcm-arrow-color:     rgba(255, 255, 255, 0.36);
   }
 }
 
 /* ── Theme class overrides (for programmatic toggling) ───────────────── */
 :root.rcm-light {
-  --rcm-bg: #fcfcfc;
-  --rcm-border: #d5d5d5;
-  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04);
-  --rcm-item-hover: #e8e8e8;
-  --rcm-item-active: #dcdcdc;
-  --rcm-text: #1a1a1a;
-  --rcm-text-disabled: #a0a0a0;
-  --rcm-text-shortcut: #707070;
-  --rcm-separator: #e0e0e0;
-  --rcm-ribbon-border: #e8e8e8;
-  --rcm-arrow-color: #888;
+  --rcm-bg:              rgba(252, 252, 252, 0.82);
+  --rcm-bg-solid:        #f3f3f3;
+  --rcm-border:          rgba(0, 0, 0, 0.07);
+  --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
+  --rcm-shadow:
+    0 0.3px 0.6px rgba(0, 0, 0, 0.028),
+    0 1.2px 2.4px rgba(0, 0, 0, 0.042),
+    0 4px 9px rgba(0, 0, 0, 0.07),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --rcm-item-hover:      rgba(0, 0, 0, 0.038);
+  --rcm-item-active:     rgba(0, 0, 0, 0.065);
+  --rcm-text:            #1b1b1b;
+  --rcm-text-disabled:   rgba(27, 27, 27, 0.36);
+  --rcm-text-shortcut:   rgba(27, 27, 27, 0.52);
+  --rcm-separator:       rgba(0, 0, 0, 0.08);
+  --rcm-ribbon-border:   rgba(0, 0, 0, 0.06);
+  --rcm-arrow-color:     rgba(0, 0, 0, 0.36);
 }
 
 :root.rcm-dark {
-  --rcm-bg: #2c2c2c;
-  --rcm-border: #3d3d3d;
-  --rcm-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.04);
-  --rcm-item-hover: #3a3a3a;
-  --rcm-item-active: #444;
-  --rcm-text: #f0f0f0;
-  --rcm-text-disabled: #666;
-  --rcm-text-shortcut: #999;
-  --rcm-separator: #3d3d3d;
-  --rcm-ribbon-border: #3d3d3d;
-  --rcm-arrow-color: #999;
+  --rcm-bg:              rgba(44, 44, 44, 0.80);
+  --rcm-bg-solid:        #2c2c2c;
+  --rcm-border:          rgba(255, 255, 255, 0.06);
+  --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
+  --rcm-shadow:
+    0 0.3px 0.6px rgba(0, 0, 0, 0.16),
+    0 1.2px 2.4px rgba(0, 0, 0, 0.20),
+    0 4px 9px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --rcm-item-hover:      rgba(255, 255, 255, 0.045);
+  --rcm-item-active:     rgba(255, 255, 255, 0.075);
+  --rcm-text:            #f4f4f4;
+  --rcm-text-disabled:   rgba(244, 244, 244, 0.36);
+  --rcm-text-shortcut:   rgba(244, 244, 244, 0.48);
+  --rcm-separator:       rgba(255, 255, 255, 0.08);
+  --rcm-ribbon-border:   rgba(255, 255, 255, 0.06);
+  --rcm-arrow-color:     rgba(255, 255, 255, 0.36);
 }
 
 /* ── Global reset ────────────────────────────────────────────────────── */
@@ -94,10 +123,12 @@ body {
   padding: 0;
   font-family: var(--rcm-font-family);
   font-size: var(--rcm-font-size);
+  font-weight: 400;
   background: transparent !important;
   color: var(--rcm-text);
   overflow: hidden;
   user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -105,25 +136,52 @@ body {
   align-items: flex-start;
   justify-content: flex-start;
   min-height: 100vh;
-  padding: 8px;
+  padding: 6px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Context Menu — root container
+   Context Menu — root container  (Win11 Fluent surface)
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-root {
   display: flex;
   flex-direction: column;
   width: max-content;
-  min-width: 120px;
+  min-width: 140px;
+
+  /* Mica-like translucent surface */
   background-color: var(--rcm-bg);
   border: 1px solid var(--rcm-border);
   border-radius: var(--rcm-radius);
   box-shadow: var(--rcm-shadow);
   padding: var(--rcm-padding);
-  /* Respect acrylic / mica backdrop on Windows */
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+
+  /* Acrylic / Mica backdrop blur — Win11 signature effect */
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+
+  /* Subtle top highlight for depth */
+  position: relative;
+}
+
+/* Thin top-edge highlight (Win11 surface sheen) */
+.rcm-root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg,
+      var(--rcm-top-highlight) 0%,
+      transparent 40%
+    );
+  z-index: 1;
+}
+
+/* Ensure content sits above the sheen pseudo-element */
+.rcm-root > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -142,11 +200,16 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
+  border: none;
   border-radius: var(--rcm-item-radius);
+  background: transparent;
+  color: var(--rcm-text);
   cursor: pointer;
-  transition: background-color var(--rcm-transition);
+  transition:
+    background-color var(--rcm-transition),
+    transform 100ms cubic-bezier(0.16, 1, 0.3, 1);
   font-size: var(--rcm-icon-size);
   position: relative;
 }
@@ -157,10 +220,11 @@ body {
 
 .rcm-ribbon-btn:active {
   background-color: var(--rcm-item-active);
+  transform: scale(0.94);
 }
 
 .rcm-ribbon-btn[aria-disabled="true"] {
-  opacity: 0.35;
+  opacity: 0.36;
   cursor: default;
   pointer-events: none;
 }
@@ -184,16 +248,19 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Menu Item Row — single clickable row
+   Menu Item Row — single clickable row  (Win11 Fluent)
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-item {
   display: flex;
   align-items: center;
   height: var(--rcm-item-height);
   padding: 0 12px;
+  margin: 0 2px;
   border-radius: var(--rcm-item-radius);
   cursor: pointer;
-  transition: background-color var(--rcm-transition);
+  transition:
+    background-color var(--rcm-transition),
+    color var(--rcm-transition);
   position: relative;
   white-space: nowrap;
 }
@@ -204,6 +271,7 @@ body {
 
 .rcm-item:active {
   background-color: var(--rcm-item-active);
+  transition: background-color 40ms ease;
 }
 
 .rcm-item[aria-disabled="true"] {
@@ -222,6 +290,7 @@ body {
   margin-right: var(--rcm-icon-gap);
   font-size: var(--rcm-icon-size);
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 /* ── Label ────────────────────────────────────────────────────────── */
@@ -229,21 +298,24 @@ body {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 /* ── Shortcut hint ────────────────────────────────────────────────── */
 .rcm-item-shortcut {
-  margin-left: 24px;
+  margin-left: 28px;
   font-size: var(--rcm-font-size-sm);
   color: var(--rcm-text-shortcut);
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
 
-/* ── Submenu arrow ────────────────────────────────────────────────── */
+/* ── Submenu arrow  (Win11 chevron) ───────────────────────────────── */
 .rcm-item-arrow {
-  margin-left: 8px;
+  margin-left: 6px;
   color: var(--rcm-arrow-color);
-  font-size: 10px;
+  font-size: 9px;
   flex-shrink: 0;
 }
 
@@ -253,11 +325,10 @@ body {
 .rcm-submenu {
   display: none;
   position: absolute;
-  /* Position to the right of the parent item */
   left: calc(100% + var(--rcm-submenu-offset));
   top: calc(-1 * var(--rcm-padding));
   min-width: 200px;
-  max-width: 300px;
+  max-width: 320px;
   background-color: var(--rcm-bg);
   border: 1px solid var(--rcm-border);
   border-radius: var(--rcm-radius);
@@ -265,17 +336,12 @@ body {
   padding: var(--rcm-padding);
   z-index: 1000;
   flex-direction: column;
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(40px) saturate(1.8);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
 }
 
 /* Show submenu on hover */
 .rcm-item:hover > .rcm-submenu,
-.rcm-submenu:hover {
-  display: flex;
-}
-
-/* Keep submenu visible when hovering over it */
 .rcm-submenu:hover {
   display: flex;
 }
@@ -292,31 +358,51 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Accessibility & focus
+   Accessibility & focus  (Win11 accent-style focus ring)
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-item:focus-visible,
 .rcm-ribbon-btn:focus-visible {
-  outline: 2px solid #60cdff;
+  outline: 2px solid var(--rcm-accent, #60cdff);
   outline-offset: -2px;
+  border-radius: var(--rcm-item-radius);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Animations
+   Animations  (Win11 Fluent — gentle scale+fade)
    ═══════════════════════════════════════════════════════════════════════════ */
 @keyframes rcm-fade-in {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    /* Subtle vertical slide — feels grounded */
+    translate: 0 4px;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    translate: 0 0;
+  }
 }
 
 .rcm-root {
-  animation: rcm-fade-in 100ms ease-out;
+  animation: rcm-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
 @keyframes rcm-submenu-in {
-  from { opacity: 0; transform: translateX(-4px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    translate: -6px 0;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    translate: 0 0;
+  }
 }
 
 .rcm-submenu {
-  animation: rcm-submenu-in 100ms ease-out;
+  animation: rcm-submenu-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
