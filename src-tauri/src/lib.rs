@@ -392,6 +392,16 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {
             log::event("RECV", "rcm_com", &format!("{:?} pos=({},{})", event.event, event.x, event.y));
+            println!("{:?}", event);
+
+            // Filter: ignore "Open With" dialog activation events.
+            // When PowerShell invokes InvokeVerb('openas'), the "Open With"
+            // picker window triggers a spurious Menu{flags:16} event from a
+            // Chrome_WidgetWin_0 host window.
+            if event.class.starts_with("Chrome_WidgetWin_") && event.event.flags() == 16 {
+                log::info("Rust::monitor", "filtered: OpenWith dialog (Chrome_WidgetWin_0, flags=16)");
+                return;
+            }
 
             match &event.event {
                 rcm_com::Event::Menu { .. } => {

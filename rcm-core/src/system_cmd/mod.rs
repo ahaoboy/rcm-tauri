@@ -145,6 +145,7 @@ pub(crate) fn powershell(script: &str) -> Result<String, String> {
 
 /// Build a `std::process::Command` from the payload, suitable for
 /// synchronous execution (these are quick operations).
+#[allow(dead_code)]
 pub(crate) fn build_sys_cmd(exe: &str, cmd: &CommandPayload) -> std::process::Command {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x08000000;

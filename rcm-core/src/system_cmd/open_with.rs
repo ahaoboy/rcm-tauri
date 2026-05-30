@@ -1,18 +1,45 @@
-//! `@open-with` — Open the Windows "Open With" dialog.
+//! `@open-with` — Open the Windows "Open With → Choose another app" dialog.
+//!
+//! Spawns PowerShell in the background to invoke the `openas` shell verb
+//! via `Shell.Application` COM — the exact equivalent of right-click →
+//! "Open with" → "Choose another app" in Windows Explorer.
+//!
+//! Uses `spawn` (fire-and-forget) rather than `output` to avoid blocking
+//! the Rust async runtime and to prevent the dialog activation from
+//! being misinterpreted as a new right-click event.
 
 use crate::types::CommandPayload;
-use super::{SystemCmdResult, build_sys_cmd};
+use super::SystemCmdResult;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = cmd.args.first().cloned().unwrap_or_default();
-    match build_sys_cmd("rundll32.exe", &CommandPayload {
-        exe: "rundll32.exe".into(),
-        args: vec!["shell32.dll,OpenAs_RunDLL".into(), path],
-        ..cmd.clone()
-    })
-    .spawn()
+    let path = cmd.args.first().map(|s| s.as_str()).unwrap_or("");
+
+    if path.is_empty() {
+        return SystemCmdResult {
+            success: false,
+            message: "@open-with requires a file path argument".into(),
+        };
+    }
+
+    // Escape single quotes for PowerShell string interpolation
+    let escaped = path.replace('\'', "''");
+
+    let script = format!(
+        "$f=gi -LiteralPath '{escaped}';\
+         (New-Object -ComObject Shell.Application).Namespace($f.DirectoryName).ParseName($f.Name).InvokeVerb('openas')"
+    );
+
+    match std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .spawn()
     {
-        Ok(_) => SystemCmdResult { success: true, message: "Open With dialog launched".into() },
-        Err(e) => SystemCmdResult { success: false, message: format!("OpenWith failed: {e}") },
+        Ok(_) => SystemCmdResult {
+            success: true,
+            message: format!("OpenWith dialog launched for: {path}"),
+        },
+        Err(e) => SystemCmdResult {
+            success: false,
+            message: format!("OpenWith failed to launch: {e}"),
+        },
     }
 }

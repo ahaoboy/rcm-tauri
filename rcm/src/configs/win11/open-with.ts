@@ -1,25 +1,28 @@
-import type { MenuItem } from '../../types';
+import type { MenuItem, InvokeProps } from '../../types';
 import { t } from '../../i18n';
+import { OPEN_WITH } from '../../system-commands';
 
 /**
- * Win11 "Open with" submenu — pick a program to open the selected file.
+ * Win11 "Open with" — opens the Windows "Open With → Choose another app"
+ * dialog for the selected file via the native `@open-with` system command.
+ *
+ * Falls back to the current directory when no file is selected
+ * (background right-click).
  */
 export function openWith(): MenuItem {
   return {
     key: 'open-with',
     label: t('open.with'),
     icon: '🔽',
-    items: [
-      {
-        key: 'open-with-choose',
-        label: t('open.with'),
-        icon: '📎',
-        action: () => ({
-          exe: 'OpenWith',
-          args: [],
-          window: 'Show',
-        }),
-      },
-    ],
+    action: (props: InvokeProps) => {
+      const target = props.files[0];
+      const path = target ? target.path : props.cwd;
+      if (!path || props.files.length > 1) return;
+      return {
+        exe: OPEN_WITH,
+        args: [path],
+        window: 'Show',
+      };
+    },
   };
 }
