@@ -21,7 +21,7 @@ export default new Menu(
         custom.zip(),
         win11.edit(),
         win11.print(),
-        custom.mpv(),
+        // custom.mpv(),
         win11.runAsAdmin(),
       ],
     },

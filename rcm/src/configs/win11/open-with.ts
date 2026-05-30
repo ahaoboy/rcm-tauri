@@ -21,7 +21,7 @@ export function openWith(): MenuItem {
       return {
         exe: OPEN_WITH,
         args: [path],
-        window: 'Show',
+        window: 'Hidden',
       };
     },
   };

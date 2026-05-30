@@ -22,7 +22,7 @@ export default new Menu(
         custom.terminal(),
         custom.unzip(),
         custom.zip(),
-        custom.mpv(),
+        // custom.mpv(),
         custom.ssh(),
         win11.properties(),
       ],
