@@ -80,6 +80,7 @@ addMessages('en', {
   'open.in.wt': 'Terminal',
   'ssh.connect': 'SSH Connect',
   'extract.here': 'Extract Here',
+  'open.file.location': 'Open file location',
 });
 
 // ── Built-in Chinese ────────────────────────────────────────────────
@@ -132,4 +133,5 @@ addMessages('zh', {
   'open.in.wt': '在终端中打开',
   'ssh.connect': 'SSH 连接',
   'extract.here': '解压到当前目录',
+  'open.file.location': '打开文件所在位置',
 });

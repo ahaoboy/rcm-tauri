@@ -23,6 +23,7 @@ export default new Menu(
         custom.unzip(),
         custom.zip(),
         // custom.mpv(),
+        // custom.openFileLocation(),
         custom.ssh(),
         win11.properties(),
       ],

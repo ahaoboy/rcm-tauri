@@ -47,6 +47,9 @@ export const OPEN_WITH = '@open-with';
 /** Copy the full path(s) of selected items to clipboard. */
 export const COPY_PATH = '@copy-path';
 
+/** Open file location in Explorer, resolving shortcut targets. */
+export const OPEN_FILE_LOCATION = '@open-file-location';
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -62,4 +65,5 @@ export const ALL: ReadonlySet<string> = new Set([
   COPY,
   OPEN_WITH,
   COPY_PATH,
+  OPEN_FILE_LOCATION,
 ]);
