@@ -9,6 +9,20 @@ pub struct FileInfo {
     pub is_dir: bool,
 }
 
+/// Snapshot of clipboard state at the time of the right-click.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ClipboardInfo {
+    /// Clipboard contains text (CF_UNICODETEXT / CF_TEXT).
+    #[serde(default)]
+    pub has_text: bool,
+    /// Clipboard contains an image (CF_DIB / CF_BITMAP).
+    #[serde(default)]
+    pub has_image: bool,
+    /// Clipboard contains file(s) (CF_HDROP).
+    #[serde(default)]
+    pub has_files: bool,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InvokeProps {
     pub files: Vec<FileInfo>,
@@ -19,6 +33,9 @@ pub struct InvokeProps {
     pub type_name: String,
     /// Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported.
     pub lang: String,
+    /// Snapshot of clipboard state at the time of the right-click.
+    #[serde(default)]
+    pub clipboard: ClipboardInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -116,6 +116,9 @@ impl ModuleDef for RcmSysModule {
 }
 
 pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+
+    println!("{:?}",props);
+
     let rt = Runtime::new()?;
 
     #[cfg(feature = "llrt")]

@@ -56,6 +56,9 @@ export const COPY_BASE64 = '@copy-base64';
 /** Open file location in Explorer, resolving shortcut targets. */
 export const OPEN_FILE_LOCATION = '@open-file-location';
 
+/** Paste files from clipboard to the current directory. */
+export const PASTE_FILES = '@paste-files';
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -74,4 +77,5 @@ export const ALL: ReadonlySet<string> = new Set([
   COPY_NAME,
   COPY_BASE64,
   OPEN_FILE_LOCATION,
+  PASTE_FILES,
 ]);

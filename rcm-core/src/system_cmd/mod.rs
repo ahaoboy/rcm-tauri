@@ -26,6 +26,7 @@ pub mod new_file;
 pub mod new_folder;
 pub mod open_file_location;
 pub mod open_with;
+pub mod paste_files;
 pub mod properties;
 pub mod rename;
 pub mod trash;
@@ -70,6 +71,8 @@ pub enum SystemCommand {
     Copy,
     /// Open file location in Explorer; resolves shortcut targets (`@open-file-location`).
     OpenFileLocation,
+    /// Paste files from clipboard to current directory (`@paste-files`).
+    PasteFiles,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -95,6 +98,7 @@ impl FromStr for SystemCommand {
             "@properties" => Ok(Self::Properties),
             "@copy" => Ok(Self::Copy),
             "@open-file-location" => Ok(Self::OpenFileLocation),
+            "@paste-files" => Ok(Self::PasteFiles),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -131,6 +135,7 @@ impl SystemCommand {
             Self::Properties => properties::run(cmd),
             Self::Copy => copy::run(cmd),
             Self::OpenFileLocation => open_file_location::run(cmd),
+            Self::PasteFiles => paste_files::run(cmd),
         }
     }
 }

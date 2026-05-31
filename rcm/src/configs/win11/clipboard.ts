@@ -20,9 +20,19 @@ export function copy(): MenuItem {
   };
 }
 
-/** Win11 "Paste" */
+/** Win11 "Paste" — paste files from clipboard (only when clipboard has files) */
 export function paste(): MenuItem {
-  return { key: 'paste', label: t('paste'), icon: '📄' };
+  return {
+    key: 'paste',
+    label: t('paste'),
+    icon: '📄',
+    match: (props: InvokeProps) => props.files.length === 0 && props.clipboard?.has_files === true,
+    action: (props: InvokeProps) => ({
+      exe: '@paste-files',
+      args: [],
+      cwd: props.cwd,
+    }),
+  };
 }
 
 /** Win11 "Rename" */

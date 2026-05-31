@@ -494,6 +494,7 @@ pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
         admin: false,
         type_name: "Desktop".to_string(),
         lang: lang::system_lang(),
+        clipboard: rcm_core::clipboard::detect(),
     };
 
     rcm_vm::invoke(&props)
@@ -523,6 +524,7 @@ pub fn rcm_from_info(info: &rcm_com::ContextMenuInfo) -> std::result::Result<Men
         admin: false,
         type_name: if info.bg { "Background".to_string() } else { "File".to_string() },
         lang: lang::system_lang(),
+        clipboard: rcm_core::clipboard::detect(),
     };
 
     rcm_vm::invoke(&props)

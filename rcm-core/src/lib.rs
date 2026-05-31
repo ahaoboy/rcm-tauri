@@ -1,6 +1,7 @@
 //! RCM Core — system & API calls, types, and utilities.
 //! This crate is framework-agnostic and can be used with any frontend.
 
+pub mod clipboard;
 pub mod config;
 pub mod lang;
 pub mod log;

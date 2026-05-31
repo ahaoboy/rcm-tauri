@@ -10,6 +10,13 @@ export interface FileInfo {
 /** Environment variables / context */
 export type Env = Record<string, unknown>;
 
+/** Snapshot of clipboard state at right-click time. */
+export interface ClipboardInfo {
+  has_text: boolean;
+  has_image: boolean;
+  has_files: boolean;
+}
+
 /** Props passed to match/action callbacks during menu evaluation */
 export interface InvokeProps {
   files: FileInfo[];
@@ -19,6 +26,8 @@ export interface InvokeProps {
   type: string;
   /** Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported. */
   lang: string;
+  /** Snapshot of clipboard state at the time of the right-click. */
+  clipboard?: ClipboardInfo;
 }
 
 /** Executable command descriptor */

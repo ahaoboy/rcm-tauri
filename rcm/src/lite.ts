@@ -11,6 +11,7 @@ export default new Menu(
       items: [
         win11.newMenu(),
         win11.copy(),
+        win11.paste(),
         win11.copyAsPath(),
         // win11.trash(),
       ],
