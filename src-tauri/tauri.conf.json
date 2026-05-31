@@ -41,7 +41,7 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "../public/icon.ico"
+      "../public/icon-tray.ico"
     ],
     "resources": {
       "binaries/": ""
@@ -49,7 +49,7 @@
     "windows": {
       "nsis": {
         "compression": "none",
-        "installerIcon": "../public/icon.ico"
+        "installerIcon": "../public/icon-tray.ico"
       }
     }
   },
