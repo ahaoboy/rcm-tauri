@@ -1,5 +1,9 @@
 # RCM — Right Click Menu
 
+<p align="center">
+  <img src="public/icon-tray.ico" alt="RCM Icon" width="128" />
+</p>
+
 A customizable Windows right-click context menu, built with Tauri + React (with an experimental [Slint](https://slint.dev/) backend).
 
 ## ⚠️ Important Notice
