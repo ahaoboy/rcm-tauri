@@ -10,8 +10,6 @@ export default new Menu(
     {
       items: [
         win11.newMenu(),
-        win11.copy(),
-        win11.paste(),
         win11.copyAsPath(),
         // win11.trash(),
       ],
@@ -22,18 +20,24 @@ export default new Menu(
         custom.terminal(),
         custom.unzip(),
         custom.zip(),
+      ],
+    },
+    {
+      items: [
         // custom.mpv(),
         // custom.openFileLocation(),
         custom.ssh(),
         {
           label: 'More',
           items: [
+            win11.copy(),
+            win11.paste(),
             win11.openWith(),
             win11.properties(),
           ]
         }
-      ],
-    },
+      ]
+    }
   ],
   // No icon ribbon
   [],
