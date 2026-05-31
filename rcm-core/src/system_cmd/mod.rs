@@ -18,6 +18,8 @@ use crate::types::CommandPayload;
 use std::str::FromStr;
 
 pub mod copy;
+pub mod copy_base64;
+pub mod copy_name;
 pub mod copy_path;
 pub mod delete;
 pub mod new_file;
@@ -54,8 +56,12 @@ pub enum SystemCommand {
     Trash,
     /// Open the "Open With" dialog (`@open-with`).
     OpenWith,
-    /// Copy selected paths to clipboard (`@copy-path`).
+    /// Copy selected paths to clipboard with Linux-style separators (`@copy-path`).
     CopyPath,
+    /// Copy file name(s) to clipboard (`@copy-name`).
+    CopyName,
+    /// Copy file content(s) as base64 to clipboard (`@copy-base64`).
+    CopyBase64,
     /// Fast parallel permanent delete (`@delete`).
     Delete,
     /// Open file/folder properties dialog (`@properties`).
@@ -83,6 +89,8 @@ impl FromStr for SystemCommand {
             "@trash" => Ok(Self::Trash),
             "@open-with" => Ok(Self::OpenWith),
             "@copy-path" => Ok(Self::CopyPath),
+            "@copy-name" => Ok(Self::CopyName),
+            "@copy-base64" => Ok(Self::CopyBase64),
             "@delete" => Ok(Self::Delete),
             "@properties" => Ok(Self::Properties),
             "@copy" => Ok(Self::Copy),
@@ -117,6 +125,8 @@ impl SystemCommand {
             Self::Trash => trash::run(cmd),
             Self::OpenWith => open_with::run(cmd),
             Self::CopyPath => copy_path::run(cmd),
+            Self::CopyName => copy_name::run(cmd),
+            Self::CopyBase64 => copy_base64::run(cmd),
             Self::Delete => delete::run(cmd),
             Self::Properties => properties::run(cmd),
             Self::Copy => copy::run(cmd),

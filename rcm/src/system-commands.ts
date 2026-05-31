@@ -44,8 +44,14 @@ export const COPY = '@copy';
 /** Open Windows "Open With" dialog for the selected file. */
 export const OPEN_WITH = '@open-with';
 
-/** Copy the full path(s) of selected items to clipboard. */
+/** Copy the full path(s) of selected items to clipboard (Linux-style separators). */
 export const COPY_PATH = '@copy-path';
+
+/** Copy the file name(s) of selected items to clipboard. */
+export const COPY_NAME = '@copy-name';
+
+/** Copy the file content(s) as base64 to clipboard. */
+export const COPY_BASE64 = '@copy-base64';
 
 /** Open file location in Explorer, resolving shortcut targets. */
 export const OPEN_FILE_LOCATION = '@open-file-location';
@@ -65,5 +71,7 @@ export const ALL: ReadonlySet<string> = new Set([
   COPY,
   OPEN_WITH,
   COPY_PATH,
+  COPY_NAME,
+  COPY_BASE64,
   OPEN_FILE_LOCATION,
 ]);

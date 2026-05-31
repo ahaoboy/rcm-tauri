@@ -12,6 +12,7 @@ serde_json = { workspace = true }
 which = { workspace = true }
 trash = { workspace = true }
 clipboard-rs = { workspace = true }
+base64 = { workspace = true }
 winreg = { workspace = true }
 windows = { workspace = true }
 rcm-com = { workspace = true }
