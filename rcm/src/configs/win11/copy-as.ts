@@ -25,6 +25,7 @@ export function copyAsPath(): MenuItem {
         action: (props: InvokeProps) => ({
           exe: COPY_PATH,
           args: filesArg(props),
+          cwd: props.cwd,
         }),
       },
       {
@@ -34,15 +35,18 @@ export function copyAsPath(): MenuItem {
         action: (props: InvokeProps) => ({
           exe: COPY_NAME,
           args: filesArg(props),
+          cwd: props.cwd,
         }),
       },
       {
         key: 'copy-as-base64',
         label: 'base64',
         icon: '🔐',
+        match: (props: InvokeProps) => props.files.length === 1,
         action: (props: InvokeProps) => ({
           exe: COPY_BASE64,
           args: filesArg(props),
+          cwd: props.cwd,
         }),
       },
     ],

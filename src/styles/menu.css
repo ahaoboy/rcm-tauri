@@ -9,10 +9,9 @@
   --rcm-font-size: 13px;
   --rcm-font-size-sm: 12px;
 
-  /* Mica-like translucent surface */
-  --rcm-bg:              rgba(252, 252, 252, 0.82);
-  --rcm-bg-solid:        #f3f3f3;
-  --rcm-border:          rgba(0, 0, 0, 0.07);
+  /* Solid surface — always legible */
+  --rcm-bg:              #f3f3f3;
+  --rcm-border:          rgba(0, 0, 0, 0.08);
   --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
 
   /* Shadow: layered, soft — Win11 Fluent */
@@ -52,9 +51,8 @@
 /* ── Dark theme (Win11 dark) ────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --rcm-bg:              rgba(44, 44, 44, 0.80);
-    --rcm-bg-solid:        #2c2c2c;
-    --rcm-border:          rgba(255, 255, 255, 0.06);
+    --rcm-bg:              #2c2c2c;
+    --rcm-border:          rgba(255, 255, 255, 0.08);
     --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
 
     --rcm-shadow:
@@ -78,9 +76,8 @@
 
 /* ── Theme class overrides (for programmatic toggling) ───────────────── */
 :root.rcm-light {
-  --rcm-bg:              rgba(252, 252, 252, 0.82);
-  --rcm-bg-solid:        #f3f3f3;
-  --rcm-border:          rgba(0, 0, 0, 0.07);
+  --rcm-bg:              #f3f3f3;
+  --rcm-border:          rgba(0, 0, 0, 0.08);
   --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
   --rcm-shadow:
     0 0.3px 0.6px rgba(0, 0, 0, 0.028),
@@ -98,9 +95,8 @@
 }
 
 :root.rcm-dark {
-  --rcm-bg:              rgba(44, 44, 44, 0.80);
-  --rcm-bg-solid:        #2c2c2c;
-  --rcm-border:          rgba(255, 255, 255, 0.06);
+  --rcm-bg:              #2c2c2c;
+  --rcm-border:          rgba(255, 255, 255, 0.08);
   --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
   --rcm-shadow:
     0 0.3px 0.6px rgba(0, 0, 0, 0.16),
