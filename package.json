@@ -12,7 +12,8 @@
     "lint": "pnpm run lint-ts && pnpm run lint-rs",
     "lint-ts": "cd src && deno fmt && deno lint --fix",
     "icon": "tauri icon ./public/icon.png",
-    "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged"
+    "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged",
+    "update:dll": "curl -L -o src-tauri/binaries/rcm_com.dll https://github.com/ahaoboy/rcm-com/releases/latest/download/rcm_com.dll"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.0",
