@@ -53,18 +53,23 @@ tauri-plugin-updater = "2"
 
 # ── Git dependencies ──────────────────────────────────────────────────
 rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
-easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = ["encode", "decode", "cli"] }
-rquickjs = { git = "https://github.com/DelSkayn/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644", default-features = false }
+easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = [
+  "encode",
+  "decode",
+  "cli",
+] }
+
+rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false }
 llrt_modules = { git = "https://github.com/awslabs/llrt" }
 
-[patch."https://github.com/DelSkayn/rquickjs.git"]
-rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# [patch."https://github.com/DelSkayn/rquickjs.git"]
+# rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
 
-[patch.crates-io]
-rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
-rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# [patch.crates-io]
+# rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
+# rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "706d894b1c98169c5d72c47c7586fcffa55a6644" }
