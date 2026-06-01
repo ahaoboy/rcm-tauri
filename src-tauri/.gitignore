@@ -9,4 +9,4 @@ Cargo.lock
 /gen/schemas
 
 # Built DLL artifacts copied by build.rs
-/binaries/
+/binaries/*.dll
