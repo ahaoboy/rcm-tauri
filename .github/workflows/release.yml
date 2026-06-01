@@ -47,12 +47,10 @@ jobs:
       - name: install frontend dependencies
         run: |
           pnpm install
+          pnpm update:dll
 
           cd rcm
-
           pnpm build
-
-          pnpm update:dll
 
       - name: Build
         uses: tauri-apps/tauri-action@e839bb55b23d177d8cb537c2e10f41decb2d1089
