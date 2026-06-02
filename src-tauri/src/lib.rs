@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use tauri::window::Color;
 use tauri::{Emitter, Listener, Manager, PhysicalPosition, WebviewUrl};
 use serde::{Deserialize, Serialize};
@@ -28,6 +28,9 @@ static DEEPEST_DEPTH: AtomicUsize = AtomicUsize::new(0);
 /// Submenu horizontal gap from parent window edge (physical px).
 const SUBMENU_GAP: f64 = 8.0;
 
+/// Auto-hide all menu windows after this many milliseconds of inactivity.
+const AUTO_HIDE_MS: u64 = 30_000;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Config payload (for frontend)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -54,6 +57,11 @@ fn get_config() -> ConfigPayload {
 
 /// Holds the last built menu so hover/click handlers can navigate it.
 type MenuArc = Arc<Mutex<Option<Menu>>>;
+
+/// Epoch counter for the global auto-hide timer.
+/// Incremented on every user interaction; the timer task checks this
+/// before hiding all windows.
+type AutoHideEpoch = Arc<AtomicU64>;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Event payloads — Rust → Frontend
@@ -166,9 +174,29 @@ fn window_label(depth: usize) -> String {
 struct MenuManager {
     menu: MenuArc,
     app: tauri::AppHandle,
+    auto_hide_epoch: AutoHideEpoch,
 }
 
 impl MenuManager {
+    /// Reset the global auto-hide timer. Call on every user interaction
+    /// (show, hover, click). After AUTO_HIDE_MS of inactivity, all menus
+    /// are hidden simultaneously.
+    fn reset_auto_hide(&self) {
+        let epoch = self.auto_hide_epoch.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let epoch_ref = self.auto_hide_epoch.clone();
+        let app = self.app.clone();
+        let menu = self.menu.clone();
+
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(AUTO_HIDE_MS)).await;
+            if epoch_ref.load(Ordering::SeqCst) == epoch {
+                log::info("Rust::auto_hide", "timeout — hiding all menus");
+                let mgr = MenuManager { menu, app, auto_hide_epoch: epoch_ref };
+                mgr.hide_all();
+            }
+        });
+    }
+
     /// Show the root menu at the cursor position.
     fn show_root(&self, menu: Menu, x: f64, y: f64) {
         log::info("Rust::show_root", &format!("pos=({x:.0},{y:.0}) groups={} icons={} max_depth={}",
@@ -204,6 +232,7 @@ impl MenuManager {
         }
         log::event("SEND", "menu-show", &format!("to={label} path=[]"));
         let _ = self.app.emit("menu-show", payload);
+        self.reset_auto_hide();
     }
 
     /// Handle hover on a menu item: show submenu if the item has children.
@@ -324,6 +353,7 @@ impl MenuManager {
         log::info("Rust::handle_hover", &format!("DEEPEST_DEPTH={child_depth}"));
         log::event("SEND", "menu-show", &format!("to={child_label} path={:?}", payload.path));
         let _ = self.app.emit("menu-show", show_payload);
+        self.reset_auto_hide();
     }
 
     /// Handle hover-out: hide all windows deeper than this one.
@@ -338,6 +368,9 @@ impl MenuManager {
     /// Handle execute: run the command and close all menus.
     fn handle_execute(&self, payload: MenuExecutePayload) {
         log::event("RECV", "menu-execute", &format!("exe='{}' path={:?}", payload.command.exe, payload.path));
+
+        // Reset auto-hide on interaction
+        self.reset_auto_hide();
 
         let cmd = payload.command;
         tauri::async_runtime::spawn(async move {
@@ -443,7 +476,7 @@ impl MenuManager {
 // Monitor — listens for external right-click events from rcm_com
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
+fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHideEpoch) {
     log::info("Rust::monitor", "begin listening for rcm_com events");
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {
@@ -472,6 +505,7 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
                     let mgr = MenuManager {
                         menu: menu.clone(),
                         app: app_handle.clone(),
+                        auto_hide_epoch: epoch.clone(),
                     };
 
                     mgr.show_root(menu_data, event.x as f64, event.y as f64);
@@ -482,6 +516,7 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc) {
                         let mgr = MenuManager {
                             menu: menu.clone(),
                             app: app_handle.clone(),
+                            auto_hide_epoch: epoch.clone(),
                         };
                         mgr.hide_all();
                     }
@@ -555,6 +590,7 @@ async fn create_window(app: tauri::AppHandle, label: String) {
     let mgr = MenuManager {
         menu: Arc::new(Mutex::new(None)),
         app,
+        auto_hide_epoch: Arc::new(AtomicU64::new(0)),
     };
     mgr.create_submenu_window(&label);
 }
@@ -570,16 +606,20 @@ pub fn run() {
     }
 
     let menu: MenuArc = Arc::new(Mutex::new(None));
+    let auto_hide_epoch: AutoHideEpoch = Arc::new(AtomicU64::new(0));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
         .manage(menu.clone())
+        .manage(auto_hide_epoch.clone())
         .setup(move |app| {
             config::init();
             tray::setup_tray(app)?;
             pipe::start_pipe_server(app.app_handle().clone());
+
+            let epoch = auto_hide_epoch.clone();
 
             // Pre-create submenu windows
             for d in 0..MAX_SUBMENU_DEPTH {
@@ -587,6 +627,7 @@ pub fn run() {
                 let mgr = MenuManager {
                     menu: menu.clone(),
                     app: app.app_handle().clone(),
+                    auto_hide_epoch: epoch.clone(),
                 };
                 mgr.create_submenu_window(&label);
             }
@@ -607,9 +648,10 @@ pub fn run() {
             // Listen for hover events
             let ah1 = app_handle.clone();
             let m1 = menu_clone.clone();
+            let e1 = epoch.clone();
             app_handle.listen("menu-hover", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuHoverPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m1.clone(), app: ah1.clone() };
+                    let mgr = MenuManager { menu: m1.clone(), app: ah1.clone(), auto_hide_epoch: e1.clone() };
                     mgr.handle_hover(payload);
                 }
             });
@@ -617,9 +659,10 @@ pub fn run() {
             // Listen for hover-out events
             let ah2 = app_handle.clone();
             let m2 = menu_clone.clone();
+            let e2 = epoch.clone();
             app_handle.listen("menu-hover-out", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuHoverOutPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m2.clone(), app: ah2.clone() };
+                    let mgr = MenuManager { menu: m2.clone(), app: ah2.clone(), auto_hide_epoch: e2.clone() };
                     mgr.handle_hover_out(payload);
                 }
             });
@@ -627,9 +670,10 @@ pub fn run() {
             // Listen for execute events
             let ah3 = app_handle.clone();
             let m3 = menu_clone.clone();
+            let e3 = epoch.clone();
             app_handle.listen("menu-execute", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuExecutePayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m3.clone(), app: ah3.clone() };
+                    let mgr = MenuManager { menu: m3.clone(), app: ah3.clone(), auto_hide_epoch: e3.clone() };
                     mgr.handle_execute(payload);
                 }
             });
@@ -637,9 +681,10 @@ pub fn run() {
             // Listen for close-all from frontend (e.g. Escape key)
             let ah4 = app_handle.clone();
             let m4 = menu_clone.clone();
+            let e4 = epoch.clone();
             app_handle.listen("menu-close-all", move |_| {
                 if !config::is_dev() {
-                    let mgr = MenuManager { menu: m4.clone(), app: ah4.clone() };
+                    let mgr = MenuManager { menu: m4.clone(), app: ah4.clone(), auto_hide_epoch: e4.clone() };
                     mgr.hide_all();
                 }
             });
@@ -647,15 +692,16 @@ pub fn run() {
             // Listen for blur events — only hide all if deepest window lost focus
             let ah5 = app_handle.clone();
             let m5 = menu_clone.clone();
+            let e5 = epoch.clone();
             app_handle.listen("menu-blur", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuBlurPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m5.clone(), app: ah5.clone() };
+                    let mgr = MenuManager { menu: m5.clone(), app: ah5.clone(), auto_hide_epoch: e5.clone() };
                     mgr.handle_blur(payload);
                 }
             });
 
             // Start the external event monitor
-            start_monitoring(app_handle, menu);
+            start_monitoring(app_handle, menu, epoch);
 
             Ok(())
         })
