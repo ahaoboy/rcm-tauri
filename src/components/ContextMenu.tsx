@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { MenuData, MenuItem, IndexPath } from "../types/menu";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { WINDOW_PADDING } from "../constants/layout";
 
 /* ── Sub-components ─────────────────────────────────────────────────── */
 
@@ -97,8 +98,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const resizeWindow = useCallback(async () => {
     if (!rootRef.current) return;
     const rect = rootRef.current.getBoundingClientRect();
-    const w = Math.ceil(rect.width) + 16;
-    const h = Math.ceil(rect.height) + 16;
+    const w = Math.ceil(rect.width) + WINDOW_PADDING;
+    const h = Math.ceil(rect.height) + WINDOW_PADDING;
     if (w === menuSize.width && h === menuSize.height) {
       // Already correct size — signal ready
       if (!readyCalled.current) {

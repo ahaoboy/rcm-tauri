@@ -14,6 +14,7 @@ export function openWith(): MenuItem {
     key: 'open-with',
     label: t('open.with'),
     icon: '🔽',
+    match: ({ files }) => files.length === 1,
     action: (props: InvokeProps) => {
       const target = props.files[0];
       const path = target ? target.path : props.cwd;

@@ -6,15 +6,13 @@ import type { MenuData, MenuShowPayload } from "./types/menu";
 import { useTheme } from "./hooks/useTheme";
 import { ContextMenu } from "./components";
 import { feLog } from "./feLog";
+import { EDGE_GAP } from "./constants/layout";
 
 /** Off-screen position used to hide the window without flicker. */
 const OFF_SCREEN = new PhysicalPosition(-9999, -9999);
 
 /** Depth of this window. Root = 0. */
 const MY_DEPTH = 0;
-
-/** Gap from screen edges when clamping. */
-const EDGE_GAP = 8;
 
 function App() {
   const [menu, setMenu] = useState<MenuData | null>(null);
@@ -125,6 +123,13 @@ function App() {
         const monRight = monitor.position.x + monitor.size.width;
         const monBottom = monitor.position.y + monitor.size.height;
 
+        // If menu overflows right edge, flip to the left of the cursor
+        if (finalX + outerSize.width > monRight - EDGE_GAP) {
+          finalX = pos.x - outerSize.width;
+          feLog.info("App:root", `flip: right overflow → left_side=${finalX.toFixed(0)}`);
+        }
+
+        // Clamp to monitor bounds (handles all edges including flipped left)
         finalX = Math.max(
           monitor.position.x + EDGE_GAP,
           Math.min(finalX, monRight - outerSize.width - EDGE_GAP)

@@ -16,10 +16,9 @@ import type { MenuShowPayload, MenuData, IndexPath } from "../types/menu";
 import { ContextMenu } from "./ContextMenu";
 import { useTheme } from "../hooks/useTheme";
 import { feLog } from "../feLog";
+import { EDGE_GAP, SUBMENU_GAP, winPadPhysical } from "../constants/layout";
 
 const OFF_SCREEN = new PhysicalPosition(-9999, -9999);
-const EDGE_GAP = 8;
-const FLIP_GAP = 8;
 
 export function SubmenuApp() {
   const [menu, setMenu] = useState<MenuData | null>(null);
@@ -135,8 +134,10 @@ export function SubmenuApp() {
 
         // If submenu overflows right edge, flip to the left of the parent
         if (finalX + outerSize.width > monRight - EDGE_GAP && info.parent_x != null) {
-          const flippedX = info.parent_x - outerSize.width - FLIP_GAP;
-          feLog.info(`App:submenu-${myLevel}`, `flip: right overflow → left_side=${flippedX.toFixed(0)}`);
+          // Align submenu right edge with parent content left edge, minus gap
+          const pad = winPadPhysical();
+          const flippedX = info.parent_x + pad - outerSize.width - SUBMENU_GAP;
+          feLog.info(`App:submenu-${myLevel}`, `flip: right overflow → left_side=${flippedX.toFixed(0)} (pad=${pad.toFixed(0)})`);
           finalX = flippedX;
         }
 
