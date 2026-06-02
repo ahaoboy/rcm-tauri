@@ -1,6 +1,8 @@
 use rcm_core::registry;
 use rcm_core::{config, log};
+use rcm_reg::MenuStyle;
 use std::io::Write;
+use std::time::Duration;
 use tauri::{
     App,
     Emitter,
@@ -70,9 +72,9 @@ fn get_toggle_text(is_enabled: bool) -> &'static str {
     }
 }
 
-/// Determine the active menu style using rcm-com's `get_menu_style()`.
+/// Determine the active menu style using rcm-reg's `MenuStyle`.
 fn current_is_win11() -> bool {
-    rcm_com::get_menu_style() == "Win11"
+    MenuStyle::current() == MenuStyle::Windows11
 }
 
 /// Synchronise both style CheckMenuItems so only one is checked at a time.
@@ -246,12 +248,16 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 // ── Style switching ───────────────────────────────
                 WIN11_STYLE_ID => {
                     // Switch to Windows 11 compact menu
-                    let _ = rcm_com::set_win11_menu_style(false);
+                    if let Err(e) = MenuStyle::Windows11.set() {
+                        log::error("Tray", &format!("set Win11 style failed: {e}"));
+                    }
                     sync_style_checks(&win11_clone, &classic_clone);
                 }
                 CLASSIC_STYLE_ID => {
                     // Switch to classic Windows 10 expanded menu
-                    let _ = rcm_com::set_win11_menu_style(true);
+                    if let Err(e) = MenuStyle::Classic.set() {
+                        log::error("Tray", &format!("set Classic style failed: {e}"));
+                    }
                     sync_style_checks(&win11_clone, &classic_clone);
                 }
 
@@ -349,7 +355,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
                 // ── Apply (restart Explorer) ─────────────────────
                 APPLY_ID => {
-                    let _ = rcm_com::restart_explorer();
+                    if let Err(e) = rcm_reg::restart_explorer(Duration::from_secs(3)) {
+                        log::error("Tray", &format!("restart Explorer failed: {e}"));
+                    }
                 }
 
                 // ── Reset to defaults ────────────────────────────

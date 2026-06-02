@@ -33,6 +33,7 @@ export default new Menu(
             win11.copy(),
             win11.paste(),
             win11.openWith(),
+            custom.openFileLocation(),
             win11.properties(),
           ]
         }
