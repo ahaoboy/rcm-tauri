@@ -38,7 +38,7 @@ export default new Menu(
       items: [
         win11.cut(),
         win11.copy(),
-        win11.copyAsPath(),
+        win11.copyAs(),
         win11.paste(),
         win11.createShortcut(),
         // custom.openFileLocation(),

@@ -7,10 +7,10 @@ export function cut(): MenuItem {
 }
 
 /** Win11 "Copy" — copy file(s) to clipboard (only shown when files are selected) */
-export function copy(): MenuItem {
+export function copy(label = t('copy')): MenuItem {
   return {
     key: 'copy',
-    label: t('copy'),
+    label,
     icon: '📋',
     match: (props: InvokeProps) => props.files.length > 0,
     action: (props: InvokeProps) => ({

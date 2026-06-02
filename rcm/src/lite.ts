@@ -10,7 +10,7 @@ export default new Menu(
     {
       items: [
         win11.newMenu(),
-        win11.copyAsPath(),
+        win11.copyAs(),
         // win11.trash(),
       ],
     },
