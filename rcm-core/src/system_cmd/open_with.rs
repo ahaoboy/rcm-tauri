@@ -8,8 +8,8 @@
 //! the Rust async runtime and to prevent the dialog activation from
 //! being misinterpreted as a new right-click event.
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
+use crate::types::CommandPayload;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = cmd.args.first().map(|s| s.as_str()).unwrap_or("");

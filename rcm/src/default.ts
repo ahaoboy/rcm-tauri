@@ -23,6 +23,8 @@ export default new Menu(
         win11.print(),
         // custom.mpv(),
         win11.runAsAdmin(),
+        win11.groupBy(),
+        win11.sortBy(),
       ],
     },
     {

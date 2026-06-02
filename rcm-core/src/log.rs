@@ -7,8 +7,8 @@
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // State
@@ -56,7 +56,11 @@ pub fn info(tag: &str, msg: &str) {
 
     if FILE_LOGGING.load(Ordering::Relaxed) {
         let _guard = FILE_MUTEX.lock().unwrap();
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(log_path()) {
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_path())
+        {
             let _ = writeln!(f, "{line}");
         }
     }
@@ -69,7 +73,11 @@ pub fn warn(tag: &str, msg: &str) {
 
     if FILE_LOGGING.load(Ordering::Relaxed) {
         let _guard = FILE_MUTEX.lock().unwrap();
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(log_path()) {
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_path())
+        {
             let _ = writeln!(f, "{line}");
         }
     }
@@ -82,7 +90,11 @@ pub fn error(tag: &str, msg: &str) {
 
     if FILE_LOGGING.load(Ordering::Relaxed) {
         let _guard = FILE_MUTEX.lock().unwrap();
-        if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(log_path()) {
+        if let Ok(mut f) = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_path())
+        {
             let _ = writeln!(f, "{line}");
         }
     }
@@ -95,7 +107,10 @@ pub fn frontend(tag: &str, msg: &str) {
 
 /// Log an event being sent or received.
 pub fn event(direction: &str, event_name: &str, detail: &str) {
-    info(&format!("EVENT:{}", direction), &format!("{} | {}", event_name, detail));
+    info(
+        &format!("EVENT:{}", direction),
+        &format!("{} | {}", event_name, detail),
+    );
 }
 
 /// Get the display path of the log file.

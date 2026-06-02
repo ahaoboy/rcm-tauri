@@ -5,14 +5,17 @@
 //! Each path is deleted in its own thread for maximum throughput on
 //! large selections (e.g. multiple `node_modules` folders).
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
+use crate::types::CommandPayload;
 use std::thread;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let paths: Vec<&str> = cmd.args.iter().map(|s| s.as_str()).collect();
     if paths.is_empty() {
-        return SystemCmdResult { success: false, message: "No files specified".into() };
+        return SystemCmdResult {
+            success: false,
+            message: "No files specified".into(),
+        };
     }
 
     // Spawn one thread per path for parallel deletion

@@ -22,12 +22,10 @@ pub fn system_lang() -> String {
 
 #[cfg(target_os = "windows")]
 fn windows_lang() -> String {
-    use winreg::enums::HKEY_CURRENT_USER;
     use winreg::RegKey;
+    use winreg::enums::HKEY_CURRENT_USER;
 
-    let hkcu = match RegKey::predef(HKEY_CURRENT_USER)
-        .open_subkey("Control Panel\\International")
-    {
+    let hkcu = match RegKey::predef(HKEY_CURRENT_USER).open_subkey("Control Panel\\International") {
         Ok(k) => k,
         Err(_) => return "en".to_string(),
     };

@@ -1,12 +1,15 @@
 //! `@trash` — Move file(s) to the recycle bin using the `trash` crate.
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
+use crate::types::CommandPayload;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let paths: Vec<&str> = cmd.args.iter().map(|s| s.as_str()).collect();
     if paths.is_empty() {
-        return SystemCmdResult { success: false, message: "No files specified".into() };
+        return SystemCmdResult {
+            success: false,
+            message: "No files specified".into(),
+        };
     }
 
     match trash::delete_all(&paths) {

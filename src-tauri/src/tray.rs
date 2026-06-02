@@ -4,8 +4,7 @@ use rcm_reg::MenuStyle;
 use std::io::Write;
 use std::time::Duration;
 use tauri::{
-    App,
-    Emitter,
+    App, Emitter,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
 };
@@ -115,7 +114,11 @@ fn dump_env() {
         let _ = writeln!(file, "{key}={value}");
     }
 
-    println!("dump_env: wrote {} vars to {}", vars.len(), env_path.display());
+    println!(
+        "dump_env: wrote {} vars to {}",
+        vars.len(),
+        env_path.display()
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -159,12 +162,48 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
-    let menu_lite_i = CheckMenuItem::with_id(app, MENU_LITE_ID, MENU_LITE_TEXT, true, config::is_lite(), None::<&str>)?;
-    let menu_full_i = CheckMenuItem::with_id(app, MENU_FULL_ID, MENU_FULL_TEXT, true, !config::is_lite(), None::<&str>)?;
-    let dev_i = CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, config::is_dev(), None::<&str>)?;
-    let icons_i = CheckMenuItem::with_id(app, ICONS_ID, ICONS_TEXT, true, config::is_icons(), None::<&str>)?;
-    let log_i = CheckMenuItem::with_id(app, LOG_ID, LOG_TEXT, true, log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed), None::<&str>)?;
-    let autostart_i = CheckMenuItem::with_id(app, AUTOSTART_ID, AUTOSTART_TEXT, true, registry::is_autostart_enabled(), None::<&str>)?;
+    let menu_lite_i = CheckMenuItem::with_id(
+        app,
+        MENU_LITE_ID,
+        MENU_LITE_TEXT,
+        true,
+        config::is_lite(),
+        None::<&str>,
+    )?;
+    let menu_full_i = CheckMenuItem::with_id(
+        app,
+        MENU_FULL_ID,
+        MENU_FULL_TEXT,
+        true,
+        !config::is_lite(),
+        None::<&str>,
+    )?;
+    let dev_i =
+        CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, config::is_dev(), None::<&str>)?;
+    let icons_i = CheckMenuItem::with_id(
+        app,
+        ICONS_ID,
+        ICONS_TEXT,
+        true,
+        config::is_icons(),
+        None::<&str>,
+    )?;
+    let log_i = CheckMenuItem::with_id(
+        app,
+        LOG_ID,
+        LOG_TEXT,
+        true,
+        log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed),
+        None::<&str>,
+    )?;
+    let autostart_i = CheckMenuItem::with_id(
+        app,
+        AUTOSTART_ID,
+        AUTOSTART_TEXT,
+        true,
+        registry::is_autostart_enabled(),
+        None::<&str>,
+    )?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -327,9 +366,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     let new_val = !log::FILE_LOGGING.load(Ordering::Relaxed);
                     log::FILE_LOGGING.store(new_val, Ordering::Relaxed);
                     let _ = log_clone.set_checked(new_val);
-                    log::info("Tray", &format!("file logging {} (path: {})",
-                        if new_val { "ON" } else { "OFF" },
-                        log::log_path_display()));
+                    log::info(
+                        "Tray",
+                        &format!(
+                            "file logging {} (path: {})",
+                            if new_val { "ON" } else { "OFF" },
+                            log::log_path_display()
+                        ),
+                    );
                 }
 
                 // ── Toggle autostart ──────────────────────────

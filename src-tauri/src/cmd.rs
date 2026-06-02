@@ -40,13 +40,18 @@ pub async fn execute(cmd: CommandPayload) -> ExecResult {
             let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
             let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
             if !output.status.success() {
-                eprintln!("execute '{}' failed (exit {:?}): {}", cmd.exe, output.status.code(), stderr);
+                eprintln!(
+                    "execute '{}' failed (exit {:?}): {}",
+                    cmd.exe,
+                    output.status.code(),
+                    stderr
+                );
             }
             ExecResult {
                 success: output.status.success(),
                 stdout,
                 stderr,
-                exit_code: output.status.code()
+                exit_code: output.status.code(),
             }
         }
         Err(e) => {
@@ -55,7 +60,7 @@ pub async fn execute(cmd: CommandPayload) -> ExecResult {
                 success: false,
                 stdout: String::new(),
                 stderr: format!("Failed to spawn {}: {}", cmd.exe, e),
-                exit_code: None
+                exit_code: None,
             }
         }
     }
@@ -93,17 +98,25 @@ fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
             let result = sys_cmd.run(cmd);
             ExecResult {
                 success: result.success,
-                stdout: if result.success { result.message.clone() } else { String::new() },
-                stderr: if result.success { String::new() } else { result.message.clone() },
-                exit_code: if result.success { Some(0) } else { Some(1) }
+                stdout: if result.success {
+                    result.message.clone()
+                } else {
+                    String::new()
+                },
+                stderr: if result.success {
+                    String::new()
+                } else {
+                    result.message.clone()
+                },
+                exit_code: if result.success { Some(0) } else { Some(1) },
             }
         }
         Err(e) => ExecResult {
             success: false,
             stdout: String::new(),
             stderr: e,
-            exit_code: Some(1)
-        }
+            exit_code: Some(1),
+        },
     }
 }
 

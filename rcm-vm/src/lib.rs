@@ -2,9 +2,9 @@
 //! Evaluates RCM menu definitions using QuickJS (via rquickjs).
 //! This crate is framework-agnostic and can be used with any frontend.
 
-use rcm_core::{InvokeProps, Menu};
 #[cfg(feature = "llrt")]
 use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule, url::UrlModule};
+use rcm_core::{InvokeProps, Menu};
 use rquickjs::function::This;
 use rquickjs::{
     Context, Function, Module, Result, Runtime,
@@ -40,9 +40,10 @@ fn rquickjs_run<'js>(exe: String, args: Opt<Vec<String>>, options: Opt<rquickjs:
 
         #[cfg(target_os = "windows")]
         if let Ok(Some(w)) = opts.get::<_, Option<String>>("window")
-            && w.eq_ignore_ascii_case("hidden") {
-                cmd.creation_flags(CREATE_NO_WINDOW);
-            }
+            && w.eq_ignore_ascii_case("hidden")
+        {
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
     }
 
     let _ = cmd.spawn(); // execute asynchronously detached
@@ -51,10 +52,11 @@ fn rquickjs_run<'js>(exe: String, args: Opt<Vec<String>>, options: Opt<rquickjs:
 fn rquickjs_which(exe: String) -> Option<String> {
     if let Ok(output) = Command::new("where").arg(&exe).output()
         && output.status.success()
-            && let Ok(s) = String::from_utf8(output.stdout)
-                && let Some(first_line) = s.lines().next() {
-                    return Some(first_line.trim().to_string());
-                }
+        && let Ok(s) = String::from_utf8(output.stdout)
+        && let Some(first_line) = s.lines().next()
+    {
+        return Some(first_line.trim().to_string());
+    }
     None
 }
 
@@ -116,8 +118,7 @@ impl ModuleDef for RcmSysModule {
 }
 
 pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
-
-    println!("{:?}",props);
+    println!("{:?}", props);
 
     let rt = Runtime::new()?;
 
@@ -172,7 +173,11 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
             promise.finish::<()>()?;
 
             // Declare the menu module (lite or full, from disk or embedded)
-            let menu_name = if rcm_core::config::is_lite() { "rcm.lite" } else { "rcm.full" };
+            let menu_name = if rcm_core::config::is_lite() {
+                "rcm.lite"
+            } else {
+                "rcm.full"
+            };
             let menu_src = rcm_core::menu_defaults::load_menu_module(menu_name);
             let module = Module::declare(ctx.clone(), "menu", menu_src.as_str())?;
             let (eval_module, promise) = module.eval()?;

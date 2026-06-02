@@ -11,4 +11,4 @@ pub mod system_cmd;
 pub mod types;
 
 // Re-export commonly used types
-pub use types::{CommandPayload, FileInfo, InvokeProps, Item, Menu, IndexPath, NavigateResult};
+pub use types::{CommandPayload, FileInfo, IndexPath, InvokeProps, Item, Menu, NavigateResult};

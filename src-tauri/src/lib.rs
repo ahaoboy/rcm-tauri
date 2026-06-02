@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use tauri::window::Color;
-use tauri::{Emitter, Listener, Manager, PhysicalPosition, WebviewUrl};
-use serde::{Deserialize, Serialize};
 use rcm_core::{CommandPayload, FileInfo, InvokeProps, Menu};
 use rcm_core::{config, lang, log};
+use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+use tauri::window::Color;
+use tauri::{Emitter, Listener, Manager, PhysicalPosition, WebviewUrl};
 
 pub mod cmd;
 pub mod pipe;
@@ -18,7 +18,10 @@ pub mod tray;
 const MAX_SUBMENU_DEPTH: usize = 4;
 
 /// Off-screen position for hidden windows.
-const OFF_SCREEN: PhysicalPosition<f64> = PhysicalPosition { x: -9999.0, y: -9999.0 };
+const OFF_SCREEN: PhysicalPosition<f64> = PhysicalPosition {
+    x: -9999.0,
+    y: -9999.0,
+};
 
 /// Tracks the deepest menu depth currently visible.
 /// Used to decide whether a blur event should hide all menus
@@ -153,7 +156,9 @@ struct MenuBlurPayload {
 // Window helpers
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn root_label() -> &'static str { "main" }
+fn root_label() -> &'static str {
+    "main"
+}
 
 fn submenu_label(depth: usize) -> String {
     format!("submenu-{}", depth)
@@ -182,7 +187,10 @@ impl MenuManager {
     /// (show, hover, click). After AUTO_HIDE_MS of inactivity, all menus
     /// are hidden simultaneously.
     fn reset_auto_hide(&self) {
-        let epoch = self.auto_hide_epoch.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+        let epoch = self
+            .auto_hide_epoch
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
         let epoch_ref = self.auto_hide_epoch.clone();
         let app = self.app.clone();
         let menu = self.menu.clone();
@@ -191,7 +199,11 @@ impl MenuManager {
             tokio::time::sleep(std::time::Duration::from_millis(AUTO_HIDE_MS)).await;
             if epoch_ref.load(Ordering::SeqCst) == epoch {
                 log::info("Rust::auto_hide", "timeout — hiding all menus");
-                let mgr = MenuManager { menu, app, auto_hide_epoch: epoch_ref };
+                let mgr = MenuManager {
+                    menu,
+                    app,
+                    auto_hide_epoch: epoch_ref,
+                };
                 mgr.hide_all();
             }
         });
@@ -199,8 +211,15 @@ impl MenuManager {
 
     /// Show the root menu at the cursor position.
     fn show_root(&self, menu: Menu, x: f64, y: f64) {
-        log::info("Rust::show_root", &format!("pos=({x:.0},{y:.0}) groups={} icons={} max_depth={}",
-            menu.groups.len(), menu.icon_items.len(), menu.max_depth()));
+        log::info(
+            "Rust::show_root",
+            &format!(
+                "pos=({x:.0},{y:.0}) groups={} icons={} max_depth={}",
+                menu.groups.len(),
+                menu.icon_items.len(),
+                menu.max_depth()
+            ),
+        );
 
         *self.menu.lock().unwrap() = Some(menu.clone());
         DEEPEST_DEPTH.store(0, Ordering::SeqCst);
@@ -237,8 +256,14 @@ impl MenuManager {
 
     /// Handle hover on a menu item: show submenu if the item has children.
     fn handle_hover(&self, payload: MenuHoverPayload) {
-        log::event("RECV", "menu-hover", &format!("depth={} path={:?} parent=({:.0},{:.0})",
-            payload.depth, payload.path, payload.parent_x, payload.parent_y));
+        log::event(
+            "RECV",
+            "menu-hover",
+            &format!(
+                "depth={} path={:?} parent=({:.0},{:.0})",
+                payload.depth, payload.path, payload.parent_x, payload.parent_y
+            ),
+        );
 
         let menu_guard = self.menu.lock().unwrap();
         let menu = match menu_guard.as_ref() {
@@ -253,18 +278,31 @@ impl MenuManager {
         let item = match menu.get_item(&payload.path) {
             Some(i) => i,
             None => {
-                log::warn("Rust::handle_hover", &format!("item not found at path {:?}", payload.path));
+                log::warn(
+                    "Rust::handle_hover",
+                    &format!("item not found at path {:?}", payload.path),
+                );
                 return;
             }
         };
 
-        log::info("Rust::handle_hover", &format!("item='{}' has_children={} disable={}",
-            item.label, item.has_children(), item.disable));
+        log::info(
+            "Rust::handle_hover",
+            &format!(
+                "item='{}' has_children={} disable={}",
+                item.label,
+                item.has_children(),
+                item.disable
+            ),
+        );
 
         // If the item is disabled or has no children, hide deeper submenus
         if item.disable || !item.has_children() {
             drop(menu_guard);
-            log::info("Rust::handle_hover", &format!("leaf/disabled, hiding deeper than {}", payload.depth));
+            log::info(
+                "Rust::handle_hover",
+                &format!("leaf/disabled, hiding deeper than {}", payload.depth),
+            );
             self.hide_deeper_than(payload.depth);
             return;
         }
@@ -297,10 +335,13 @@ impl MenuManager {
         let parent_bottom = payload.parent_y + payload.parent_h;
         let sub_y = if ideal_y > parent_bottom {
             let clamped = parent_bottom;
-            log::info("Rust::handle_hover", &format!(
-                "pos: ideal_y={:.0} parent_bottom={:.0} → clamped_y={:.0}",
-                ideal_y, parent_bottom, clamped
-            ));
+            log::info(
+                "Rust::handle_hover",
+                &format!(
+                    "pos: ideal_y={:.0} parent_bottom={:.0} → clamped_y={:.0}",
+                    ideal_y, parent_bottom, clamped
+                ),
+            );
             clamped
         } else {
             ideal_y
@@ -309,21 +350,33 @@ impl MenuManager {
         // ── Frontend will clamp to monitor after measuring real DOM size ──
 
         // ── Debug: log all positioning inputs ───────────────────────────
-        log::info("Rust::handle_hover", &format!(
-            "pos_debug: parent=({:.0},{:.0}) parent_w={:.0} parent_h={:.0} parentCW={:.0} parentCH={:.0} | \
+        log::info(
+            "Rust::handle_hover",
+            &format!(
+                "pos_debug: parent=({:.0},{:.0}) parent_w={:.0} parent_h={:.0} parentCW={:.0} parentCH={:.0} | \
              item=({:.0},{:.0}) item_w={:.0} item_h={:.0} | \
              children={} | sub=({:.0},{:.0})",
-            payload.parent_x, payload.parent_y,
-            payload.parent_w, payload.parent_h,
-            payload.parent_content_w, payload.parent_content_h,
-            payload.item_x, payload.item_y,
-            payload.item_w, payload.item_h,
-            item.items.len(),
-            sub_x, sub_y
-        ));
+                payload.parent_x,
+                payload.parent_y,
+                payload.parent_w,
+                payload.parent_h,
+                payload.parent_content_w,
+                payload.parent_content_h,
+                payload.item_x,
+                payload.item_y,
+                payload.item_w,
+                payload.item_h,
+                item.items.len(),
+                sub_x,
+                sub_y
+            ),
+        );
         let child_label = window_label(child_depth);
 
-        log::info("Rust::handle_hover", &format!("showing '{child_label}' at ({sub_x:.0},{sub_y:.0}) depth={child_depth}"));
+        log::info(
+            "Rust::handle_hover",
+            &format!("showing '{child_label}' at ({sub_x:.0},{sub_y:.0}) depth={child_depth}"),
+        );
 
         // Only hide windows deeper than the child we're about to show
         drop(menu_guard);
@@ -350,8 +403,15 @@ impl MenuManager {
             // Frontend will show after clamping to monitor
         }
         DEEPEST_DEPTH.store(child_depth, Ordering::SeqCst);
-        log::info("Rust::handle_hover", &format!("DEEPEST_DEPTH={child_depth}"));
-        log::event("SEND", "menu-show", &format!("to={child_label} path={:?}", payload.path));
+        log::info(
+            "Rust::handle_hover",
+            &format!("DEEPEST_DEPTH={child_depth}"),
+        );
+        log::event(
+            "SEND",
+            "menu-show",
+            &format!("to={child_label} path={:?}", payload.path),
+        );
         let _ = self.app.emit("menu-show", show_payload);
         self.reset_auto_hide();
     }
@@ -367,7 +427,11 @@ impl MenuManager {
 
     /// Handle execute: run the command and close all menus.
     fn handle_execute(&self, payload: MenuExecutePayload) {
-        log::event("RECV", "menu-execute", &format!("exe='{}' path={:?}", payload.command.exe, payload.path));
+        log::event(
+            "RECV",
+            "menu-execute",
+            &format!("exe='{}' path={:?}", payload.command.exe, payload.path),
+        );
 
         // Reset auto-hide on interaction
         self.reset_auto_hide();
@@ -383,7 +447,10 @@ impl MenuManager {
         });
 
         if !config::is_dev() {
-            log::info("Rust::handle_execute", &format!("hiding all (dev={})", config::is_dev()));
+            log::info(
+                "Rust::handle_execute",
+                &format!("hiding all (dev={})", config::is_dev()),
+            );
             self.hide_all();
         }
     }
@@ -391,7 +458,11 @@ impl MenuManager {
     /// Handle blur from a menu window.
     fn handle_blur(&self, payload: MenuBlurPayload) {
         let deepest = DEEPEST_DEPTH.load(Ordering::SeqCst);
-        log::event("RECV", "menu-blur", &format!("depth={} deepest={}", payload.depth, deepest));
+        log::event(
+            "RECV",
+            "menu-blur",
+            &format!("depth={} deepest={}", payload.depth, deepest),
+        );
 
         if payload.depth != deepest {
             log::info("Rust::handle_blur", "IGNORED (depth != deepest)");
@@ -433,7 +504,10 @@ impl MenuManager {
             }
         }
         // After hiding deeper windows, `depth` is now the deepest visible
-        log::info("Rust::hide_deeper_than", &format!("hid >{depth}, DEEPEST_DEPTH→{depth}"));
+        log::info(
+            "Rust::hide_deeper_than",
+            &format!("hid >{depth}, DEEPEST_DEPTH→{depth}"),
+        );
         DEEPEST_DEPTH.store(depth, Ordering::SeqCst);
     }
 
@@ -444,26 +518,23 @@ impl MenuManager {
         }
 
         let url = format!("index.html#{label}");
-        let builder = tauri::WebviewWindowBuilder::new(
-            &self.app,
-            label,
-            WebviewUrl::App(url.into()),
-        )
-        .title("rcm-submenu")
-        .decorations(false)
-        .background_color(Color(0, 0, 0, 0))
-        .position(0., 0.)
-        .inner_size(1., 1.)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .fullscreen(false)
-        .visible(false)
-        .closable(false)
-        .resizable(false)
-        .minimizable(false)
-        .maximizable(false)
-        .focused(false)
-        .shadow(false);
+        let builder =
+            tauri::WebviewWindowBuilder::new(&self.app, label, WebviewUrl::App(url.into()))
+                .title("rcm-submenu")
+                .decorations(false)
+                .background_color(Color(0, 0, 0, 0))
+                .position(0., 0.)
+                .inner_size(1., 1.)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .fullscreen(false)
+                .visible(false)
+                .closable(false)
+                .resizable(false)
+                .minimizable(false)
+                .maximizable(false)
+                .focused(false)
+                .shadow(false);
 
         #[cfg(not(target_os = "macos"))]
         let builder = builder.transparent(true);
@@ -480,7 +551,11 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHide
     log::info("Rust::monitor", "begin listening for rcm_com events");
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {
-            log::event("RECV", "rcm_com", &format!("{:?} pos=({},{})", event.event, event.x, event.y));
+            log::event(
+                "RECV",
+                "rcm_com",
+                &format!("{:?} pos=({},{})", event.event, event.x, event.y),
+            );
             println!("{:?}", event);
 
             // Filter: ignore "Open With" dialog activation events.
@@ -488,7 +563,10 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHide
             // picker window triggers a spurious Menu{flags:16} event from a
             // Chrome_WidgetWin_0 host window.
             if event.class.starts_with("Chrome_WidgetWin_") && event.event.flags() == 16 {
-                log::info("Rust::monitor", "filtered: OpenWith dialog (Chrome_WidgetWin_0, flags=16)");
+                log::info(
+                    "Rust::monitor",
+                    "filtered: OpenWith dialog (Chrome_WidgetWin_0, flags=16)",
+                );
                 return;
             }
 
@@ -511,7 +589,10 @@ fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHide
                     mgr.show_root(menu_data, event.x as f64, event.y as f64);
                 }
                 _ => {
-                    log::info("Rust::monitor", &format!("non-Menu event (dev={})", config::is_dev()));
+                    log::info(
+                        "Rust::monitor",
+                        &format!("non-Menu event (dev={})", config::is_dev()),
+                    );
                     if !config::is_dev() {
                         let mgr = MenuManager {
                             menu: menu.clone(),
@@ -552,28 +633,39 @@ pub fn rcm() -> std::result::Result<Menu, Box<dyn std::error::Error>> {
 }
 
 /// Build a menu from real right-click context data received via the pipe.
-pub fn rcm_from_info(info: &rcm_com::ContextMenuInfo) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+pub fn rcm_from_info(
+    info: &rcm_com::ContextMenuInfo,
+) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
     let mut env = std::collections::HashMap::new();
     env.insert("OS".to_string(), "Windows".to_string());
 
-    let files: Vec<FileInfo> = info.files.iter().map(|path| {
-        let p = std::path::Path::new(path);
-        FileInfo {
-            name: p.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("")
-                .to_string(),
-            path: path.clone(),
-            is_dir: p.is_dir(),
-        }
-    }).collect();
+    let files: Vec<FileInfo> = info
+        .files
+        .iter()
+        .map(|path| {
+            let p = std::path::Path::new(path);
+            FileInfo {
+                name: p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string(),
+                path: path.clone(),
+                is_dir: p.is_dir(),
+            }
+        })
+        .collect();
 
     let props = InvokeProps {
         files,
         cwd: info.dir.clone(),
         env,
         admin: false,
-        type_name: if info.bg { "Background".to_string() } else { "File".to_string() },
+        type_name: if info.bg {
+            "Background".to_string()
+        } else {
+            "File".to_string()
+        },
         lang: lang::system_lang(),
         clipboard: rcm_core::clipboard::detect(),
     };
@@ -651,7 +743,11 @@ pub fn run() {
             let e1 = epoch.clone();
             app_handle.listen("menu-hover", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuHoverPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m1.clone(), app: ah1.clone(), auto_hide_epoch: e1.clone() };
+                    let mgr = MenuManager {
+                        menu: m1.clone(),
+                        app: ah1.clone(),
+                        auto_hide_epoch: e1.clone(),
+                    };
                     mgr.handle_hover(payload);
                 }
             });
@@ -662,7 +758,11 @@ pub fn run() {
             let e2 = epoch.clone();
             app_handle.listen("menu-hover-out", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuHoverOutPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m2.clone(), app: ah2.clone(), auto_hide_epoch: e2.clone() };
+                    let mgr = MenuManager {
+                        menu: m2.clone(),
+                        app: ah2.clone(),
+                        auto_hide_epoch: e2.clone(),
+                    };
                     mgr.handle_hover_out(payload);
                 }
             });
@@ -673,7 +773,11 @@ pub fn run() {
             let e3 = epoch.clone();
             app_handle.listen("menu-execute", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuExecutePayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m3.clone(), app: ah3.clone(), auto_hide_epoch: e3.clone() };
+                    let mgr = MenuManager {
+                        menu: m3.clone(),
+                        app: ah3.clone(),
+                        auto_hide_epoch: e3.clone(),
+                    };
                     mgr.handle_execute(payload);
                 }
             });
@@ -684,7 +788,11 @@ pub fn run() {
             let e4 = epoch.clone();
             app_handle.listen("menu-close-all", move |_| {
                 if !config::is_dev() {
-                    let mgr = MenuManager { menu: m4.clone(), app: ah4.clone(), auto_hide_epoch: e4.clone() };
+                    let mgr = MenuManager {
+                        menu: m4.clone(),
+                        app: ah4.clone(),
+                        auto_hide_epoch: e4.clone(),
+                    };
                     mgr.hide_all();
                 }
             });
@@ -695,7 +803,11 @@ pub fn run() {
             let e5 = epoch.clone();
             app_handle.listen("menu-blur", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuBlurPayload>(event.payload()) {
-                    let mgr = MenuManager { menu: m5.clone(), app: ah5.clone(), auto_hide_epoch: e5.clone() };
+                    let mgr = MenuManager {
+                        menu: m5.clone(),
+                        app: ah5.clone(),
+                        auto_hide_epoch: e5.clone(),
+                    };
                     mgr.handle_blur(payload);
                 }
             });

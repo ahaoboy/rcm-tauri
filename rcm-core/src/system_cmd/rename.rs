@@ -1,7 +1,7 @@
 //! `@rename` — Rename a file or folder with collision avoidance.
 
-use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
+use crate::types::CommandPayload;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let src = cmd.args.first().cloned().unwrap_or_default();

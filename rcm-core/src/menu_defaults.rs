@@ -1,7 +1,3 @@
-/// Write embedded default menu JS files to disk next to the exe, and
-/// load menu modules from disk (falling back to embedded defaults).
-/// Extracted from vm.rs so rcm-core can use them without depending on rcm-vm.
-
 const DEFAULT_MODULE: &str = include_str!("../../rcm/dist/default.js");
 const LITE_MODULE: &str = include_str!("../../rcm/dist/lite.js");
 
@@ -12,7 +8,10 @@ pub fn write_menu_defaults() {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
 
-    for (name, src) in [("rcm.lite.js", LITE_MODULE), ("rcm.full.js", DEFAULT_MODULE)] {
+    for (name, src) in [
+        ("rcm.lite.js", LITE_MODULE),
+        ("rcm.full.js", DEFAULT_MODULE),
+    ] {
         let path = exe_dir.join(name);
         if let Err(e) = std::fs::write(&path, src) {
             eprintln!("write_menu_defaults: write {} failed: {e}", path.display());
@@ -53,7 +52,10 @@ pub fn load_menu_module(name: &str) -> String {
     };
 
     if let Err(e) = std::fs::write(&file_path, embedded) {
-        eprintln!("load_menu_module: write {} failed: {e}", file_path.display());
+        eprintln!(
+            "load_menu_module: write {} failed: {e}",
+            file_path.display()
+        );
     } else {
         println!("load_menu_module: wrote default to {}.js", name);
     }

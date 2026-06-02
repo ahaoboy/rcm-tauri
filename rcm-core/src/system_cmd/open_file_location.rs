@@ -2,30 +2,44 @@
 //! select the file. For shortcut (.lnk) files, resolves the target first
 //! and opens that location instead.
 
+use super::{SystemCmdResult, powershell};
 use crate::types::CommandPayload;
-use super::{powershell, SystemCmdResult};
-use std::path::Path;
 use std::os::windows::process::CommandExt;
+use std::path::Path;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = match cmd.args.first() {
         Some(p) if !p.is_empty() => p.as_str(),
-        _ => return SystemCmdResult { success: false, message: "No file specified".into() },
+        _ => {
+            return SystemCmdResult {
+                success: false,
+                message: "No file specified".into(),
+            };
+        }
     };
 
-    crate::log::info("Rust::open_file_location", &format!("opening location for '{path}'"));
+    crate::log::info(
+        "Rust::open_file_location",
+        &format!("opening location for '{path}'"),
+    );
 
     // Resolve shortcut target if it's a .lnk file
     let target = if path.to_lowercase().ends_with(".lnk") {
         match resolve_shortcut(path) {
             Ok(t) => {
-                crate::log::info("Rust::open_file_location", &format!("resolved shortcut '{path}' -> '{t}'"));
+                crate::log::info(
+                    "Rust::open_file_location",
+                    &format!("resolved shortcut '{path}' -> '{t}'"),
+                );
                 t
             }
             Err(e) => {
-                crate::log::info("Rust::open_file_location", &format!("shortcut resolve failed: {e}, falling back to .lnk itself"));
+                crate::log::info(
+                    "Rust::open_file_location",
+                    &format!("shortcut resolve failed: {e}, falling back to .lnk itself"),
+                );
                 path.to_string()
             }
         }

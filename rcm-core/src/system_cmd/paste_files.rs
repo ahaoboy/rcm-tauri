@@ -2,28 +2,38 @@
 //! Uses clipboard-rs for cross-platform file-list retrieval.
 //! Mimics Windows Explorer: auto-renames on collision → "name (2).ext", …
 
-use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
+use crate::types::CommandPayload;
 use clipboard_rs::{Clipboard, ClipboardContext};
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     if cmd.cwd.is_empty() {
-        return SystemCmdResult { success: false, message: "No destination directory".into() };
+        return SystemCmdResult {
+            success: false,
+            message: "No destination directory".into(),
+        };
     }
 
     let ctx = match ClipboardContext::new() {
         Ok(c) => c,
-        Err(e) => return SystemCmdResult {
-            success: false,
-            message: format!("Failed to open clipboard: {e}"),
-        },
+        Err(e) => {
+            return SystemCmdResult {
+                success: false,
+                message: format!("Failed to open clipboard: {e}"),
+            };
+        }
     };
 
     let files = match ctx.get_files() {
         Ok(f) => f,
-        Err(_) => return SystemCmdResult { success: false, message: "No files in clipboard".into() },
+        Err(_) => {
+            return SystemCmdResult {
+                success: false,
+                message: "No files in clipboard".into(),
+            };
+        }
     };
 
     let mut copied: usize = 0;
@@ -54,7 +64,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         msg.push_str(&format!(" ({errors} failed)"));
     }
 
-    SystemCmdResult { success: copied > 0, message: msg }
+    SystemCmdResult {
+        success: copied > 0,
+        message: msg,
+    }
 }
 
 fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {

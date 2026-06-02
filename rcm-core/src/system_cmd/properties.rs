@@ -1,19 +1,27 @@
 //! `@properties` — Open the Windows file/folder properties dialog.
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
-use windows::core::PCWSTR;
-use windows::Win32::UI::Shell::{ShellExecuteExW, SHELLEXECUTEINFOW};
-use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
+use crate::types::CommandPayload;
 use windows::Win32::UI::Shell::SEE_MASK_INVOKEIDLIST;
+use windows::Win32::UI::Shell::{SHELLEXECUTEINFOW, ShellExecuteExW};
+use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
+use windows::core::PCWSTR;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = match cmd.args.first() {
         Some(p) if !p.is_empty() => p.as_str(),
-        _ => return SystemCmdResult { success: false, message: "No file specified".into() },
+        _ => {
+            return SystemCmdResult {
+                success: false,
+                message: "No file specified".into(),
+            };
+        }
     };
 
-    crate::log::info("Rust::properties", &format!("opening properties for '{path}'"));
+    crate::log::info(
+        "Rust::properties",
+        &format!("opening properties for '{path}'"),
+    );
 
     // Encode path and "properties" verb as UTF-16 null-terminated strings
     let wide_path: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
@@ -23,7 +31,7 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
         lpVerb: PCWSTR::from_raw(verb.as_ptr()),
         lpFile: PCWSTR::from_raw(wide_path.as_ptr()),
-        nShow: SW_SHOW.0 as i32,
+        nShow: SW_SHOW.0,
         fMask: SEE_MASK_INVOKEIDLIST,
         ..Default::default()
     };
@@ -33,7 +41,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     match result {
         Ok(()) => {
             crate::log::info("Rust::properties", "ShellExecuteExW OK");
-            SystemCmdResult { success: true, message: "Properties opened".into() }
+            SystemCmdResult {
+                success: true,
+                message: "Properties opened".into(),
+            }
         }
         Err(e) => {
             crate::log::error("Rust::properties", &format!("ShellExecuteExW failed: {e}"));

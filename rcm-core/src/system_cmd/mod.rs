@@ -22,6 +22,7 @@ pub mod copy_base64;
 pub mod copy_name;
 pub mod copy_path;
 pub mod delete;
+pub mod group_by;
 pub mod new_file;
 pub mod new_folder;
 pub mod open_file_location;
@@ -29,6 +30,8 @@ pub mod open_with;
 pub mod paste_files;
 pub mod properties;
 pub mod rename;
+pub mod shell_folder_view;
+pub mod sort_by;
 pub mod trash;
 pub mod unzip;
 pub mod zip;
@@ -73,6 +76,10 @@ pub enum SystemCommand {
     OpenFileLocation,
     /// Paste files from clipboard to current directory (`@paste-files`).
     PasteFiles,
+    /// Change Explorer grouping for the current directory (`@group-by`).
+    GroupBy,
+    /// Change Explorer sorting for the current directory (`@sort-by`).
+    SortBy,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -99,6 +106,8 @@ impl FromStr for SystemCommand {
             "@copy" => Ok(Self::Copy),
             "@open-file-location" => Ok(Self::OpenFileLocation),
             "@paste-files" => Ok(Self::PasteFiles),
+            "@group-by" => Ok(Self::GroupBy),
+            "@sort-by" => Ok(Self::SortBy),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -136,6 +145,8 @@ impl SystemCommand {
             Self::Copy => copy::run(cmd),
             Self::OpenFileLocation => open_file_location::run(cmd),
             Self::PasteFiles => paste_files::run(cmd),
+            Self::GroupBy => group_by::run(cmd),
+            Self::SortBy => sort_by::run(cmd),
         }
     }
 }
@@ -159,7 +170,11 @@ pub(crate) fn powershell(script: &str) -> Result<String, String> {
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     } else {
         let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(if err.is_empty() { "powershell returned non-zero".into() } else { err })
+        Err(if err.is_empty() {
+            "powershell returned non-zero".into()
+        } else {
+            err
+        })
     }
 }
 
@@ -224,14 +239,27 @@ mod tests {
     fn test_is_system_command() {
         assert!(is_system_command("@unzip"));
         assert!(is_system_command("@zip"));
+        assert!(is_system_command("@group-by"));
+        assert!(is_system_command("@sort-by"));
         assert!(!is_system_command("notepad"));
         assert!(!is_system_command(""));
     }
 
     #[test]
     fn test_parse_system_command() {
-        assert_eq!("@unzip".parse::<SystemCommand>().unwrap(), SystemCommand::Unzip);
+        assert_eq!(
+            "@unzip".parse::<SystemCommand>().unwrap(),
+            SystemCommand::Unzip
+        );
         assert_eq!("@zip".parse::<SystemCommand>().unwrap(), SystemCommand::Zip);
+        assert_eq!(
+            "@group-by".parse::<SystemCommand>().unwrap(),
+            SystemCommand::GroupBy
+        );
+        assert_eq!(
+            "@sort-by".parse::<SystemCommand>().unwrap(),
+            SystemCommand::SortBy
+        );
         assert!("@unknown".parse::<SystemCommand>().is_err());
     }
 }

@@ -4,8 +4,8 @@
 //! `New folder`).  The final path is resolved relative to
 //! `cmd.cwd` with collision avoidance.
 
-use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
+use crate::types::CommandPayload;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let name = cmd.args.first().map(|s| s.as_str()).unwrap_or("New folder");

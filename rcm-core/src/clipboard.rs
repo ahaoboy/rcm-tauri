@@ -17,4 +17,3 @@ pub fn detect() -> ClipboardInfo {
         has_files: ctx.has(ContentFormat::Files),
     }
 }
-

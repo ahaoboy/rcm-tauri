@@ -1,8 +1,8 @@
 //! `@copy-path` — Copy file path(s) to clipboard (slash-separated).
 //! Falls back to the current directory path when no files are selected.
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
+use crate::types::CommandPayload;
 use clipboard_rs::{Clipboard, ClipboardContext};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
@@ -12,7 +12,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     if paths.is_empty() {
         // No file args → use cwd as fallback
         if cmd.cwd.is_empty() {
-            return SystemCmdResult { success: false, message: "No path to copy".into() };
+            return SystemCmdResult {
+                success: false,
+                message: "No path to copy".into(),
+            };
         }
         paths.push(cmd.cwd.clone());
     }
@@ -26,10 +29,12 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     let ctx = match ClipboardContext::new() {
         Ok(c) => c,
-        Err(e) => return SystemCmdResult {
-            success: false,
-            message: format!("Failed to open clipboard: {e}"),
-        },
+        Err(e) => {
+            return SystemCmdResult {
+                success: false,
+                message: format!("Failed to open clipboard: {e}"),
+            };
+        }
     };
 
     match ctx.set_text(text) {

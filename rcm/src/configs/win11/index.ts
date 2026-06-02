@@ -16,5 +16,7 @@ export * from './copy-as';
 export { createShortcut } from './create-shortcut';
 export { properties } from './properties';
 export { newMenu } from './new-menu';
+export { groupBy } from './group-by';
+export { sortBy } from './sort-by';
 export { openInTerminal } from './open-in-terminal';
 export { restorePreviousVersions } from './restore-prev-versions';

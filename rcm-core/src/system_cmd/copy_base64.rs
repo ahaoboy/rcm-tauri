@@ -2,10 +2,10 @@
 //! Each file is encoded separately and joined with newlines.
 //! Falls back to encoding the current directory path when no files are selected.
 
-use crate::types::CommandPayload;
 use super::SystemCmdResult;
-use clipboard_rs::{Clipboard, ClipboardContext};
+use crate::types::CommandPayload;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use clipboard_rs::{Clipboard, ClipboardContext};
 use std::fs;
 use std::path::Path;
 
@@ -18,7 +18,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     let paths: Vec<&str> = if cmd.args.is_empty() {
         if cmd.cwd.is_empty() {
-            return SystemCmdResult { success: false, message: "Nothing to copy".into() };
+            return SystemCmdResult {
+                success: false,
+                message: "Nothing to copy".into(),
+            };
         }
         vec![cmd.cwd.as_str()]
     } else {
@@ -74,10 +77,12 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     let ctx = match ClipboardContext::new() {
         Ok(c) => c,
-        Err(e) => return SystemCmdResult {
-            success: false,
-            message: format!("Failed to open clipboard: {e}"),
-        },
+        Err(e) => {
+            return SystemCmdResult {
+                success: false,
+                message: format!("Failed to open clipboard: {e}"),
+            };
+        }
     };
 
     let mut msg = format!("Copied {} file(s) as base64", encoded.len());
@@ -86,7 +91,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     }
 
     match ctx.set_text(text) {
-        Ok(()) => SystemCmdResult { success: true, message: msg },
+        Ok(()) => SystemCmdResult {
+            success: true,
+            message: msg,
+        },
         Err(e) => SystemCmdResult {
             success: false,
             message: format!("Failed to set clipboard: {e}"),

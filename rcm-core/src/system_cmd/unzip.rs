@@ -4,11 +4,11 @@
 //! archive's stem (e.g. `foo.zip` → `foo/`).  If the directory
 //! already exists, a collision-safe name is chosen (`foo (2)/`, …).
 
-use crate::types::CommandPayload;
 use super::{SystemCmdResult, unique_path};
+use crate::types::CommandPayload;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let archives: Vec<String> = cmd.args.iter().cloned().collect();
+    let archives: Vec<String> = cmd.args.to_vec();
 
     if archives.is_empty() {
         return SystemCmdResult {
@@ -45,6 +45,10 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     SystemCmdResult {
         success: true,
-        message: format!("Extracted {} archive(s): {}", archives.len(), extracted.join(", ")),
+        message: format!(
+            "Extracted {} archive(s): {}",
+            archives.len(),
+            extracted.join(", ")
+        ),
     }
 }

@@ -57,9 +57,7 @@ pub fn init() {
     let path = config_path();
 
     let cfg: ConfigFile = match std::fs::read_to_string(&path) {
-        Ok(text) => {
-            serde_json::from_str(&text).unwrap_or_default()
-        }
+        Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
         Err(_) => {
             let default = ConfigFile::default();
             save_inner(&path, &default);
@@ -137,7 +135,11 @@ fn config_path() -> PathBuf {
 
 fn save() {
     let cfg = ConfigFile {
-        menu: if IS_LITE.load(Ordering::Relaxed) { "lite".into() } else { "full".into() },
+        menu: if IS_LITE.load(Ordering::Relaxed) {
+            "lite".into()
+        } else {
+            "full".into()
+        },
         dev: DEV_MODE.load(Ordering::Relaxed),
         icons: SHOW_ICONS.load(Ordering::Relaxed),
     };

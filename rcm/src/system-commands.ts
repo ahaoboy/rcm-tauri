@@ -59,6 +59,12 @@ export const OPEN_FILE_LOCATION = '@open-file-location';
 /** Paste files from clipboard to the current directory. */
 export const PASTE_FILES = '@paste-files';
 
+/** Change the folder's group-by setting (Name, Date, Type, Size, etc.). */
+export const GROUP_BY = '@group-by';
+
+/** Change the folder's sort-by setting (Name, Date, Type, Size, etc.). */
+export const SORT_BY = '@sort-by';
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -78,4 +84,6 @@ export const ALL: ReadonlySet<string> = new Set([
   COPY_BASE64,
   OPEN_FILE_LOCATION,
   PASTE_FILES,
+  GROUP_BY,
+  SORT_BY,
 ]);
