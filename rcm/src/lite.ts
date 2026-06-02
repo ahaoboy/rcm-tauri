@@ -20,6 +20,7 @@ export default new Menu(
         custom.terminal(),
         custom.unzip(),
         custom.zip(),
+        custom.fsv(),
       ],
     },
     {

@@ -8,3 +8,4 @@ export { terminal } from './terminal';
 export { zip } from './zip';
 export { unzip } from './unzip';
 export { openFileLocation } from './open-file-location';
+export * from './fsv'
