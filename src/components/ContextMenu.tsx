@@ -18,6 +18,9 @@ interface ContextMenuProps {
   /** Full menu data — every window has the complete tree. */
   menu: MenuData;
   showIcons?: boolean;
+  /** Called after the window has been resized to fit content.
+   *  The parent can then clamp position and show the window. */
+  onReady?: () => void;
 }
 
 /* ── Navigation helpers ─────────────────────────────────────────────── */
@@ -81,27 +84,46 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   indexPath,
   menu,
   showIcons = false,
+  onReady,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const [menuSize, setMenuSize] = useState({ width: 280, height: 400 });
+  const readyCalled = useRef(false);
 
   // Resolve what to render
   const resolved = navigateMenu(menu, indexPath);
 
-  // Resize window to fit content
+  // Resize window to fit content, then signal parent
   const resizeWindow = useCallback(async () => {
     if (!rootRef.current) return;
     const rect = rootRef.current.getBoundingClientRect();
     const w = Math.ceil(rect.width) + 16;
     const h = Math.ceil(rect.height) + 16;
-    if (w === menuSize.width && h === menuSize.height) return;
+    if (w === menuSize.width && h === menuSize.height) {
+      // Already correct size — signal ready
+      if (!readyCalled.current) {
+        readyCalled.current = true;
+        onReady?.();
+      }
+      return;
+    }
     setMenuSize({ width: w, height: h });
     try {
       await getCurrentWindow().setSize(new LogicalSize(w, h));
+      // Signal parent that the window is now correctly sized
+      if (!readyCalled.current) {
+        readyCalled.current = true;
+        onReady?.();
+      }
     } catch {
       // Window may not be available yet
     }
-  }, [menuSize]);
+  }, [menuSize, onReady]);
+
+  // Reset ready flag when menu data changes
+  useEffect(() => {
+    readyCalled.current = false;
+  }, [menu, indexPath]);
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {

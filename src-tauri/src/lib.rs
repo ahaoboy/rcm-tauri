@@ -25,6 +25,9 @@ const OFF_SCREEN: PhysicalPosition<f64> = PhysicalPosition { x: -9999.0, y: -999
 /// (only if the deepest window lost focus).
 static DEEPEST_DEPTH: AtomicUsize = AtomicUsize::new(0);
 
+/// Submenu horizontal gap from parent window edge (physical px).
+const SUBMENU_GAP: f64 = 8.0;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Config payload (for frontend)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -62,9 +65,16 @@ struct MenuShowPayload {
     menu: Menu,
     /// Index path to render. Empty `[]` = root.
     path: Vec<i32>,
-    /// Absolute screen position for the window.
+    /// Ideal screen position (frontend will clamp after measuring DOM).
     x: f64,
     y: f64,
+    /// Parent window info for submenu flip logic (None for root).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_x: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_y: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parent_w: Option<f64>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -177,19 +187,20 @@ impl MenuManager {
             }
         }
 
-        // Show root window
+        // ── Send raw position; frontend will clamp after measuring DOM ──
         let payload = MenuShowPayload {
             menu,
             path: vec![],
             x,
             y,
+            parent_x: None,
+            parent_y: None,
+            parent_w: None,
         };
 
         let label = root_label();
         if let Some(win) = self.app.get_webview_window(label) {
             let _ = win.set_position(PhysicalPosition { x, y });
-            let _ = win.show();
-            log::info("Rust::show_root", &format!("window '{label}' shown"));
         }
         log::event("SEND", "menu-show", &format!("to={label} path=[]"));
         let _ = self.app.emit("menu-show", payload);
@@ -240,7 +251,7 @@ impl MenuManager {
         // Position submenu at parent's .rcm-root right edge + gap.
         // #root padding is identical in both windows, so it cancels out.
         let sub_x = if payload.parent_content_w > 0.0 {
-            payload.parent_x + payload.parent_content_w + 8.0
+            payload.parent_x + payload.parent_content_w + SUBMENU_GAP
         } else if payload.content_right > 0.0 {
             payload.content_right
         } else {
@@ -265,6 +276,8 @@ impl MenuManager {
         } else {
             ideal_y
         };
+
+        // ── Frontend will clamp to monitor after measuring real DOM size ──
 
         // ── Debug: log all positioning inputs ───────────────────────────
         log::info("Rust::handle_hover", &format!(
@@ -298,11 +311,14 @@ impl MenuManager {
             path: payload.path.clone(),
             x: sub_x,
             y: sub_y,
+            parent_x: Some(payload.parent_x),
+            parent_y: Some(payload.parent_y),
+            parent_w: Some(payload.parent_w),
         };
 
         if let Some(win) = self.app.get_webview_window(&child_label) {
             let _ = win.set_position(PhysicalPosition { x: sub_x, y: sub_y });
-            let _ = win.show();
+            // Frontend will show after clamping to monitor
         }
         DEEPEST_DEPTH.store(child_depth, Ordering::SeqCst);
         log::info("Rust::handle_hover", &format!("DEEPEST_DEPTH={child_depth}"));

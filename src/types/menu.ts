@@ -52,9 +52,13 @@ export interface MenuShowPayload {
   /** Index path to the submenu to render.
    *  `[]` for root, e.g. `[0, 2]` for groups[0].items[2].items */
   path: IndexPath;
-  /** Absolute screen position to place the window. */
+  /** Ideal screen position (frontend will clamp after measuring DOM). */
   x: number;
   y: number;
+  /** Parent window info for submenu flip logic (undefined for root). */
+  parent_x?: number;
+  parent_y?: number;
+  parent_w?: number;
 }
 
 /**

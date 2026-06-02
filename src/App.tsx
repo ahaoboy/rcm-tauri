@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { listen, emit } from "@tauri-apps/api/event";
-import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import type { MenuData, MenuShowPayload } from "./types/menu";
 import { useTheme } from "./hooks/useTheme";
@@ -13,12 +13,17 @@ const OFF_SCREEN = new PhysicalPosition(-9999, -9999);
 /** Depth of this window. Root = 0. */
 const MY_DEPTH = 0;
 
+/** Gap from screen edges when clamping. */
+const EDGE_GAP = 8;
+
 function App() {
   const [menu, setMenu] = useState<MenuData | null>(null);
   const [showIcons, setShowIcons] = useState(false);
   const devMode = useRef(false);
   const menuActive = useRef(false);
   const theme = useTheme();
+  /** Pending ideal position from menu-show event; consumed by onReady. */
+  const pendingPos = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.remove("rcm-light", "rcm-dark");
@@ -77,18 +82,9 @@ function App() {
 
         feLog.eventRecv("menu-show", `pos=(${x.toFixed(0)},${y.toFixed(0)}) groups=${menuData.groups.length}`);
 
+        pendingPos.current = { x, y };
         setMenu(menuData);
-
-        win.setPosition(new PhysicalPosition(x, y)).catch(() => { });
-        win.show().catch(() => { });
-        win.setFocus().catch(() => { });
-
-        // Delay arming menuActive to let focus settle after setFocus()
-        // (prevents brief focus-lose-then-regain from triggering blur)
-        setTimeout(() => {
-          menuActive.current = true;
-          feLog.info("App:root", "menuActive armed");
-        }, 200);
+        // Window is moved off-screen initially; onReady will position & show
       });
       cleanupFns.push(unlistenShow);
 
@@ -111,6 +107,50 @@ function App() {
     };
   }, []);
 
+  /** Called by ContextMenu after the window has been resized to fit content. */
+  const handleReady = useCallback(async () => {
+    const pos = pendingPos.current;
+    if (!pos) return;
+    pendingPos.current = null;
+
+    try {
+      const win = getCurrentWindow();
+      const outerSize = await win.outerSize();
+      const monitor = await currentMonitor();
+
+      let finalX = pos.x;
+      let finalY = pos.y;
+
+      if (monitor) {
+        const monRight = monitor.position.x + monitor.size.width;
+        const monBottom = monitor.position.y + monitor.size.height;
+
+        finalX = Math.max(
+          monitor.position.x + EDGE_GAP,
+          Math.min(finalX, monRight - outerSize.width - EDGE_GAP)
+        );
+        finalY = Math.max(
+          monitor.position.y + EDGE_GAP,
+          Math.min(finalY, monBottom - outerSize.height - EDGE_GAP)
+        );
+
+        feLog.info("App:root", `clamp: size=(${outerSize.width}x${outerSize.height}) raw=(${pos.x.toFixed(0)},${pos.y.toFixed(0)}) -> (${finalX.toFixed(0)},${finalY.toFixed(0)})`);
+      }
+
+      await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)));
+      await win.setAlwaysOnTop(true);
+      await win.show();
+      await win.setFocus();
+
+      setTimeout(() => {
+        menuActive.current = true;
+        feLog.info("App:root", "menuActive armed");
+      }, 200);
+    } catch (e) {
+      feLog.error("App:root", `handleReady error: ${e}`);
+    }
+  }, []);
+
   /** Hide the root window and reset state. */
   async function hideRoot(win: ReturnType<typeof getCurrentWindow>) {
     if (devMode.current) return;
@@ -131,6 +171,7 @@ function App() {
       indexPath={[]}
       menu={menu}
       showIcons={showIcons}
+      onReady={handleReady}
     />
   );
 }
