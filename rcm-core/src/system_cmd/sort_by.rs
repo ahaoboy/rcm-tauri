@@ -3,8 +3,10 @@
 use crate::types::CommandPayload;
 
 use super::SystemCmdResult;
-use super::shell_folder_view::{property_key_from_arg, target_dir, with_folder_view};
-use windows::Win32::UI::Shell::{SORT_ASCENDING, SORTCOLUMN};
+use super::shell_folder_view::{
+    property_key_from_arg, same_property_key, target_dir, with_folder_view,
+};
+use windows::Win32::UI::Shell::{SORT_ASCENDING, SORT_DESCENDING, SORTCOLUMN, SORTDIRECTION};
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let sort_key = match cmd.args.first() {
@@ -34,17 +36,21 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         }
     };
 
-    crate::log::info(
-        "Rust::sort_by",
-        &format!("setting sort-by '{sort_key}' for '{}'", dir.display()),
-    );
+    match with_folder_view(&dir, |view| {
+        let direction = unsafe { next_sort_direction(view, &propkey) };
+        crate::log::info(
+            "Rust::sort_by",
+            &format!(
+                "setting sort-by '{sort_key}' ({}) for '{}'",
+                direction_label(direction),
+                dir.display()
+            ),
+        );
 
-    let column = SORTCOLUMN {
-        propkey,
-        direction: SORT_ASCENDING,
-    };
+        let column = SORTCOLUMN { propkey, direction };
 
-    match with_folder_view(&dir, |view| unsafe { view.SetSortColumns(&[column]) }) {
+        unsafe { view.SetSortColumns(&[column]) }
+    }) {
         Ok(()) => SystemCmdResult {
             success: true,
             message: format!("Sort by set to {sort_key}"),
@@ -56,5 +62,38 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
                 message,
             }
         }
+    }
+}
+
+unsafe fn next_sort_direction(
+    view: &windows::Win32::UI::Shell::IFolderView2,
+    propkey: &windows::Win32::Foundation::PROPERTYKEY,
+) -> SORTDIRECTION {
+    let count = unsafe { view.GetSortColumnCount() }.unwrap_or_default();
+    if count <= 0 {
+        return SORT_ASCENDING;
+    }
+
+    let mut columns = vec![SORTCOLUMN::default(); count as usize];
+    if unsafe { view.GetSortColumns(&mut columns) }.is_err() {
+        return SORT_ASCENDING;
+    }
+
+    let Some(current) = columns.first() else {
+        return SORT_ASCENDING;
+    };
+
+    if same_property_key(&current.propkey, propkey) && current.direction == SORT_ASCENDING {
+        SORT_DESCENDING
+    } else {
+        SORT_ASCENDING
+    }
+}
+
+fn direction_label(direction: SORTDIRECTION) -> &'static str {
+    if direction == SORT_DESCENDING {
+        "descending"
+    } else {
+        "ascending"
     }
 }

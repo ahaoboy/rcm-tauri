@@ -78,6 +78,10 @@ pub(crate) fn property_key_from_arg(arg: &str) -> Option<PROPERTYKEY> {
     }
 }
 
+pub(crate) fn same_property_key(left: &PROPERTYKEY, right: &PROPERTYKEY) -> bool {
+    left == right
+}
+
 pub(crate) fn target_dir(cwd: &str) -> Result<PathBuf, String> {
     if cwd.trim().is_empty() {
         return Err("No directory specified".into());
@@ -235,12 +239,14 @@ fn percent_decode(input: &str) -> String {
     let mut i = 0;
 
     while i < bytes.len() {
-        if bytes[i] == b'%' && i + 2 < bytes.len()
-            && let (Some(hi), Some(lo)) = (hex_value(bytes[i + 1]), hex_value(bytes[i + 2])) {
-                out.push((hi << 4) | lo);
-                i += 3;
-                continue;
-            }
+        if bytes[i] == b'%'
+            && i + 2 < bytes.len()
+            && let (Some(hi), Some(lo)) = (hex_value(bytes[i + 1]), hex_value(bytes[i + 2]))
+        {
+            out.push((hi << 4) | lo);
+            i += 3;
+            continue;
+        }
 
         out.push(bytes[i]);
         i += 1;
