@@ -1,8 +1,6 @@
 import type { MenuItem, InvokeProps } from '../../types';
 import { UNZIP } from '../../system-commands';
-
-/** Extensions supported by easy-archive's `Fmt::guess`. */
-const ARCHIVE_RE = /\.(zip|tar|tar\.gz|tgz|tar\.xz|txz|tar\.bz2|tbz2|tbz|tar\.zst|tzstd|tzst|7z)$/i;
+import { isZip } from './zip'
 
 /**
  * "Extract here" — visible when all selected files are archives.
@@ -16,7 +14,7 @@ export function unzip(): MenuItem {
     label: 'unzip',
     icon: '📦',
     match: (props: InvokeProps) =>
-      props.files.length > 0 && props.files.every((f) => ARCHIVE_RE.test(f.name)),
+      props.files.length > 0 && props.files.every((f) => isZip(f.path)),
     action: (props: InvokeProps) => ({
       exe: UNZIP,
       args: props.files.map((f) => f.path),
