@@ -26,3 +26,21 @@ export function isZip(path: string): boolean {
   const lower = path.toLowerCase();
   return ARCHIVE_EXTS.some((ext) => lower.endsWith(ext));
 }
+
+// ── Executable detection (Windows) ──────────────────────────────────
+
+/**
+ * Windows file extensions considered executable.
+ * Covers native binaries (.exe, .com, .scr, .pif), installers (.msi, .msix),
+ * and scripts (.bat, .cmd, .ps1, .vbs, .wsf, .psm1, .psd1).
+ */
+export const EXECUTABLE_EXTS: string[] = [
+  '.exe', '.com', '.scr', '.pif',
+  '.msi', '.msix', '.appx',
+];
+
+/** Check whether the path represents a Windows binary executable. */
+export function isExecutable(path: string): boolean {
+  const lower = path.toLowerCase();
+  return EXECUTABLE_EXTS.some((ext) => lower.endsWith(ext));
+}
