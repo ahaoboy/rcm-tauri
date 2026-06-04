@@ -2,12 +2,13 @@
 //! This crate is framework-agnostic and can be used with any frontend.
 
 pub mod clipboard;
+pub mod cmds;
 pub mod config;
 pub mod lang;
 pub mod log;
 pub mod menu_defaults;
 pub mod registry;
-pub mod cmds;
+pub mod runner;
 pub mod types;
 
 // Re-export commonly used types
