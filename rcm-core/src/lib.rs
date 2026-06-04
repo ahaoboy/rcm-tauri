@@ -7,7 +7,7 @@ pub mod lang;
 pub mod log;
 pub mod menu_defaults;
 pub mod registry;
-pub mod system_cmd;
+pub mod cmds;
 pub mod types;
 
 // Re-export commonly used types

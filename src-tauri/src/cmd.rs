@@ -5,7 +5,7 @@
 //! to [`rcm_core::system_cmd::SystemCommand`] for native handling.
 
 use rcm_core::CommandPayload;
-use rcm_core::system_cmd;
+use rcm_core::cmds;
 use tokio::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -28,7 +28,7 @@ pub struct ExecResult {
 #[tauri::command]
 pub async fn execute(cmd: CommandPayload) -> ExecResult {
     // Route @xxx system commands to native handler
-    if system_cmd::is_system_command(&cmd.exe) {
+    if cmds::is_system_command(&cmd.exe) {
         return run_system_cmd(&cmd);
     }
 
@@ -73,7 +73,7 @@ pub async fn execute(cmd: CommandPayload) -> ExecResult {
 #[tauri::command]
 pub async fn spawn_command(cmd: CommandPayload) -> Result<(), String> {
     // Route @xxx system commands to native handler
-    if system_cmd::is_system_command(&cmd.exe) {
+    if cmds::is_system_command(&cmd.exe) {
         let result = run_system_cmd(&cmd);
         return if result.success {
             Ok(())
@@ -93,7 +93,7 @@ pub async fn spawn_command(cmd: CommandPayload) -> Result<(), String> {
 /// Run a `@xxx` system command and convert its result to [`ExecResult`].
 fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
     println!("run_system_cmd: {:?}", cmd);
-    match cmd.exe.parse::<system_cmd::SystemCommand>() {
+    match cmd.exe.parse::<cmds::SystemCommand>() {
         Ok(sys_cmd) => {
             let result = sys_cmd.run(cmd);
             ExecResult {
