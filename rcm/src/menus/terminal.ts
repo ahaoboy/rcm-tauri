@@ -22,7 +22,7 @@ export function terminal(labelKey = 'open.in.wt'): MenuItem {
         props.files.length === 1 && props.files[0].isDir
           ? props.files[0].path
           : props.cwd;
-      return { exe: 'wt', args: ['-d', targetDir], cwd: targetDir, window: 'Show' };
+      return { exe: 'wt', args: ['-d', targetDir], cwd: targetDir, window: 'Hidden' };
     },
   };
 }

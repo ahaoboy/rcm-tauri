@@ -127,25 +127,42 @@ fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
 /// extensionless shell scripts don't cause `CreateProcess` failures.
 fn build_command(cmd: &CommandPayload) -> Command {
     let exe = resolve_exe(&cmd.exe);
-    let mut command = Command::new(&exe);
 
-    if !cmd.args.is_empty() {
-        command.args(&cmd.args);
-    }
+    // When the caller requests a visible window, launch via Windows Terminal
+    // so the user can see the program's stdout/stderr in a dedicated tab.
+    let show_window = matches!(cmd.window.as_str(), "Show" | "Visible" | "Maximized");
 
-    if !cmd.cwd.is_empty() {
-        command.current_dir(&cmd.cwd);
-    }
+    if show_window {
+        // Launch via Windows Terminal + PowerShell so the user can see
+        // the program's output in a dedicated tab that stays open.
+        let target = if cmd.args.is_empty() {
+            format!("\"{}\"", exe)
+        } else {
+            format!("\"{}\" {}", exe, cmd.args.join(" "))
+        };
+        let shell = resolve_shell();
+        let mut command = Command::new("wt");
+        command.args([&shell, "-NoExit", "-Command", &target]);
+        if !cmd.cwd.is_empty() {
+            command.current_dir(&cmd.cwd);
+        }
+        command
+    } else {
+        let mut command = Command::new(&exe);
+        if !cmd.args.is_empty() {
+            command.args(&cmd.args);
+        }
+        if !cmd.cwd.is_empty() {
+            command.current_dir(&cmd.cwd);
+        }
 
-    #[cfg(target_os = "windows")]
-    match cmd.window.as_str() {
-        "Hidden" | "Minimized" => {
+        #[cfg(target_os = "windows")]
+        {
             command.creation_flags(CREATE_NO_WINDOW);
         }
-        _ => {}
-    }
 
-    command
+        command
+    }
 }
 
 /// Resolve a bare command name to a full path via the `which` crate.
@@ -173,4 +190,16 @@ fn resolve_exe(exe: &str) -> String {
             exe.to_string()
         }
     }
+}
+
+/// Resolve the PowerShell executable to use in Windows Terminal.
+///
+/// Tries `pwsh` (PowerShell 7+) first, falling back to the built-in
+/// `powershell` (Windows PowerShell 5.1) which is always available.
+fn resolve_shell() -> String {
+    if let Ok(path) = which::which("pwsh") {
+        return path.to_string_lossy().into_owned();
+    }
+    // `powershell.exe` exists on every Windows 10+ installation.
+    "powershell".to_string()
 }

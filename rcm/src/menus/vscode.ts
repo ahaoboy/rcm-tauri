@@ -10,7 +10,7 @@ export function vscode(labelKey = 'code'): MenuItem {
     key: 'vscode',
     label: t(labelKey),
     icon: '💻',
-    match: ({ files }) => !files.every(f => isZip(f.path) || isExecutable(f.path)),
+    match: ({ files }) => !files.every(f => isZip(f.path) || isExecutable(f.path)) || files.length === 0,
     action: (props: InvokeProps) => {
       const targets = props.files.length
         ? props.files.map(f => f.path)

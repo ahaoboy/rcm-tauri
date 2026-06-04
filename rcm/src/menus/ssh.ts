@@ -74,7 +74,7 @@ export function ssh(): MenuItem {
         action: (_props: InvokeProps) => ({
           exe: 'wt',
           args: ['-w', '0', 'new-tab', '--profile', p.name],
-          window: 'Show',
+          window: 'Hidden',
         }),
       })),
     };
