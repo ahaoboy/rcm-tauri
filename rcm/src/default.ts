@@ -1,10 +1,9 @@
 /**
- * Default Win11 right-click menu composed from built-in configs.
- * Includes custom app integrations (VS Code, mpv, Terminal).
+ * Default menus right-click menu composed from built-in configs.
+ * Includes menus app integrations (VS Code, mpv, Terminal).
  */
 import { Menu } from './menu';
-import * as win11 from './configs/win11';
-import * as custom from './configs/custom';
+import * as menus from './menus';
 
 export default new Menu(
   // ── Main vertical menu groups ───────────────────────────────────
@@ -12,58 +11,58 @@ export default new Menu(
     {
       // Primary actions
       items: [
-        custom.vscode(),
-        win11.open(),
-        win11.openWith(),
-        custom.terminal(),
-        custom.ssh(),
-        custom.unzip(),
-        custom.zip(),
-        win11.edit(),
-        win11.print(),
-        // custom.mpv(),
-        win11.runAsAdmin(),
-        win11.groupBy(),
-        win11.sortBy(),
+        menus.vscode(),
+        menus.open(),
+        menus.openWith(),
+        menus.terminal(),
+        menus.ssh(),
+        menus.unzip(),
+        menus.zip(),
+        menus.edit(),
+        menus.print(),
+        // menus.mpv(),
+        menus.runAsAdmin(),
+        menus.groupBy(),
+        menus.sortBy(),
       ],
     },
     {
       // Pin & send
       items: [
-        win11.pinToStart(),
-        win11.pinToTaskbar(),
-        win11.sendTo(),
+        menus.pinToStart(),
+        menus.pinToTaskbar(),
+        menus.sendTo(),
       ],
     },
     {
       // Clipboard & file ops
       items: [
-        win11.cut(),
-        win11.copy(),
-        win11.copyAs(),
-        win11.paste(),
-        win11.createShortcut(),
-        custom.openFileLocation(),
-        win11.trash(),
-        win11.rename(),
-        win11.selectAll(),
+        menus.cut(),
+        menus.copy(),
+        menus.copyAs(),
+        menus.paste(),
+        menus.createShortcut(),
+        menus.openFileLocation(),
+        menus.trash(),
+        menus.rename(),
+        menus.selectAll(),
       ],
     },
     {
       // Meta
       items: [
-        win11.restorePreviousVersions(),
-        win11.properties(),
+        menus.restorePreviousVersions(),
+        menus.properties(),
       ],
     },
   ],
   // ── Icon ribbon (top bar) ───────────────────────────────────────
   [
-    win11.cut(),
-    win11.copy(),
-    win11.paste(),
-    win11.rename(),
-    win11.share(),
-    win11.trash(),
+    menus.cut(),
+    menus.copy(),
+    menus.paste(),
+    menus.rename(),
+    menus.share(),
+    menus.trash(),
   ],
 );

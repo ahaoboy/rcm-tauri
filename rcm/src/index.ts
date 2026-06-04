@@ -20,13 +20,12 @@ export type {
 export { setLocale, getLocale, t, addMessages } from './i18n';
 
 // ── Configs ────────────────────────────────────────────────────────
-export * as win11 from './configs/win11';
-export * as custom from './configs/custom';
+export * from './menus';
 export { default as defaultMenu } from './default';
 export { default as liteMenu } from './lite';
 
 // ── System commands ────────────────────────────────────────────────
-export * as SysCmd from './system-commands';
+export * from './consts';
 
 // ── Tools / Utilities ──────────────────────────────────────────────
 export * from './tool';

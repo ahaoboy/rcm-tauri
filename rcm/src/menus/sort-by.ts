@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../../types';
-import { t } from '../../i18n';
-import { SORT_BY } from '../../system-commands';
+import type { MenuItem, InvokeProps } from '../types';
+import { t } from '../i18n';
+import { SORT_BY } from '../consts';
 
 const SORT_ITEMS: [string, string, string][] = [
   ['name',          'sort.by.name',          '📋'],

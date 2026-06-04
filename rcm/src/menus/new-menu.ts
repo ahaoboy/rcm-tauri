@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../../types';
-import { t } from '../../i18n';
-import { NEW_FILE, NEW_FOLDER } from '../../system-commands';
+import type { MenuItem, InvokeProps } from '../types';
+import { t } from '../i18n';
+import { NEW_FILE, NEW_FOLDER } from '../consts';
 
 const NEW_ITEMS: [string, string, string, string, string][] = [
   ['new-folder', 'new.folder',          '📁', NEW_FOLDER, ''],

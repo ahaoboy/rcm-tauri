@@ -1,4 +1,4 @@
-import type { MenuItem, InvokeProps } from '../../types';
+import type { MenuItem, InvokeProps } from '../types';
 // @ts-ignore — rquickjs builtins
 import * as fs from 'fs';
 // @ts-ignore

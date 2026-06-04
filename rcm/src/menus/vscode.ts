@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../../types';
-import { t } from '../../i18n';
-import { isZip } from '../../tool';
+import type { MenuItem, InvokeProps } from '../types';
+import { t } from '../i18n';
+import { isZip } from '../tool';
 
 /**
  * "Open with VS Code" menu item.

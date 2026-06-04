@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from '../../types';
-import { t } from '../../i18n';
+import type { MenuItem, InvokeProps } from '../types';
+import { t } from '../i18n';
 
 /**
  * "Open with FSV" menu item.
