@@ -1,6 +1,6 @@
 import type { MenuItem, InvokeProps } from '../../types';
 import { UNZIP } from '../../system-commands';
-import { isZip } from './zip'
+import { isZip } from '../../tool';
 
 /**
  * "Extract here" — visible when all selected files are archives.

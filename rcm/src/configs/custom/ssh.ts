@@ -66,6 +66,7 @@ export function ssh(): MenuItem {
       key: 'ssh',
       label: 'SSH',
       icon: '🖥️',
+      match: ({ files }) => files.length === 0, // only show on background click
       items: profiles.map((p) => ({
         key: `ssh-${p.name}`,
         label: p.name,

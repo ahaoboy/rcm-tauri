@@ -27,3 +27,6 @@ export { default as liteMenu } from './lite';
 
 // ── System commands ────────────────────────────────────────────────
 export * as SysCmd from './system-commands';
+
+// ── Tools / Utilities ──────────────────────────────────────────────
+export * from './tool';
