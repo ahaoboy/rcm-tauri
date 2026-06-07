@@ -27,7 +27,7 @@ fn should_ignore(event: &rcm_com::ContextMenuInfo) -> Option<String> {
     // points to wt.exe, and carries Menu flags=2048.
     if event.class == "Windows.UI.Core.CoreWindow"
         && event.files.iter().any(|f| f.ends_with("wt.exe"))
-        && event.event.flags() == 2048 && event.hwnd == 67990
+        && event.event.flags() == 2048
     {
         return Some(format!(
             "Windows Terminal (CoreWindow + wt.exe, flags=2048, hwnd={})",
