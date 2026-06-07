@@ -9,32 +9,21 @@ use rcm_core::{config, log};
 
 /// Check whether an event should be ignored (not trigger the context menu).
 /// Returns `Some(reason)` if the event should be skipped, `None` otherwise.
+/// Filters are read from `rmc.config.json` at startup.
 fn should_ignore(event: &rcm_com::ContextMenuInfo) -> Option<String> {
-    // Filter: ignore "Open With" dialog activation events.
-    // When PowerShell invokes InvokeVerb('openas'), the "Open With"
-    // picker window triggers a spurious Menu{flags:16} event from a
-    // Chrome_WidgetWin_0 host window.
-    if event.class.starts_with("Chrome_WidgetWin_") && event.event.flags() == 16 {
-        return Some(format!(
-            "OpenWith dialog (Chrome_WidgetWin_0, flags=16, hwnd={})",
-            event.hwnd
-        ));
+    for rule in rcm_core::config::filters() {
+        if rule.matches(event) {
+            let reason = if rule.reason.is_empty() {
+                format!(
+                    "class_re={:?} file_eq={:?} flags_eq={:?}",
+                    rule.class, rule.file, rule.flags
+                )
+            } else {
+                format!("{} (hwnd={})", rule.reason, event.hwnd)
+            };
+            return Some(reason);
+        }
     }
-
-    // Filter: ignore Windows Terminal (wt.exe) windows.
-    // When Windows Terminal launches an SSH session via a wt profile,
-    // the right-click event carries class="Windows.UI.Core.CoreWindow",
-    // points to wt.exe, and carries Menu flags=2048.
-    if event.class == "Windows.UI.Core.CoreWindow"
-        && event.files.iter().any(|f| f.ends_with("wt.exe"))
-        && event.event.flags() == 2048
-    {
-        return Some(format!(
-            "Windows Terminal (CoreWindow + wt.exe, flags=2048, hwnd={})",
-            event.hwnd
-        ));
-    }
-
     None
 }
 

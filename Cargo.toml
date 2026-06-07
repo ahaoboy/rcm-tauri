@@ -20,6 +20,7 @@ winreg = "0.56"
 anyhow = "1"
 tokio = "1"
 clap = { version = "4", features = ["derive"] }
+regex = "1"
 
 # ── Windows APIs ──────────────────────────────────────────────────────
 # pin 0.61
