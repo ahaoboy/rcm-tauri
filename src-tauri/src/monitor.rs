@@ -7,6 +7,37 @@ use crate::menu_builder;
 use crate::menu_manager::MenuManager;
 use rcm_core::{config, log};
 
+/// Check whether an event should be ignored (not trigger the context menu).
+/// Returns `Some(reason)` if the event should be skipped, `None` otherwise.
+fn should_ignore(event: &rcm_com::ContextMenuInfo) -> Option<String> {
+    // Filter: ignore "Open With" dialog activation events.
+    // When PowerShell invokes InvokeVerb('openas'), the "Open With"
+    // picker window triggers a spurious Menu{flags:16} event from a
+    // Chrome_WidgetWin_0 host window.
+    if event.class.starts_with("Chrome_WidgetWin_") && event.event.flags() == 16 {
+        return Some(format!(
+            "OpenWith dialog (Chrome_WidgetWin_0, flags=16, hwnd={})",
+            event.hwnd
+        ));
+    }
+
+    // Filter: ignore Windows Terminal (wt.exe) windows.
+    // When Windows Terminal launches an SSH session via a wt profile,
+    // the right-click event carries class="Windows.UI.Core.CoreWindow",
+    // points to wt.exe, and carries Menu flags=2048.
+    if event.class == "Windows.UI.Core.CoreWindow"
+        && event.files.iter().any(|f| f.ends_with("wt.exe"))
+        && event.event.flags() == 2048 && event.hwnd == 67990
+    {
+        return Some(format!(
+            "Windows Terminal (CoreWindow + wt.exe, flags=2048, hwnd={})",
+            event.hwnd
+        ));
+    }
+
+    None
+}
+
 /// Start listening for external right-click events from the rcm_com pipe.
 /// This runs in a background task and never returns.
 pub fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHideEpoch) {
@@ -20,15 +51,8 @@ pub fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: Auto
             );
             println!("{:?}", event);
 
-            // Filter: ignore "Open With" dialog activation events.
-            // When PowerShell invokes InvokeVerb('openas'), the "Open With"
-            // picker window triggers a spurious Menu{flags:16} event from a
-            // Chrome_WidgetWin_0 host window.
-            if event.class.starts_with("Chrome_WidgetWin_") && event.event.flags() == 16 {
-                log::info(
-                    "Rust::monitor",
-                    "filtered: OpenWith dialog (Chrome_WidgetWin_0, flags=16)",
-                );
+            if let Some(reason) = should_ignore(&event) {
+                log::info("Rust::monitor", &format!("filtered: {reason}"));
                 return;
             }
 
