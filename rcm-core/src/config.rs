@@ -61,12 +61,15 @@ fn default_filters() -> Vec<FilterRule> {
             flags: Some(16),
             reason: "OpenWith dialog (Chrome_WidgetWin_, flags=16)".into(),
         },
-        // Windows Terminal / VS Code CoreWindow spurious events
+        // UWP system UI (taskbar jump lists, etc.) — all events from
+        // Windows.UI.Core.CoreWindow are spurious; flags vary
+        // (observed: 2048=CMF_OPTIMIZEFORINVOKE, 32770=CMF_VERBSONLY|0x8000)
+        // so we match any flags by leaving it None.
         FilterRule {
             class: r"^Windows\.UI\.Core\.CoreWindow$".into(),
             file: String::new(),
-            flags: Some(2048),
-            reason: "CoreWindow spurious Menu (flags=2048)".into(),
+            flags: None,
+            reason: "CoreWindow (taskbar jump list / UWP system UI)".into(),
         },
     ]
 }
