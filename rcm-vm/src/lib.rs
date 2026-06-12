@@ -125,16 +125,13 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
     #[cfg(feature = "llrt")]
     let resolver = (BuiltinResolver::default()
         .with_module("rcm")
-        .with_module("rcm-sys")
         .with_module("fs")
         .with_module("path")
         .with_module("url")
         .with_module("os"),);
 
     #[cfg(not(feature = "llrt"))]
-    let resolver = (BuiltinResolver::default()
-        .with_module("rcm")
-        .with_module("rcm-sys"),);
+    let resolver = (BuiltinResolver::default().with_module("rcm"));
 
     #[cfg(feature = "llrt")]
     let loader = (
@@ -163,9 +160,6 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
             global
                 .set("print", Function::new(ctx.clone(), print))
                 .unwrap();
-
-            // Declare our native OS binding virtual module explicitly into context natively beforehand
-            Module::declare_def::<RcmSysModule, _>(ctx.clone(), "rcm-sys")?;
 
             // Declare the rcm index.js module
             let module = Module::declare(ctx.clone(), "rcm", LIB_MODULE)?;

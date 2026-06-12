@@ -28,6 +28,15 @@ function App() {
     document.documentElement.classList.add(`rcm-${theme}`);
   }, [theme]);
 
+  // ── Disable browser native right-click menu in release mode ──
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      e.preventDefault();
+    };
+    document.addEventListener("contextmenu", handler);
+    return () => document.removeEventListener("contextmenu", handler);
+  }, []);
+
   useEffect(() => {
     let cleanupFns: (() => void)[] = [];
     const win = getCurrentWindow();

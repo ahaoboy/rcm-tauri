@@ -23,8 +23,7 @@
   "author": "ahaoboy <504595380@qq.com> (https://github.com/ahaoboy)",
   "license": "MIT",
   "dependencies": {
-    "esbuild": "0.27.4",
-    "rcm-sys": "workspace:*",
+    "esbuild": "0.28.1",
     "type-fest": "5.4.4",
     "typescript": "6.0.2"
   },
