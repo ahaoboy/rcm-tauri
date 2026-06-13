@@ -1,5 +1,5 @@
 {
-  "name": "rcm",
+  "name": "rcm-menu",
   "version": "0.1.0",
   "type": "module",
   "homepage": "https://github.com/ahaoboy/rcm",
@@ -9,7 +9,7 @@
     "package.json"
   ],
   "sideEffects": false,
-  "description": "rcm",
+  "description": "rcm-menu",
   "main": "dist/index.js",
   "types": "./src/index.ts",
   "scripts": {
@@ -28,7 +28,6 @@
     "typescript": "6.0.2"
   },
   "devDependencies": {
-    "rcm": "workspace:*",
     "vitest": "^4.1.7"
   }
 }

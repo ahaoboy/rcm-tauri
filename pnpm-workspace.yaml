@@ -1,5 +1,5 @@
 packages:
-  - 'rcm'
+  - 'rcm-menu'
   - 'src'
 allowBuilds:
   esbuild: true
