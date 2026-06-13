@@ -9,7 +9,7 @@ use rcm_core::{config, log};
 
 /// Check whether an event should be ignored (not trigger the context menu).
 /// Returns `Some(reason)` if the event should be skipped, `None` otherwise.
-/// Filters are read from `rmc.config.json` at startup.
+/// Filters are read from `rcm.config.json` at startup.
 fn should_ignore(event: &rcm_com::ContextMenuInfo) -> Option<String> {
     for rule in rcm_core::config::filters() {
         if rule.matches(event) {

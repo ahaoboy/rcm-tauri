@@ -22,7 +22,7 @@ tokio = "1"
 clap = { version = "4", features = ["derive"] }
 regex = "1"
 ureq = "3"
-
+autorun = { version = "0.1", git = "https://github.com/ahaoboy/autorun", default-features = false }
 # https://github.com/time-rs/time/issues/783
 time = "=0.3.47"
 

@@ -21,3 +21,4 @@ easy-archive = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true, features = ["process"] }
 ureq = { workspace = true }
+autorun = { workspace = true }

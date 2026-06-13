@@ -1,4 +1,4 @@
-//! Persistent runtime configuration stored as `rmc.config.json`
+//! Persistent runtime configuration stored as `rcm.config.json`
 //! next to the executable.
 //!
 //! On startup the file is read; if it doesn't exist it is created
@@ -130,7 +130,7 @@ static REMOTE_URL: Mutex<String> = Mutex::new(String::new());
 // Init — called once at startup
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Load config from `<exe_dir>/rmc.config.json`, or create it with defaults.
+/// Load config from `<exe_dir>/rcm.config.json`, or create it with defaults.
 pub fn init() {
     let path = config_path();
 
@@ -216,7 +216,7 @@ pub fn reset() {
 
 fn config_path() -> PathBuf {
     let mut p = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-    p.set_file_name("rmc.config.json");
+    p.set_file_name("rcm.config.json");
     p
 }
 
