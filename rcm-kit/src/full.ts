@@ -1,4 +1,5 @@
 import {
+  newMenu,
   open,
   print,
   copy,
@@ -35,6 +36,7 @@ export default new Menu(
     {
       // Primary actions
       items: [
+        newMenu(),
         vscode(),
         open(),
         openWith(),

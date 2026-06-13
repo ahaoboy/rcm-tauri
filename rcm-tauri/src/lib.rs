@@ -47,7 +47,7 @@ async fn create_window(app: tauri::AppHandle, label: String) {
 // Re-export menu builders for external consumers
 // ═══════════════════════════════════════════════════════════════════════════
 
-pub use menu_builder::{rcm, rcm_from_info};
+pub use menu_builder::{  rcm_from_info};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
@@ -71,7 +71,6 @@ pub fn run() {
         .setup(move |app| {
             config::init();
             tray::setup_tray(app)?;
-            pipe::start_pipe_server(app.app_handle().clone());
 
             let epoch = auto_hide_epoch.clone();
 

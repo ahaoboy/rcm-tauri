@@ -88,7 +88,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     )?;
 
     // ── Action items ─────────────────────────────────────────────────
-    let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
+    let register_i = CheckMenuItem::with_id(
+        app,
+        REGISTER_ID,
+        REGISTER_TEXT,
+        true,
+        rcm_com::cmd::status().map(|s| s.is_valid()).unwrap_or(false),
+        None::<&str>,
+    )?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
     let icons_i = CheckMenuItem::with_id(
         app,
@@ -124,6 +131,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
     let classic_clone = classic_i.clone();
+    let register_clone = register_i.clone();
     let dev_clone = dev_i.clone();
     let icons_clone = icons_i.clone();
     let autostart_clone = autostart_i.clone();
@@ -172,9 +180,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         items.push(&sep5);
     }
 
-    items.push(&apply_i);
     items.push(&sep7);
     items.push(&reset_i);
+    items.push(&apply_i);
     items.push(&quit_i);
 
     let menu = Menu::with_items(app, &items)?;
@@ -208,9 +216,17 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 // ── Register / Unregister shell extension ────────
                 REGISTER_ID => {
                     let _ = rcm_com::cmd::register();
+                    let ok = rcm_com::cmd::status()
+                        .map(|s| s.is_valid())
+                        .unwrap_or(false);
+                    let _ = register_clone.set_checked(ok);
                 }
                 UNREGISTER_ID => {
                     let _ = rcm_com::cmd::unregister();
+                    let ok = rcm_com::cmd::status()
+                        .map(|s| s.is_valid())
+                        .unwrap_or(false);
+                    let _ = register_clone.set_checked(ok);
                 }
 
                 // ── Toggle icons ────────────────────────────────

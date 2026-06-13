@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
-use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{AppHandle, Emitter};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::windows::named_pipe::{ClientOptions, ServerOptions};
+use tokio::io::AsyncWriteExt;
+use tokio::net::windows::named_pipe::ClientOptions;
 
 pub const PIPE_NAME: &str = r"\\.\pipe\rcm_pipe_server";
 
@@ -53,55 +51,4 @@ pub fn check_client_cli() -> bool {
         return true;
     }
     false
-}
-
-// Server logic: Async background tokio daemon
-pub fn start_pipe_server(app_handle: AppHandle) {
-    tauri::async_runtime::spawn(async move {
-        let mut server_options = ServerOptions::new();
-        server_options.first_pipe_instance(true);
-
-        let mut server = match server_options.create(PIPE_NAME) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Failed to create IPC pipe server: {}", e);
-                return;
-            }
-        };
-
-        loop {
-            // Wait for client to hook cleanly into the IPC stream
-            if server.connect().await.is_ok() {
-                let mut buf = vec![0; 4096];
-                if let Ok(size) = server.read(&mut buf).await
-                    && let Ok(msg) = std::str::from_utf8(&buf[..size])
-                {
-                    // Parse JSON payloads locally
-                    for line in msg.lines() {
-                        if let Ok(payload) = serde_json::from_str::<PipePayload>(line.trim()) {
-                            let timestamp = SystemTime::now()
-                                .duration_since(UNIX_EPOCH)
-                                .map(|d| d.as_millis())
-                                .unwrap_or(0);
-
-                            let menu = crate::rcm().ok();
-
-                            let event_payload = serde_json::json!({
-                                "event": "ButtonRelease",
-                                "button": "Right",
-                                "timestamp": timestamp,
-                                "menu": menu,
-                                "x": payload.x,
-                                "y": payload.y
-                            });
-
-                            let _ = app_handle.emit("input-event", event_payload);
-                        }
-                    }
-                }
-            }
-            // Disconnect unbinds current client allowing identical instance hook next cycle
-            server.disconnect().ok();
-        }
-    });
 }
