@@ -6,6 +6,13 @@
 
 A customizable Windows right-click context menu, built with Tauri + React (with an experimental [Slint](https://slint.dev/) backend).
 
+
+ 
+
+https://github.com/user-attachments/assets/0bc4867c-07df-4bf9-b4e6-fdc71a6c98d4
+
+
+
 ## ⚠️ Important Notice
 
 **This project is under active development and is NOT production-ready.**
@@ -50,23 +57,4 @@ After installation, the RCM icon appears in your system tray. Follow these steps
 4. **Apply the changes**
    - Click **Apply** to restart Windows Explorer and activate the shell extension.
    - Your right-click menu should now use the RCM style.
-
-### Tray Menu Reference
-
-| Menu Item            | Type   | Description                                     |
-| -------------------- | ------ | ----------------------------------------------- |
-| **Win11**            | Radio  | Windows 11 compact menu style                   |
-| **Classic**          | Radio  | Windows 10 classic expanded menu style          |
-| **Enable / Disable** | Check  | Toggle the custom context menu on/off           |
-| **Register**         | Button | Register `rcm_com.dll` shell extension          |
-| **Unregister**       | Button | Unregister the shell extension                  |
-| **DumpEnv**          | Button | Dump environment variables to `<exe>.env`       |
-| **Lite**             | Radio  | Lite menu mode (minimal items)                  |
-| **Full**             | Radio  | Full menu mode (all items)                      |
-| **Icons**            | Check  | Show/hide the icon ribbon in the menu           |
-| **Dev**              | Check  | Toggle dev mode (menu stays open on focus loss) |
-| **Log**              | Check  | Toggle file logging to `<exe>.log`              |
-| **Startup**          | Check  | Toggle auto-start with Windows                  |
-| **Apply**            | Button | Restart Windows Explorer to apply changes       |
-| **Reset**            | Button | Reset all config and menu files to defaults     |
-| **Quit**             | Button | Exit the application                            |
+   [rcm-tauri.webm](https://github.com/user-attachments/assets/2c2c3a88-bb35-46d6-bea3-8d28bab55541)
