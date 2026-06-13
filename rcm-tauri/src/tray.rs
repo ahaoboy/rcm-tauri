@@ -47,18 +47,109 @@ pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
 pub const UPDATE_TEXT: &str = "Update";
 
-// ── Helpers ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════════
 
-/// Determine the active menu style using rcm-reg's `MenuStyle`.
-fn current_is_win11() -> bool {
+fn is_win11() -> bool {
     MenuStyle::current() == MenuStyle::Windows11
 }
 
-/// Synchronise both style CheckMenuItems so only one is checked at a time.
+fn register_status() -> bool {
+    rcm_com::cmd::status()
+        .map(|s| s.is_valid())
+        .unwrap_or(false)
+}
+
 fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &CheckMenuItem<R>) {
-    let is_win11 = current_is_win11();
-    let _ = win11.set_checked(is_win11);
-    let _ = classic.set_checked(!is_win11);
+    let win11_active = is_win11();
+    let _ = win11.set_checked(win11_active);
+    let _ = classic.set_checked(!win11_active);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Event handlers
+// ═══════════════════════════════════════════════════════════════════════════
+
+fn handle_style_switch<R: tauri::Runtime>(
+    style: MenuStyle,
+    win11: &CheckMenuItem<R>,
+    classic: &CheckMenuItem<R>,
+) {
+    if let Err(e) = style.set() {
+        log::error("Tray", &format!("set {style:?} style failed: {e}"));
+    }
+    sync_style_checks(win11, classic);
+}
+
+fn handle_register_toggle<R: tauri::Runtime>(register: bool, item: &CheckMenuItem<R>) {
+    if register {
+        let _ = rcm_com::cmd::register();
+    } else {
+        let _ = rcm_com::cmd::unregister();
+    }
+    let _ = item.set_checked(register_status());
+}
+
+fn handle_icons_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
+    let val = !config::is_icons();
+    config::set_icons(val);
+    let _ = item.set_checked(val);
+    let _ = app.emit("icons-changed", val);
+}
+
+fn handle_dev_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
+    let val = !config::is_dev();
+    config::set_dev(val);
+    let _ = item.set_checked(val);
+    let _ = app.emit("dev-mode", val);
+}
+
+fn handle_autostart_toggle<R: tauri::Runtime>(item: &CheckMenuItem<R>) {
+    let (ok, enabled) = if registry::is_autostart_enabled() {
+        (registry::disable_autostart().is_ok(), false)
+    } else {
+        (registry::enable_autostart().is_ok(), true)
+    };
+    if ok {
+        let _ = item.set_checked(enabled);
+        log::info(
+            "Tray",
+            if enabled {
+                "autostart enabled"
+            } else {
+                "autostart disabled"
+            },
+        );
+    } else {
+        log::error(
+            "Tray",
+            if enabled {
+                "enable autostart failed"
+            } else {
+                "disable autostart failed"
+            },
+        );
+    }
+}
+
+fn handle_update() {
+    match rcm_core::config::remote_url() {
+        Some(url) => {
+            log::info("Tray", &format!("updating menu from {url}"));
+            match rcm_core::menu::download_menu(&url) {
+                Ok(path) => log::info("Tray", &format!("update saved to {path}")),
+                Err(e) => log::error("Tray", &format!("update failed: {e}")),
+            }
+        }
+        None => log::error("Tray", "update: no remote URL configured"),
+    }
+}
+
+fn handle_apply() {
+    if let Err(e) = rcm_reg::restart_explorer(Duration::from_secs(3)) {
+        log::error("Tray", &format!("restart Explorer failed: {e}"));
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -66,34 +157,30 @@ fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &Chec
 // ═══════════════════════════════════════════════════════════════════════════
 
 pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
-    // ── Style items ──────────────────────────────────────────────────
-    let is_win11 = current_is_win11();
+    // ── Create menu items ────────────────────────────────────────────
 
     let win11_i = CheckMenuItem::with_id(
         app,
         WIN11_STYLE_ID,
         WIN11_TEXT,
         true,
-        is_win11,
+        is_win11(),
         None::<&str>,
     )?;
-
     let classic_i = CheckMenuItem::with_id(
         app,
         CLASSIC_STYLE_ID,
         CLASSIC_TEXT,
         true,
-        !is_win11,
+        !is_win11(),
         None::<&str>,
     )?;
-
-    // ── Action items ─────────────────────────────────────────────────
     let register_i = CheckMenuItem::with_id(
         app,
         REGISTER_ID,
         REGISTER_TEXT,
         true,
-        rcm_com::cmd::status().map(|s| s.is_valid()).unwrap_or(false),
+        register_status(),
         None::<&str>,
     )?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
@@ -120,15 +207,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
-    let sep1 = PredefinedMenuItem::separator(app)?;
-    let sep2 = PredefinedMenuItem::separator(app)?;
-    let sep3 = PredefinedMenuItem::separator(app)?;
-    let sep4 = PredefinedMenuItem::separator(app)?;
-    let sep5 = PredefinedMenuItem::separator(app)?;
-    let sep6 = PredefinedMenuItem::separator(app)?;
-    let sep7 = PredefinedMenuItem::separator(app)?;
+    // ── Clones for event handler ─────────────────────────────────────
 
-    // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
     let classic_clone = classic_i.clone();
     let register_clone = register_i.clone();
@@ -136,169 +216,74 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let icons_clone = icons_i.clone();
     let autostart_clone = autostart_i.clone();
 
-    // ── Build menu ───────────────────────────────────────────────────
-    // Layout:
-    //   ✓ Win11 / Classic
+    // ── Build menu (3 groups) ────────────────────────────────────────
+    //
+    //   ✓ Win11 / Classic          ← Style
     //   ─────────
-    //     Register / Unregister
-    //   ─────────
-    //   ✓ Icons
-    //   ─────────
-    //   ✓ Dev Mode        (debug only)
-    //   ─────────
+    //     Register / Unregister    ← Preferences
+    //   ✓ Icons  (debug)
+    //   ✓ Dev    (debug)
     //   ✓ Auto Start
     //   ─────────
-    //     Update          (only if remote_url is set in config)
-    //   ─────────
-    //     Apply / Reset / Quit
+    //     Update  (conditional)    ← System
+    //     Reset / Apply / Quit
 
+    let is_debug = cfg!(debug_assertions);
     let has_remote = rcm_core::config::remote_url().is_some();
 
-    let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
-        &win11_i,
-        &classic_i,
-        &sep1,
-        &register_i,
-        &unregister_i,
-        &sep2,
-        &icons_i,
-    ];
+    let _sep_prefs = PredefinedMenuItem::separator(app)?;
+    let _sep_sys = PredefinedMenuItem::separator(app)?;
 
-    if cfg!(debug_assertions) {
-        items.push(&sep3);
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = Vec::new();
+
+    // Group 1: Style
+    items.push(&win11_i);
+    items.push(&classic_i);
+
+    // Group 2: Preferences
+    items.push(&_sep_prefs);
+    items.push(&register_i);
+    items.push(&unregister_i);
+    if is_debug {
+        items.push(&icons_i);
         items.push(&dev_i);
     }
-
-    items.push(&sep4);
     items.push(&autostart_i);
 
+    // Group 3: System
+    items.push(&_sep_sys);
     if has_remote {
-        items.push(&sep5);
         items.push(&update_i);
-        items.push(&sep6);
-    } else {
-        items.push(&sep5);
     }
-
-    items.push(&sep7);
     items.push(&reset_i);
     items.push(&apply_i);
     items.push(&quit_i);
 
     let menu = Menu::with_items(app, &items)?;
 
+    // ── Build tray ──────────────────────────────────────────────────
+
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
         .show_menu_on_left_click(true)
-        .on_menu_event(move |app, event| {
-            match event.id().as_ref() {
-                QUIT_ID => {
-                    app.exit(0);
-                }
-
-                // ── Style switching ───────────────────────────────
-                WIN11_STYLE_ID => {
-                    // Switch to Windows 11 compact menu
-                    if let Err(e) = MenuStyle::Windows11.set() {
-                        log::error("Tray", &format!("set Win11 style failed: {e}"));
-                    }
-                    sync_style_checks(&win11_clone, &classic_clone);
-                }
-                CLASSIC_STYLE_ID => {
-                    // Switch to classic Windows 10 expanded menu
-                    if let Err(e) = MenuStyle::Classic.set() {
-                        log::error("Tray", &format!("set Classic style failed: {e}"));
-                    }
-                    sync_style_checks(&win11_clone, &classic_clone);
-                }
-
-                // ── Register / Unregister shell extension ────────
-                REGISTER_ID => {
-                    let _ = rcm_com::cmd::register();
-                    let ok = rcm_com::cmd::status()
-                        .map(|s| s.is_valid())
-                        .unwrap_or(false);
-                    let _ = register_clone.set_checked(ok);
-                }
-                UNREGISTER_ID => {
-                    let _ = rcm_com::cmd::unregister();
-                    let ok = rcm_com::cmd::status()
-                        .map(|s| s.is_valid())
-                        .unwrap_or(false);
-                    let _ = register_clone.set_checked(ok);
-                }
-
-                // ── Toggle icons ────────────────────────────────
-                ICONS_ID => {
-                    let new_val = !config::is_icons();
-                    config::set_icons(new_val);
-                    let _ = icons_clone.set_checked(new_val);
-                    match app.emit("icons-changed", new_val) {
-                        Ok(()) => println!("icons-changed: emitted {new_val}"),
-                        Err(e) => eprintln!("icons-changed: emit failed: {e}"),
-                    }
-                }
-
-                // ── Toggle dev mode ──────────────────────────────
-                DEV_ID => {
-                    let new_val = !config::is_dev();
-                    config::set_dev(new_val);
-                    let _ = dev_clone.set_checked(new_val);
-                    let _ = app.emit("dev-mode", new_val);
-                }
-
-                // ── Toggle autostart ──────────────────────────
-                AUTOSTART_ID => {
-                    if registry::is_autostart_enabled() {
-                        match registry::disable_autostart() {
-                            Ok(()) => {
-                                let _ = autostart_clone.set_checked(false);
-                                log::info("Tray", "autostart disabled");
-                            }
-                            Err(e) => log::error("Tray", &format!("disable autostart failed: {e}")),
-                        }
-                    } else {
-                        match registry::enable_autostart() {
-                            Ok(()) => {
-                                let _ = autostart_clone.set_checked(true);
-                                log::info("Tray", "autostart enabled");
-                            }
-                            Err(e) => log::error("Tray", &format!("enable autostart failed: {e}")),
-                        }
-                    }
-                }
-
-                // ── Apply (restart Explorer) ─────────────────────
-                APPLY_ID => {
-                    if let Err(e) = rcm_reg::restart_explorer(Duration::from_secs(3)) {
-                        log::error("Tray", &format!("restart Explorer failed: {e}"));
-                    }
-                }
-
-                // ── Update menu from remote URL ─────────────────
-                UPDATE_ID => {
-                    match rcm_core::config::remote_url() {
-                        Some(url) => {
-                            log::info("Tray", &format!("updating menu from {url}"));
-                            match rcm_core::menu::download_menu(&url) {
-                                Ok(path) => log::info("Tray", &format!("update saved to {path}")),
-                                Err(e) => log::error("Tray", &format!("update failed: {e}")),
-                            }
-                        }
-                        None => {
-                            log::error("Tray", "update: no remote URL configured");
-                        }
-                    }
-                }
-
-                // ── Reset to defaults ────────────────────────────
-                RESET_ID => {
-                    config::reset();
-                }
-
-                _ => {}
+        .on_menu_event(move |app, event| match event.id().as_ref() {
+            QUIT_ID => app.exit(0),
+            WIN11_STYLE_ID => {
+                handle_style_switch(MenuStyle::Windows11, &win11_clone, &classic_clone)
             }
+            CLASSIC_STYLE_ID => {
+                handle_style_switch(MenuStyle::Classic, &win11_clone, &classic_clone)
+            }
+            REGISTER_ID => handle_register_toggle(true, &register_clone),
+            UNREGISTER_ID => handle_register_toggle(false, &register_clone),
+            ICONS_ID => handle_icons_toggle(&app, &icons_clone),
+            DEV_ID => handle_dev_toggle(&app, &dev_clone),
+            AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
+            APPLY_ID => handle_apply(),
+            UPDATE_ID => handle_update(),
+            RESET_ID => config::reset(),
+            _ => {}
         })
         .build(app)?;
 

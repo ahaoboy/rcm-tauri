@@ -16,7 +16,6 @@ import {
   pinToTaskbar,
   properties,
   rename,
-  restorePreviousVersions,
   runAsAdmin,
   selectAll,
   sendTo,
@@ -71,7 +70,7 @@ export default new Menu(
     },
     {
       // Meta
-      items: [restorePreviousVersions(), properties()],
+      items: [properties()],
     },
   ],
   // ── Icon ribbon (top bar) ───────────────────────────────────────
