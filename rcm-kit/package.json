@@ -9,6 +9,7 @@
   "files": [
     "dist",
     "readme.md",
+    "src",
     "package.json"
   ],
   "type": "module",
@@ -29,6 +30,6 @@
   },
   "devDependencies": {
     "rcm-kit": "workspace:*",
-    "vitest": "4.1.7"
+    "vitest": "4.1.8"
   }
 }
