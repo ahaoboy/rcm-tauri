@@ -12,6 +12,7 @@ llrt = ["dep:llrt_modules"]
 
 [dependencies]
 rcm-core = { path = "../rcm-core" }
+rcm-com = { workspace = true }
 rquickjs = { workspace = true, features = ["loader"] }
 serde = { workspace = true }
 serde_json = { workspace = true }

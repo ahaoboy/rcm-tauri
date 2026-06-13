@@ -3,7 +3,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 use crate::events::{AutoHideEpoch, MenuArc};
-use crate::menu_builder;
 use crate::menu_manager::MenuManager;
 use rcm_core::{config, log};
 
@@ -47,7 +46,7 @@ pub fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: Auto
 
             match &event.event {
                 rcm_com::Event::Menu { .. } => {
-                    let menu_data = match menu_builder::rcm_from_info(&event) {
+                    let menu_data = match rcm_vm::from_info(&event) {
                         Ok(m) => m,
                         Err(e) => {
                             log::error("Rust::monitor", &format!("rcm error: {:?}", e));

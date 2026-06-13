@@ -4,16 +4,13 @@
 
 pub mod cmd;
 pub mod events;
-pub mod menu_builder;
 pub mod menu_manager;
 pub mod monitor;
 pub mod pipe;
 pub mod tray;
 
-use crate::events::{submenu_label, AutoHideEpoch, ConfigPayload, MenuArc, MAX_SUBMENU_DEPTH};
-use crate::events::{
-    MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload,
-};
+use crate::events::{AutoHideEpoch, ConfigPayload, MAX_SUBMENU_DEPTH, MenuArc, submenu_label};
+use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
 use crate::menu_manager::MenuManager;
 use rcm_core::{config, log};
 use std::sync::atomic::AtomicU64;
@@ -42,12 +39,6 @@ async fn create_window(app: tauri::AppHandle, label: String) {
     };
     mgr.create_submenu_window(&label);
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Re-export menu builders for external consumers
-// ═══════════════════════════════════════════════════════════════════════════
-
-pub use menu_builder::{  rcm_from_info};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
