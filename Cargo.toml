@@ -73,7 +73,7 @@ easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = [
 
 # rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false, version = "0.12" }
 rquickjs = { default-features = false, version = "0.12" }
-llrt_modules = { git = "https://github.com/awslabs/llrt" }
+llrt_modules = { git = "https://github.com/awslabs/llrt", version = "0.8.1-beta" }
 
 # [patch."https://github.com/DelSkayn/rquickjs.git"]
 # rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
