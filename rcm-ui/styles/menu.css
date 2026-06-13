@@ -5,112 +5,104 @@
 
 /* ── Design tokens (Win11 light) ────────────────────────────────────── */
 :root {
-  --rcm-font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --rcm-font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --rcm-font-size: 13px;
   --rcm-font-size-sm: 12px;
 
   /* Solid surface — always legible */
-  --rcm-bg:              #f3f3f3;
-  --rcm-border:          rgba(0, 0, 0, 0.08);
-  --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
+  --rcm-bg: #f3f3f3;
+  --rcm-border: rgba(0, 0, 0, 0.08);
+  --rcm-top-highlight: rgba(255, 255, 255, 0.55);
 
   /* Shadow: layered, soft — Win11 Fluent */
   --rcm-shadow:
-    0 0.3px 0.6px rgba(0, 0, 0, 0.028),
-    0 1.2px 2.4px rgba(0, 0, 0, 0.042),
-    0 4px 9px rgba(0, 0, 0, 0.07),
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    0 0.3px 0.6px rgba(0, 0, 0, 0.028), 0 1.2px 2.4px rgba(0, 0, 0, 0.042),
+    0 4px 9px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
 
-  --rcm-radius:          9px;
-  --rcm-padding:         2px;
+  --rcm-radius: 9px;
+  --rcm-padding: 2px;
 
-  --rcm-item-hover:      rgba(0, 0, 0, 0.038);
-  --rcm-item-active:     rgba(0, 0, 0, 0.065);
-  --rcm-item-height:     30px;
-  --rcm-item-radius:     6px;
+  --rcm-item-hover: rgba(0, 0, 0, 0.038);
+  --rcm-item-active: rgba(0, 0, 0, 0.065);
+  --rcm-item-height: 30px;
+  --rcm-item-radius: 6px;
 
-  --rcm-text:            #1b1b1b;
-  --rcm-text-disabled:   rgba(27, 27, 27, 0.36);
-  --rcm-text-shortcut:   rgba(27, 27, 27, 0.52);
+  --rcm-text: #1b1b1b;
+  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
+  --rcm-text-shortcut: rgba(27, 27, 27, 0.52);
 
-  --rcm-separator:       rgba(0, 0, 0, 0.08);
+  --rcm-separator: rgba(0, 0, 0, 0.08);
   --rcm-separator-margin: 4px 10px;
 
-  --rcm-icon-size:       18px;
-  --rcm-icon-gap:        12px;
-  --rcm-arrow-color:     rgba(0, 0, 0, 0.36);
+  --rcm-icon-size: 18px;
+  --rcm-icon-gap: 12px;
+  --rcm-arrow-color: rgba(0, 0, 0, 0.36);
 
-  --rcm-ribbon-gap:      2px;
-  --rcm-ribbon-padding:  2px 4px 4px 4px;
-  --rcm-ribbon-border:   rgba(0, 0, 0, 0.06);
+  --rcm-ribbon-gap: 2px;
+  --rcm-ribbon-padding: 2px 4px 4px 4px;
+  --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
 
-  --rcm-submenu-offset:  6px;
-  --rcm-transition:      150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --rcm-submenu-offset: 6px;
+  --rcm-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ── Dark theme (Win11 dark) ────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --rcm-bg:              #2c2c2c;
-    --rcm-border:          rgba(255, 255, 255, 0.08);
-    --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
+    --rcm-bg: #2c2c2c;
+    --rcm-border: rgba(255, 255, 255, 0.08);
+    --rcm-top-highlight: rgba(255, 255, 255, 0.04);
 
     --rcm-shadow:
-      0 0.3px 0.6px rgba(0, 0, 0, 0.16),
-      0 1.2px 2.4px rgba(0, 0, 0, 0.20),
-      0 4px 9px rgba(0, 0, 0, 0.32),
-      0 0 0 0.5px rgba(255, 255, 255, 0.06);
+      0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
+      0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 
-    --rcm-item-hover:      rgba(255, 255, 255, 0.045);
-    --rcm-item-active:     rgba(255, 255, 255, 0.075);
+    --rcm-item-hover: rgba(255, 255, 255, 0.045);
+    --rcm-item-active: rgba(255, 255, 255, 0.075);
 
-    --rcm-text:            #f4f4f4;
-    --rcm-text-disabled:   rgba(244, 244, 244, 0.36);
-    --rcm-text-shortcut:   rgba(244, 244, 244, 0.48);
+    --rcm-text: #f4f4f4;
+    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
+    --rcm-text-shortcut: rgba(244, 244, 244, 0.48);
 
-    --rcm-separator:       rgba(255, 255, 255, 0.08);
-    --rcm-ribbon-border:   rgba(255, 255, 255, 0.06);
-    --rcm-arrow-color:     rgba(255, 255, 255, 0.36);
+    --rcm-separator: rgba(255, 255, 255, 0.08);
+    --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
+    --rcm-arrow-color: rgba(255, 255, 255, 0.36);
   }
 }
 
 /* ── Theme class overrides (for programmatic toggling) ───────────────── */
 :root.rcm-light {
-  --rcm-bg:              #f3f3f3;
-  --rcm-border:          rgba(0, 0, 0, 0.08);
-  --rcm-top-highlight:   rgba(255, 255, 255, 0.55);
+  --rcm-bg: #f3f3f3;
+  --rcm-border: rgba(0, 0, 0, 0.08);
+  --rcm-top-highlight: rgba(255, 255, 255, 0.55);
   --rcm-shadow:
-    0 0.3px 0.6px rgba(0, 0, 0, 0.028),
-    0 1.2px 2.4px rgba(0, 0, 0, 0.042),
-    0 4px 9px rgba(0, 0, 0, 0.07),
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  --rcm-item-hover:      rgba(0, 0, 0, 0.038);
-  --rcm-item-active:     rgba(0, 0, 0, 0.065);
-  --rcm-text:            #1b1b1b;
-  --rcm-text-disabled:   rgba(27, 27, 27, 0.36);
-  --rcm-text-shortcut:   rgba(27, 27, 27, 0.52);
-  --rcm-separator:       rgba(0, 0, 0, 0.08);
-  --rcm-ribbon-border:   rgba(0, 0, 0, 0.06);
-  --rcm-arrow-color:     rgba(0, 0, 0, 0.36);
+    0 0.3px 0.6px rgba(0, 0, 0, 0.028), 0 1.2px 2.4px rgba(0, 0, 0, 0.042),
+    0 4px 9px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --rcm-item-hover: rgba(0, 0, 0, 0.038);
+  --rcm-item-active: rgba(0, 0, 0, 0.065);
+  --rcm-text: #1b1b1b;
+  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
+  --rcm-text-shortcut: rgba(27, 27, 27, 0.52);
+  --rcm-separator: rgba(0, 0, 0, 0.08);
+  --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
+  --rcm-arrow-color: rgba(0, 0, 0, 0.36);
 }
 
 :root.rcm-dark {
-  --rcm-bg:              #2c2c2c;
-  --rcm-border:          rgba(255, 255, 255, 0.08);
-  --rcm-top-highlight:   rgba(255, 255, 255, 0.04);
+  --rcm-bg: #2c2c2c;
+  --rcm-border: rgba(255, 255, 255, 0.08);
+  --rcm-top-highlight: rgba(255, 255, 255, 0.04);
   --rcm-shadow:
-    0 0.3px 0.6px rgba(0, 0, 0, 0.16),
-    0 1.2px 2.4px rgba(0, 0, 0, 0.20),
-    0 4px 9px rgba(0, 0, 0, 0.32),
-    0 0 0 0.5px rgba(255, 255, 255, 0.06);
-  --rcm-item-hover:      rgba(255, 255, 255, 0.045);
-  --rcm-item-active:     rgba(255, 255, 255, 0.075);
-  --rcm-text:            #f4f4f4;
-  --rcm-text-disabled:   rgba(244, 244, 244, 0.36);
-  --rcm-text-shortcut:   rgba(244, 244, 244, 0.48);
-  --rcm-separator:       rgba(255, 255, 255, 0.08);
-  --rcm-ribbon-border:   rgba(255, 255, 255, 0.06);
-  --rcm-arrow-color:     rgba(255, 255, 255, 0.36);
+    0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
+    0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --rcm-item-hover: rgba(255, 255, 255, 0.045);
+  --rcm-item-active: rgba(255, 255, 255, 0.075);
+  --rcm-text: #f4f4f4;
+  --rcm-text-disabled: rgba(244, 244, 244, 0.36);
+  --rcm-text-shortcut: rgba(244, 244, 244, 0.48);
+  --rcm-separator: rgba(255, 255, 255, 0.08);
+  --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
+  --rcm-arrow-color: rgba(255, 255, 255, 0.36);
 }
 
 /* ── Global reset ────────────────────────────────────────────────────── */
@@ -161,16 +153,12 @@ body {
 
 /* Thin top-edge highlight (Win11 surface sheen) */
 .rcm-root::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background:
-    linear-gradient(180deg,
-      var(--rcm-top-highlight) 0%,
-      transparent 40%
-    );
+  background: linear-gradient(180deg, var(--rcm-top-highlight) 0%, transparent 40%);
   z-index: 1;
 }
 

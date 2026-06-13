@@ -11,12 +11,12 @@
  *   Rust     → emit("menu-hide-all", ...)  → Frontend hides
  */
 
-import type { MenuItem } from "./types/menu";
+import type { MenuItem } from "./types/menu"
 
 /** Legacy payload type kept for compatibility. */
 export interface SubmenuPayload {
-  items: MenuItem[];
-  level: number;
-  x: number;
-  y: number;
+  items: MenuItem[]
+  level: number
+  x: number
+  y: number
 }

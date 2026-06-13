@@ -1,14 +1,6 @@
-export { Menu } from './menu';
-export type {
-  FileInfo,
-  Env,
-  InvokeProps,
-  Command,
-  MatchFn,
-  ActionFn,
-  MenuItem,
-} from './types';
-export { setLocale, getLocale, t, addMessages } from './i18n';
-export * from './menus';
-export * from './consts';
-export * from './tool';
+export { Menu } from "./menu"
+export type { FileInfo, Env, InvokeProps, Command, MatchFn, ActionFn, MenuItem } from "./types"
+export { setLocale, getLocale, t, addMessages } from "./i18n"
+export * from "./menus"
+export * from "./consts"
+export * from "./tool"

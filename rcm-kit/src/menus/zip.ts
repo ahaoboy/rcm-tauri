@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../types';
-import { ZIP } from '../consts';
-import { isZip } from '../tool';
+import type { MenuItem, InvokeProps } from "../types"
+import { ZIP } from "../consts"
+import { isZip } from "../tool"
 
 /**
  * "Add to archive" — always visible.
@@ -12,20 +12,20 @@ import { isZip } from '../tool';
  */
 export function zip(): MenuItem {
   return {
-    key: 'zip',
-    label: 'zip',
-    icon: '🗜️',
+    key: "zip",
+    label: "zip",
+    icon: "🗜️",
     match: ({ files }) => {
       // Only hide when a single archive file is selected — pointless to re-archive it.
-      return !(files.length === 1 && !files[0].isDir && isZip(files[0].name));
+      return !(files.length === 1 && !files[0].isDir && isZip(files[0].name))
     },
     action: (props: InvokeProps) => {
       return {
         exe: ZIP,
         args: props.files.map((f) => f.path),
         cwd: props.cwd,
-        window: 'Hidden',
-      };
+        window: "Hidden",
+      }
     },
-  };
+  }
 }

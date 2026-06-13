@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from '../types';
-import { t } from '../i18n';
+import type { MenuItem, InvokeProps } from "../types"
+import { t } from "../i18n"
 
 /**
  * "Open in Windows Terminal" menu item.
@@ -8,21 +8,23 @@ import { t } from '../i18n';
  * one folder is selected.  In the folder case, the terminal opens inside
  * that folder rather than the parent directory.
  */
-export function terminal(labelKey = 'open.in.wt'): MenuItem {
+export function terminal(labelKey = "open.in.wt"): MenuItem {
   return {
-    key: 'terminal',
+    key: "terminal",
     label: t(labelKey),
-    icon: '>_',
+    icon: ">_",
     match: (props: InvokeProps) =>
-      props.files.length === 0 ||
-      (props.files.length === 1 && props.files[0].isDir),
+      props.files.length === 0 || (props.files.length === 1 && props.files[0].isDir),
     action: (props: InvokeProps) => {
       // When a single folder is selected, open inside it; otherwise use cwd.
       const targetDir =
-        props.files.length === 1 && props.files[0].isDir
-          ? props.files[0].path
-          : props.cwd;
-      return { exe: 'wt', args: ['-d', targetDir], cwd: targetDir, window: 'Hidden' };
+        props.files.length === 1 && props.files[0].isDir ? props.files[0].path : props.cwd
+      return {
+        exe: "wt",
+        args: ["-d", targetDir],
+        cwd: targetDir,
+        window: "Hidden",
+      }
     },
-  };
+  }
 }

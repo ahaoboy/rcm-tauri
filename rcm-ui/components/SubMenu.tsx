@@ -1,16 +1,16 @@
-import React from "react";
-import type { MenuItem, IndexPath } from "../types/menu";
-import { MenuItemRow } from "./MenuItemRow";
+import React from "react"
+import type { MenuItem, IndexPath } from "../types/menu"
+import { MenuItemRow } from "./MenuItemRow"
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
 interface SubMenuProps {
-  items: MenuItem[];
+  items: MenuItem[]
   /** Window depth. */
-  depth: number;
+  depth: number
   /** Index path pointing to the parent of these items. */
-  indexPath: IndexPath;
-  showIcons?: boolean;
+  indexPath: IndexPath
+  showIcons?: boolean
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -18,13 +18,10 @@ interface SubMenuProps {
    ═══════════════════════════════════════════════════════════════════════ */
 
 export const SubMenu: React.FC<SubMenuProps> = ({ items, depth, indexPath, showIcons }) => {
-  if (!items || items.length === 0) return null;
+  if (!items || items.length === 0) return null
 
   return (
-    <div
-      className="rcm-submenu"
-      role="menu"
-    >
+    <div className="rcm-submenu" role="menu">
       {items.map((item, idx) => (
         <MenuItemRow
           key={item.key || `sub-${idx}`}
@@ -35,5 +32,5 @@ export const SubMenu: React.FC<SubMenuProps> = ({ items, depth, indexPath, showI
         />
       ))}
     </div>
-  );
-};
+  )
+}

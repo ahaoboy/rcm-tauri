@@ -1,19 +1,19 @@
-import React from "react";
-import type { MenuItem, IndexPath } from "../types/menu";
-import { MenuItemRow } from "./MenuItemRow";
+import React from "react"
+import type { MenuItem, IndexPath } from "../types/menu"
+import { MenuItemRow } from "./MenuItemRow"
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 
 interface MenuGroupProps {
   /** The group wrapper — its `items` array holds the actual menu entries. */
-  group: MenuItem;
+  group: MenuItem
   /** Window depth. */
-  depth: number;
+  depth: number
   /** Index path to the parent (root = []). */
-  indexPath: IndexPath;
+  indexPath: IndexPath
   /** Index of this group within groups[]. */
-  groupIndex: number;
-  showIcons?: boolean;
+  groupIndex: number
+  showIcons?: boolean
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -27,8 +27,8 @@ export const MenuGroup: React.FC<MenuGroupProps> = ({
   groupIndex,
   showIcons,
 }) => {
-  const entries = group.items;
-  if (!entries || entries.length === 0) return null;
+  const entries = group.items
+  if (!entries || entries.length === 0) return null
 
   return (
     <div className="rcm-group" role="group">
@@ -42,5 +42,5 @@ export const MenuGroup: React.FC<MenuGroupProps> = ({
         />
       ))}
     </div>
-  );
-};
+  )
+}

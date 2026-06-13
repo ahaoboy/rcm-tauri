@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "rootDir":"${configDir}/src",
+    "rootDir": "${configDir}/src",
     "outDir": "${configDir}/dist",
     "target": "ESNext",
     "useDefineForClassFields": true,

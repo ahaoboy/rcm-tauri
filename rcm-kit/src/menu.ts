@@ -1,4 +1,4 @@
-import type { MenuItem, InvokeProps } from './types';
+import type { MenuItem, InvokeProps } from "./types"
 
 /**
  * Menu — holds two sections:
@@ -6,7 +6,7 @@ import type { MenuItem, InvokeProps } from './types';
  * - `groups`:  the main vertical list of menu items
  */
 export class Menu {
-  readonly type = 'Menu';
+  readonly type = "Menu"
 
   constructor(
     public groups: MenuItem[] = [],
@@ -18,29 +18,29 @@ export class Menu {
     return {
       iconItems: this.#resolve(this.iconItems, props),
       groups: this.#resolve(this.groups, props),
-    };
+    }
   }
 
   #resolve(items: MenuItem[], props: InvokeProps): MenuItem[] {
-    const result: MenuItem[] = [];
+    const result: MenuItem[] = []
 
     for (const { match, action, items: children, ...rest } of items) {
-      if (match && !match(props)) continue;
+      if (match && !match(props)) continue
 
-      const resolved: MenuItem = { ...rest };
+      const resolved: MenuItem = { ...rest }
 
-      const cmd = action?.(props);
-      if (cmd) resolved.command = cmd;
+      const cmd = action?.(props)
+      if (cmd) resolved.command = cmd
 
       if (children) {
-        const sub = this.#resolve(children, props);
-        if (sub.length) resolved.items = sub;
-        else if (!resolved.label && !resolved.action) continue;
+        const sub = this.#resolve(children, props)
+        if (sub.length) resolved.items = sub
+        else if (!resolved.label && !resolved.action) continue
       }
 
-      result.push(resolved);
+      result.push(resolved)
     }
 
-    return result;
+    return result
   }
 }

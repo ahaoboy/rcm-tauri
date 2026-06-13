@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../types';
-import { OPEN_FILE_LOCATION } from '../consts';
-import { t } from '../i18n';
+import type { MenuItem, InvokeProps } from "../types"
+import { OPEN_FILE_LOCATION } from "../consts"
+import { t } from "../i18n"
 
 /**
  * "Open file location" — opens Explorer with the file selected.
@@ -10,18 +10,18 @@ import { t } from '../i18n';
  */
 export function openFileLocation(): MenuItem {
   return {
-    key: 'open-file-location',
-    label: t('open.file.location'),
-    icon: '📂',
+    key: "open-file-location",
+    label: t("open.file.location"),
+    icon: "📂",
     match: (props: InvokeProps) => {
-      const file = props.files[0];
-      return props.files.length === 1 && !file.isDir && file.path.endsWith('.lnk');
+      const file = props.files[0]
+      return props.files.length === 1 && !file.isDir && file.path.endsWith(".lnk")
     },
     action: (props: InvokeProps) => ({
       exe: OPEN_FILE_LOCATION,
       args: [props.files[0].path],
       cwd: props.cwd,
-      window: 'Hidden',
+      window: "Hidden",
     }),
-  };
+  }
 }

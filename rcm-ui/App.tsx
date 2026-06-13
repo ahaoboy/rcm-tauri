@@ -1,181 +1,189 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { listen, emit } from "@tauri-apps/api/event";
-import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window";
-import { invoke } from "@tauri-apps/api/core";
-import type { MenuData, MenuShowPayload } from "./types/menu";
-import { useTheme } from "./hooks/useTheme";
-import { ContextMenu } from "./components";
-import { feLog } from "./feLog";
-import { EDGE_GAP } from "./constants/layout";
+import { useEffect, useRef, useState, useCallback } from "react"
+import { listen, emit } from "@tauri-apps/api/event"
+import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window"
+import { invoke } from "@tauri-apps/api/core"
+import type { MenuData, MenuShowPayload } from "./types/menu"
+import { useTheme } from "./hooks/useTheme"
+import { ContextMenu } from "./components"
+import { feLog } from "./feLog"
+import { EDGE_GAP } from "./constants/layout"
 
 /** Off-screen position used to hide the window without flicker. */
-const OFF_SCREEN = new PhysicalPosition(-9999, -9999);
+const OFF_SCREEN = new PhysicalPosition(-9999, -9999)
 
 /** Depth of this window. Root = 0. */
-const MY_DEPTH = 0;
+const MY_DEPTH = 0
 
 function App() {
-  const [menu, setMenu] = useState<MenuData | null>(null);
-  const [showIcons, setShowIcons] = useState(false);
-  const devMode = useRef(false);
-  const menuActive = useRef(false);
-  const theme = useTheme();
+  const [menu, setMenu] = useState<MenuData | null>(null)
+  const [showIcons, setShowIcons] = useState(false)
+  const devMode = useRef(false)
+  const menuActive = useRef(false)
+  const theme = useTheme()
   /** Pending ideal position from menu-show event; consumed by onReady. */
-  const pendingPos = useRef<{ x: number; y: number } | null>(null);
+  const pendingPos = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
-    document.documentElement.classList.remove("rcm-light", "rcm-dark");
-    document.documentElement.classList.add(`rcm-${theme}`);
-  }, [theme]);
+    document.documentElement.classList.remove("rcm-light", "rcm-dark")
+    document.documentElement.classList.add(`rcm-${theme}`)
+  }, [theme])
 
   // ── Disable browser native right-click menu in release mode ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      e.preventDefault();
-    };
-    document.addEventListener("contextmenu", handler);
-    return () => document.removeEventListener("contextmenu", handler);
-  }, []);
+      e.preventDefault()
+    }
+    document.addEventListener("contextmenu", handler)
+    return () => document.removeEventListener("contextmenu", handler)
+  }, [])
 
   useEffect(() => {
-    let cleanupFns: (() => void)[] = [];
-    const win = getCurrentWindow();
+    let cleanupFns: (() => void)[] = []
+    const win = getCurrentWindow()
 
     // Start off-screen
-    win.setPosition(OFF_SCREEN).catch(() => { });
+    win.setPosition(OFF_SCREEN).catch(() => {})
 
     const setup = async () => {
       // ── Fetch initial config ──────────────────────────────────
       try {
-        const cfg = await invoke<{ dev: boolean; icons: boolean }>("get_config");
-        devMode.current = cfg.dev;
-        setShowIcons(cfg.icons);
-      } catch { /* ignore */ }
+        const cfg = await invoke<{ dev: boolean; icons: boolean }>("get_config")
+        devMode.current = cfg.dev
+        setShowIcons(cfg.icons)
+      } catch {
+        /* ignore */
+      }
 
       // ── Prevent window close, just hide it ───────────────────
       const unlistenClose = await win.onCloseRequested(async (e) => {
-        e.preventDefault();
-        await hideRoot(win);
-      });
-      cleanupFns.push(unlistenClose);
+        e.preventDefault()
+        await hideRoot(win)
+      })
+      cleanupFns.push(unlistenClose)
 
       // ── Dev mode toggle ──────────────────────────────────────
       const unlistenDev = await listen<boolean>("dev-mode", (event) => {
-        devMode.current = event.payload;
-      });
-      cleanupFns.push(unlistenDev);
+        devMode.current = event.payload
+      })
+      cleanupFns.push(unlistenDev)
 
       // ── Blur → Rust decides whether to hide all ──────────────
       const unlistenFocus = await win.onFocusChanged(({ payload: focused }) => {
-        feLog.info("App:root", `onFocusChanged focused=${focused} menuActive=${menuActive.current}`);
+        feLog.info("App:root", `onFocusChanged focused=${focused} menuActive=${menuActive.current}`)
         if (!focused && !devMode.current && menuActive.current) {
-          feLog.eventSend("menu-blur", "depth=0");
-          emit("menu-blur", { depth: MY_DEPTH });
+          feLog.eventSend("menu-blur", "depth=0")
+          emit("menu-blur", { depth: MY_DEPTH })
         }
-      });
-      cleanupFns.push(unlistenFocus);
+      })
+      cleanupFns.push(unlistenFocus)
 
       // ── Icons toggle ─────────────────────────────────────────
       const unlistenIcons = await listen<boolean>("icons-changed", (event) => {
-        setShowIcons(event.payload);
-      });
-      cleanupFns.push(unlistenIcons);
+        setShowIcons(event.payload)
+      })
+      cleanupFns.push(unlistenIcons)
 
       // ── Rust → Frontend: show menu at root level ─────────────
       const unlistenShow = await listen<MenuShowPayload>("menu-show", (event) => {
-        const { menu: menuData, path, x, y } = event.payload;
+        const { menu: menuData, path, x, y } = event.payload
         // Only process root-level events (empty path)
-        if (path.length !== 0) return;
+        if (path.length !== 0) return
 
-        feLog.eventRecv("menu-show", `pos=(${x.toFixed(0)},${y.toFixed(0)}) groups=${menuData.groups.length}`);
+        feLog.eventRecv(
+          "menu-show",
+          `pos=(${x.toFixed(0)},${y.toFixed(0)}) groups=${menuData.groups.length}`,
+        )
 
-        pendingPos.current = { x, y };
-        setMenu(menuData);
+        pendingPos.current = { x, y }
+        setMenu(menuData)
         // Window is moved off-screen initially; onReady will position & show
-      });
-      cleanupFns.push(unlistenShow);
+      })
+      cleanupFns.push(unlistenShow)
 
       // ── Rust → Frontend: hide all ────────────────────────────
       const unlistenHide = await listen("menu-hide-all", () => {
-        feLog.eventRecv("menu-hide-all", "");
+        feLog.eventRecv("menu-hide-all", "")
         if (devMode.current) {
-          feLog.info("App:root", "dev mode, ignoring hide");
-          return;
+          feLog.info("App:root", "dev mode, ignoring hide")
+          return
         }
-        hideRoot(win);
-      });
-      cleanupFns.push(unlistenHide);
-    };
+        hideRoot(win)
+      })
+      cleanupFns.push(unlistenHide)
+    }
 
-    setup();
+    setup()
 
     return () => {
-      cleanupFns.forEach((fn) => fn());
-    };
-  }, []);
+      cleanupFns.forEach((fn) => fn())
+    }
+  }, [])
 
   /** Called by ContextMenu after the window has been resized to fit content. */
   const handleReady = useCallback(async () => {
-    const pos = pendingPos.current;
-    if (!pos) return;
-    pendingPos.current = null;
+    const pos = pendingPos.current
+    if (!pos) return
+    pendingPos.current = null
 
     try {
-      const win = getCurrentWindow();
-      const outerSize = await win.outerSize();
-      const monitor = await currentMonitor();
+      const win = getCurrentWindow()
+      const outerSize = await win.outerSize()
+      const monitor = await currentMonitor()
 
-      let finalX = pos.x;
-      let finalY = pos.y;
+      let finalX = pos.x
+      let finalY = pos.y
 
       if (monitor) {
-        const monRight = monitor.position.x + monitor.size.width;
-        const monBottom = monitor.position.y + monitor.size.height;
+        const monRight = monitor.position.x + monitor.size.width
+        const monBottom = monitor.position.y + monitor.size.height
 
         // If menu overflows right edge, flip to the left of the cursor
         if (finalX + outerSize.width > monRight - EDGE_GAP) {
-          finalX = pos.x - outerSize.width;
-          feLog.info("App:root", `flip: right overflow → left_side=${finalX.toFixed(0)}`);
+          finalX = pos.x - outerSize.width
+          feLog.info("App:root", `flip: right overflow → left_side=${finalX.toFixed(0)}`)
         }
 
         // Clamp to monitor bounds (handles all edges including flipped left)
         finalX = Math.max(
           monitor.position.x + EDGE_GAP,
-          Math.min(finalX, monRight - outerSize.width - EDGE_GAP)
-        );
+          Math.min(finalX, monRight - outerSize.width - EDGE_GAP),
+        )
         finalY = Math.max(
           monitor.position.y + EDGE_GAP,
-          Math.min(finalY, monBottom - outerSize.height - EDGE_GAP)
-        );
+          Math.min(finalY, monBottom - outerSize.height - EDGE_GAP),
+        )
 
-        feLog.info("App:root", `clamp: size=(${outerSize.width}x${outerSize.height}) raw=(${pos.x.toFixed(0)},${pos.y.toFixed(0)}) -> (${finalX.toFixed(0)},${finalY.toFixed(0)})`);
+        feLog.info(
+          "App:root",
+          `clamp: size=(${outerSize.width}x${outerSize.height}) raw=(${pos.x.toFixed(0)},${pos.y.toFixed(0)}) -> (${finalX.toFixed(0)},${finalY.toFixed(0)})`,
+        )
       }
 
-      await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)));
-      await win.setAlwaysOnTop(true);
-      await win.show();
-      await win.setFocus();
+      await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)))
+      await win.setAlwaysOnTop(true)
+      await win.show()
+      await win.setFocus()
 
       setTimeout(() => {
-        menuActive.current = true;
-        feLog.info("App:root", "menuActive armed");
-      }, 200);
+        menuActive.current = true
+        feLog.info("App:root", "menuActive armed")
+      }, 200)
     } catch (e) {
-      feLog.error("App:root", `handleReady error: ${e}`);
+      feLog.error("App:root", `handleReady error: ${e}`)
     }
-  }, []);
+  }, [])
 
   /** Hide the root window and reset state. */
   async function hideRoot(win: ReturnType<typeof getCurrentWindow>) {
-    if (devMode.current) return;
-    menuActive.current = false;
-    await win.hide();
-    await win.setPosition(OFF_SCREEN);
-    setMenu(null);
+    if (devMode.current) return
+    menuActive.current = false
+    await win.hide()
+    await win.setPosition(OFF_SCREEN)
+    setMenu(null)
   }
 
   if (!menu) {
-    return <div className="rcm-root" />;
+    return <div className="rcm-root" />
   }
 
   return (
@@ -187,8 +195,7 @@ function App() {
       showIcons={showIcons}
       onReady={handleReady}
     />
-  );
+  )
 }
 
-export default App;
-
+export default App

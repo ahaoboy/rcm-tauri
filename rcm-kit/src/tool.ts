@@ -1,4 +1,3 @@
-
 /**
  * Archive extensions supported by the Rust backend's `Fmt` enum.
  * Compound extensions (`.tar.gz`) are listed first so they are matched
@@ -6,25 +5,31 @@
  */
 export const ARCHIVE_EXTS: string[] = [
   // TarGz
-  '.tar.gz', '.tgz',
+  ".tar.gz",
+  ".tgz",
   // TarXz
-  '.tar.xz', '.txz',
+  ".tar.xz",
+  ".txz",
   // TarBz
-  '.tar.bz2', '.tbz2', '.tbz',
+  ".tar.bz2",
+  ".tbz2",
+  ".tbz",
   // TarZstd
-  '.tar.zst', '.tzst', '.tzstd',
+  ".tar.zst",
+  ".tzst",
+  ".tzstd",
   // Tar (plain)
-  '.tar',
+  ".tar",
   // Zip
-  '.zip',
+  ".zip",
   // 7z
-  '.7z',
-];
+  ".7z",
+]
 
 /** Match a path against the backend-supported archive extensions. */
 export function isZip(path: string): boolean {
-  const lower = path.toLowerCase();
-  return ARCHIVE_EXTS.some((ext) => lower.endsWith(ext));
+  const lower = path.toLowerCase()
+  return ARCHIVE_EXTS.some((ext) => lower.endsWith(ext))
 }
 
 // ── Executable detection (Windows) ──────────────────────────────────
@@ -34,13 +39,10 @@ export function isZip(path: string): boolean {
  * Covers native binaries (.exe, .com, .scr, .pif), installers (.msi, .msix),
  * and scripts (.bat, .cmd, .ps1, .vbs, .wsf, .psm1, .psd1).
  */
-export const EXECUTABLE_EXTS: string[] = [
-  '.exe', '.com', '.scr', '.pif',
-  '.msi', '.msix', '.appx',
-];
+export const EXECUTABLE_EXTS: string[] = [".exe", ".com", ".scr", ".pif", ".msi", ".msix", ".appx"]
 
 /** Check whether the path represents a Windows binary executable. */
 export function isExecutable(path: string): boolean {
-  const lower = path.toLowerCase();
-  return EXECUTABLE_EXTS.some((ext) => lower.endsWith(ext));
+  const lower = path.toLowerCase()
+  return EXECUTABLE_EXTS.some((ext) => lower.endsWith(ext))
 }

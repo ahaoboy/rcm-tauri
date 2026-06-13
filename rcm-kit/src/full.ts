@@ -1,9 +1,33 @@
-/**
- * Default menus right-click menu composed from built-in configs.
- * Includes menus app integrations (VS Code, mpv, Terminal).
- */
-import { Menu } from './menu';
-import * as menus from './menus';
+import {
+  open,
+  print,
+  copy,
+  copyAs,
+  createShortcut,
+  cut,
+  edit,
+  groupBy,
+  Menu,
+  openFileLocation,
+  openWith,
+  paste,
+  pinToStart,
+  pinToTaskbar,
+  properties,
+  rename,
+  restorePreviousVersions,
+  runAsAdmin,
+  selectAll,
+  sendTo,
+  share,
+  sortBy,
+  ssh,
+  terminal,
+  trash,
+  unzip,
+  vscode,
+  zip,
+} from "rcm-kit"
 
 export default new Menu(
   // ── Main vertical menu groups ───────────────────────────────────
@@ -11,58 +35,43 @@ export default new Menu(
     {
       // Primary actions
       items: [
-        menus.vscode(),
-        menus.open(),
-        menus.openWith(),
-        menus.terminal(),
-        menus.ssh(),
-        menus.unzip(),
-        menus.zip(),
-        menus.edit(),
-        menus.print(),
-        // menus.mpv(),
-        menus.runAsAdmin(),
-        menus.groupBy(),
-        menus.sortBy(),
+        vscode(),
+        open(),
+        openWith(),
+        terminal(),
+        ssh(),
+        unzip(),
+        zip(),
+        edit(),
+        print(),
+        runAsAdmin(),
+        groupBy(),
+        sortBy(),
       ],
     },
     {
       // Pin & send
-      items: [
-        menus.pinToStart(),
-        menus.pinToTaskbar(),
-        menus.sendTo(),
-      ],
+      items: [pinToStart(), pinToTaskbar(), sendTo()],
     },
     {
       // Clipboard & file ops
       items: [
-        menus.cut(),
-        menus.copy(),
-        menus.copyAs(),
-        menus.paste(),
-        menus.createShortcut(),
-        menus.openFileLocation(),
-        menus.trash(),
-        menus.rename(),
-        menus.selectAll(),
+        cut(),
+        copy(),
+        copyAs(),
+        paste(),
+        createShortcut(),
+        openFileLocation(),
+        trash(),
+        rename(),
+        selectAll(),
       ],
     },
     {
       // Meta
-      items: [
-        menus.restorePreviousVersions(),
-        menus.properties(),
-      ],
+      items: [restorePreviousVersions(), properties()],
     },
   ],
   // ── Icon ribbon (top bar) ───────────────────────────────────────
-  [
-    menus.cut(),
-    menus.copy(),
-    menus.paste(),
-    menus.rename(),
-    menus.share(),
-    menus.trash(),
-  ],
-);
+  [cut(), copy(), paste(), rename(), share(), trash()],
+)

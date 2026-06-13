@@ -40,9 +40,7 @@
     "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
-    "icon": [
-      "../public/icon-tray.ico"
-    ],
+    "icon": ["../public/icon-tray.ico"],
     "resources": {
       "binaries/": ""
     },
@@ -59,9 +57,7 @@
         "installMode": "passive"
       },
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM1NTA0MTFDNzY0NDQ5MzEKUldReFNVUjJIRUZReFdHTmdydE84SnJaNnNqWWJWclA5QUd0Q2FObmU1a0wyT1NMUHRMV0cvYzkK",
-      "endpoints": [
-        "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/latest.json"
-      ]
+      "endpoints": ["https://github.com/ahaoboy/rcm-tauri/releases/latest/download/latest.json"]
     }
   }
 }

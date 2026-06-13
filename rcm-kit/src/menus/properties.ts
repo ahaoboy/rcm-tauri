@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from '../types';
-import { t } from '../i18n';
+import type { MenuItem, InvokeProps } from "../types"
+import { t } from "../i18n"
 
 /**
  * Win11 "Properties" — opens file/folder properties dialog.
@@ -7,15 +7,15 @@ import { t } from '../i18n';
  */
 export function properties(): MenuItem {
   return {
-    key: 'properties',
-    label: t('properties'),
-    icon: 'ℹ️',
+    key: "properties",
+    label: t("properties"),
+    icon: "ℹ️",
     action: (props: InvokeProps) => {
       // File selected → show properties of that file
-      const target = props.files[0];
-      const path = target ? target.path : props.cwd;
-      if (!path) return;
-      return { exe: '@properties', args: [path] };
+      const target = props.files[0]
+      const path = target ? target.path : props.cwd
+      if (!path) return
+      return { exe: "@properties", args: [path] }
     },
-  };
+  }
 }

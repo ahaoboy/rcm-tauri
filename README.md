@@ -53,20 +53,20 @@ After installation, the RCM icon appears in your system tray. Follow these steps
 
 ### Tray Menu Reference
 
-| Menu Item | Type | Description |
-|-----------|------|-------------|
-| **Win11** | Radio | Windows 11 compact menu style |
-| **Classic** | Radio | Windows 10 classic expanded menu style |
-| **Enable / Disable** | Check | Toggle the custom context menu on/off |
-| **Register** | Button | Register `rcm_com.dll` shell extension |
-| **Unregister** | Button | Unregister the shell extension |
-| **DumpEnv** | Button | Dump environment variables to `<exe>.env` |
-| **Lite** | Radio | Lite menu mode (minimal items) |
-| **Full** | Radio | Full menu mode (all items) |
-| **Icons** | Check | Show/hide the icon ribbon in the menu |
-| **Dev** | Check | Toggle dev mode (menu stays open on focus loss) |
-| **Log** | Check | Toggle file logging to `<exe>.log` |
-| **Startup** | Check | Toggle auto-start with Windows |
-| **Apply** | Button | Restart Windows Explorer to apply changes |
-| **Reset** | Button | Reset all config and menu files to defaults |
-| **Quit** | Button | Exit the application |
+| Menu Item            | Type   | Description                                     |
+| -------------------- | ------ | ----------------------------------------------- |
+| **Win11**            | Radio  | Windows 11 compact menu style                   |
+| **Classic**          | Radio  | Windows 10 classic expanded menu style          |
+| **Enable / Disable** | Check  | Toggle the custom context menu on/off           |
+| **Register**         | Button | Register `rcm_com.dll` shell extension          |
+| **Unregister**       | Button | Unregister the shell extension                  |
+| **DumpEnv**          | Button | Dump environment variables to `<exe>.env`       |
+| **Lite**             | Radio  | Lite menu mode (minimal items)                  |
+| **Full**             | Radio  | Full menu mode (all items)                      |
+| **Icons**            | Check  | Show/hide the icon ribbon in the menu           |
+| **Dev**              | Check  | Toggle dev mode (menu stays open on focus loss) |
+| **Log**              | Check  | Toggle file logging to `<exe>.log`              |
+| **Startup**          | Check  | Toggle auto-start with Windows                  |
+| **Apply**            | Button | Restart Windows Explorer to apply changes       |
+| **Reset**            | Button | Reset all config and menu files to defaults     |
+| **Quit**             | Button | Exit the application                            |

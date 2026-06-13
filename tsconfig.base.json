@@ -20,7 +20,7 @@
     "declarationMap": false,
     "sourceMap": false,
     "paths": {
-      "rcm": ["./rcm/src"],
+      "rcm": ["./rcm/src"]
     }
   },
   "include": ["**/src", "**/test", "**/example", "**/scripts"],

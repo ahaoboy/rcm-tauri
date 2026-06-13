@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from '../types';
-import { UNZIP } from '../consts';
-import { isZip } from '../tool';
+import type { MenuItem, InvokeProps } from "../types"
+import { UNZIP } from "../consts"
+import { isZip } from "../tool"
 
 /**
  * "Extract here" — visible when all selected files are archives.
@@ -10,16 +10,16 @@ import { isZip } from '../tool';
  */
 export function unzip(): MenuItem {
   return {
-    key: 'unzip',
-    label: 'unzip',
-    icon: '📦',
+    key: "unzip",
+    label: "unzip",
+    icon: "📦",
     match: (props: InvokeProps) =>
       props.files.length > 0 && props.files.every((f) => isZip(f.path)),
     action: (props: InvokeProps) => ({
       exe: UNZIP,
       args: props.files.map((f) => f.path),
       cwd: props.cwd,
-      window: 'Hidden',
+      window: "Hidden",
     }),
-  };
+  }
 }

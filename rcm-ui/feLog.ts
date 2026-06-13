@@ -6,42 +6,42 @@
  * when the "Log" tray toggle is enabled.
  */
 
-import { emit } from "@tauri-apps/api/event";
+import { emit } from "@tauri-apps/api/event"
 
-type LogLevel = "INFO" | "WARN" | "ERROR";
+type LogLevel = "INFO" | "WARN" | "ERROR"
 
 function send(tag: string, level: LogLevel, msg: string) {
-  const formatted = `[${tag}] ${msg}`;
+  const formatted = `[${tag}] ${msg}`
   switch (level) {
     case "ERROR":
-      console.error(formatted);
-      break;
+      console.error(formatted)
+      break
     case "WARN":
-      console.warn(formatted);
-      break;
+      console.warn(formatted)
+      break
     default:
-      console.log(formatted);
+      console.log(formatted)
   }
   // Send to Rust for file logging (fire-and-forget)
-  emit("log-event", { tag, msg: `[${level}] ${msg}` }).catch(() => {});
+  emit("log-event", { tag, msg: `[${level}] ${msg}` }).catch(() => { })
 }
 
 export const feLog = {
   info(tag: string, msg: string) {
-    send(tag, "INFO", msg);
+    send(tag, "INFO", msg)
   },
   warn(tag: string, msg: string) {
-    send(tag, "WARN", msg);
+    send(tag, "WARN", msg)
   },
   error(tag: string, msg: string) {
-    send(tag, "ERROR", msg);
+    send(tag, "ERROR", msg)
   },
   /** Log an event being sent from frontend to Rust. */
   eventSend(eventName: string, detail: string) {
-    send("EVENT:SEND", "INFO", `${eventName} | ${detail}`);
+    send("EVENT:SEND", "INFO", `${eventName} | ${detail}`)
   },
   /** Log an event received from Rust. */
   eventRecv(eventName: string, detail: string) {
-    send("EVENT:RECV", "INFO", `${eventName} | ${detail}`);
+    send("EVENT:RECV", "INFO", `${eventName} | ${detail}`)
   },
-};
+}

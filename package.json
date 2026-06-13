@@ -1,16 +1,18 @@
 {
   "name": "rcm-tauri",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
   "type": "module",
   "scripts": {
+    "fmt": "oxfmt",
+    "lint:fix": "oxlint --fix",
     "dev": "pnpm run build:rcm && vite",
     "build:rcm": "cd rcm-kit && npm run build",
     "build": "pnpm run build:rcm && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "pnpm run lint-ts && pnpm run lint-rs",
-    "lint-ts": "cd rcm-web && deno fmt && deno lint --fix",
+    "lint-ts": "pnpm lint:fix && pnpm fmt",
     "icon": "tauri icon ./public/icon.png",
     "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged",
     "update:dll": "curl -L -o src-tauri/binaries/rcm_com.dll https://github.com/ahaoboy/rcm-com/releases/latest/download/rcm_com.dll"
@@ -22,10 +24,13 @@
     "react-dom": "19.2.6"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.4.15",
     "@tauri-apps/cli": "2.11.2",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
+    "oxfmt": "0.54.0",
+    "oxlint": "1.69.0",
     "typescript": "6.0.3",
     "vite": "8.0.14"
   }
