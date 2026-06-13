@@ -65,7 +65,7 @@ rcm-reg = { git = "https://github.com/ahaoboy/rcm-reg", version = "0.1" }
 
 # ── Git dependencies ──────────────────────────────────────────────────
 rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
-easy-archive = { git = "https://github.com/ahaoboy/easy-archive", features = [
+easy-archive = { version = "0.2", git = "https://github.com/ahaoboy/easy-archive", features = [
   "encode",
   "decode",
   "cli",
