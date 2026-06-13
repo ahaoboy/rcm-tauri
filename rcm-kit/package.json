@@ -1,6 +1,6 @@
 {
   "name": "rcm-kit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "rcm-kit",
   "keywords": [],
   "homepage": "https://github.com/ahaoboy/rcm-tauri",
@@ -29,6 +29,6 @@
   },
   "devDependencies": {
     "rcm-kit": "workspace:*",
-    "vitest": "^4.1.7"
+    "vitest": "4.1.7"
   }
 }
