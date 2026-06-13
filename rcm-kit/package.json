@@ -1,17 +1,17 @@
 {
-  "name": "rcm-menu",
+  "name": "rcm-kit",
   "version": "0.1.0",
   "type": "module",
-  "homepage": "https://github.com/ahaoboy/rcm",
+  "homepage": "https://github.com/ahaoboy/rcm-tauri",
   "files": [
     "dist",
     "readme.md",
     "package.json"
   ],
   "sideEffects": false,
-  "description": "rcm-menu",
+  "description": "rcm-kit",
   "main": "dist/index.js",
-  "types": "./src/index.ts",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm --external:rcm-sys --external:fs --external:path --external:os --external:url --charset=utf8",
     "dts": "tsc -p ./tsconfig.build.json --declaration --emitDeclarationOnly",

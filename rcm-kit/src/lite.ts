@@ -1,8 +1,8 @@
 /**
  * Lite right-click menu — essentials only, no icon ribbon.
  */
-import { Menu } from './menu';
-import * as menus from './menus';
+import { Menu } from './index';
+import * as menus from './index';
 
 export default new Menu(
   [

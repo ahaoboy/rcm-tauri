@@ -1,5 +1,5 @@
-const DEFAULT_MODULE: &str = include_str!("../../rcm/dist/default.js");
-const LITE_MODULE: &str = include_str!("../../rcm/dist/lite.js");
+const DEFAULT_MODULE: &str = include_str!("../../rcm-kit/dist/default.js");
+const LITE_MODULE: &str = include_str!("../../rcm-kit/dist/lite.js");
 
 /// Write embedded default menu JS files to disk next to the exe.
 pub fn write_menu_defaults() {

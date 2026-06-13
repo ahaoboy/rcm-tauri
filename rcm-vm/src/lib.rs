@@ -20,7 +20,7 @@ use std::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-const LIB_MODULE: &str = include_str!("../../rcm/dist/index.js");
+const LIB_MODULE: &str = include_str!("../../rcm-kit/dist/index.js");
 
 fn print(s: String) {
     println!("{s}")

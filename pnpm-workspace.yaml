@@ -1,6 +1,6 @@
 packages:
-  - 'rcm-menu'
-  - 'src'
+  - 'rcm-kit'
+  - 'rcm-ui'
 allowBuilds:
   esbuild: true
 minimumReleaseAgeExclude:

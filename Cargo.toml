@@ -1,5 +1,5 @@
 [workspace]
-members = ["src-tauri", "rcm-core", "rcm-vm"]
+members = ["rcm-tauri", "rcm-core", "rcm-vm"]
 resolver = "2"
 
 [profile.release]

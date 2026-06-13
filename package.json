@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm run build:rcm && vite",
-    "build:rcm": "cd rcm && npm run build",
+    "build:rcm": "cd rcm-kit && npm run build",
     "build": "pnpm run build:rcm && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "lint": "pnpm run lint-ts && pnpm run lint-rs",
-    "lint-ts": "cd src && deno fmt && deno lint --fix",
+    "lint-ts": "cd rcm-web && deno fmt && deno lint --fix",
     "icon": "tauri icon ./public/icon.png",
     "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged",
     "update:dll": "curl -L -o src-tauri/binaries/rcm_com.dll https://github.com/ahaoboy/rcm-com/releases/latest/download/rcm_com.dll"
@@ -18,7 +18,6 @@
   "dependencies": {
     "@tauri-apps/api": "2.11.0",
     "@tauri-apps/plugin-opener": "2.5.4",
-    "rcm": "workspace:*",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
