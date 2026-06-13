@@ -2,16 +2,15 @@
 // Application entry point — module declarations, Tauri commands, setup.
 // ═══════════════════════════════════════════════════════════════════════════
 
-pub mod cmd;
 pub mod events;
-pub mod menu_manager;
+pub mod layout;
 pub mod monitor;
 pub mod pipe;
 pub mod tray;
 
 use crate::events::{AutoHideEpoch, ConfigPayload, MAX_SUBMENU_DEPTH, MenuArc, submenu_label};
 use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
-use crate::menu_manager::MenuManager;
+use crate::layout::MenuManager;
 use rcm_core::{config, log};
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
@@ -169,12 +168,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            create_window,
-            get_config,
-            cmd::execute,
-            cmd::spawn_command
-        ])
+        .invoke_handler(tauri::generate_handler![create_window, get_config,])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

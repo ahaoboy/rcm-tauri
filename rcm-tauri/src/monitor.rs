@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 use crate::events::{AutoHideEpoch, MenuArc};
-use crate::menu_manager::MenuManager;
+use crate::layout::MenuManager;
 use rcm_core::{config, log};
 
 /// Check whether an event should be ignored (not trigger the context menu).
