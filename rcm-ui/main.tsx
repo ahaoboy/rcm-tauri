@@ -1,7 +1,9 @@
 import React from "react"
 import ReactDOM from "react-dom/client"
+
 import App from "./App"
 import { SubmenuApp } from "./components/SubmenuApp"
+
 import "./styles/menu.css"
 
 const root = document.getElementById("root") as HTMLElement

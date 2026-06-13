@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from "../types"
-import { t } from "../i18n"
 import { GROUP_BY } from "../consts"
+import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 const GROUP_ITEMS: [string, string, string][] = [
   ["name", "group.by.name", "📋"],

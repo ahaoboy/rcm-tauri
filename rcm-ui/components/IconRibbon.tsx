@@ -1,6 +1,7 @@
-import React from "react"
-import type { MenuItem } from "../types/menu"
 import { emit } from "@tauri-apps/api/event"
+import React from "react"
+
+import type { MenuItem } from "../types/menu"
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 

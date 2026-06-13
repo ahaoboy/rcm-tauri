@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from "../types"
 import { OPEN_FILE_LOCATION } from "../consts"
 import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * "Open file location" — opens Explorer with the file selected.

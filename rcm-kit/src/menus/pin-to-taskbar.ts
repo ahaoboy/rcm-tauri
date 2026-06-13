@@ -1,5 +1,5 @@
-import type { MenuItem } from "../types"
 import { t } from "../i18n"
+import type { MenuItem } from "../types"
 
 /**
  * Win11 "Pin to Taskbar" — pins the item to the taskbar.

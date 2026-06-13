@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState, useCallback } from "react"
+import { invoke } from "@tauri-apps/api/core"
 import { listen, emit } from "@tauri-apps/api/event"
 import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window"
-import { invoke } from "@tauri-apps/api/core"
-import type { MenuData, MenuShowPayload } from "./types/menu"
-import { useTheme } from "./hooks/useTheme"
+import { useEffect, useRef, useState, useCallback } from "react"
+
 import { ContextMenu } from "./components"
-import { feLog } from "./feLog"
 import { EDGE_GAP } from "./constants/layout"
+import { feLog } from "./feLog"
+import { useTheme } from "./hooks/useTheme"
+import type { MenuData, MenuShowPayload } from "./types/menu"
 
 /** Off-screen position used to hide the window without flicker. */
 const OFF_SCREEN = new PhysicalPosition(-9999, -9999)

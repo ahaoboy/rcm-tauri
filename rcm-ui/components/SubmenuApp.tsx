@@ -9,14 +9,15 @@
  *   menu-hover, menu-hover-out, menu-execute
  */
 
-import { useEffect, useRef, useState, useCallback } from "react"
 import { listen, emit } from "@tauri-apps/api/event"
 import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window"
+import { useEffect, useRef, useState, useCallback } from "react"
+
+import { EDGE_GAP, SUBMENU_GAP, winPadPhysical } from "../constants/layout"
+import { feLog } from "../feLog"
+import { useTheme } from "../hooks/useTheme"
 import type { MenuShowPayload, MenuData, IndexPath } from "../types/menu"
 import { ContextMenu } from "./ContextMenu"
-import { useTheme } from "../hooks/useTheme"
-import { feLog } from "../feLog"
-import { EDGE_GAP, SUBMENU_GAP, winPadPhysical } from "../constants/layout"
 
 const OFF_SCREEN = new PhysicalPosition(-9999, -9999)
 

@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from "../types"
 import { ZIP } from "../consts"
 import { isZip } from "../tool"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * "Add to archive" — always visible.

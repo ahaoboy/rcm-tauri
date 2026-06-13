@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
-import type { MenuData, MenuItem, IndexPath } from "../types/menu"
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window"
+import React, { useCallback, useEffect, useRef, useState } from "react"
+
 import { WINDOW_PADDING } from "../constants/layout"
-
+import type { MenuData, MenuItem, IndexPath } from "../types/menu"
 /* ── Sub-components ─────────────────────────────────────────────────── */
-
 import { IconRibbon } from "./IconRibbon"
 import { MenuGroup } from "./MenuGroup"
 import { MenuSeparator } from "./MenuSeparator"

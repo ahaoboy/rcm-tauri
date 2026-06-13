@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from "../types"
-import { t } from "../i18n"
 import { OPEN_WITH } from "../consts"
+import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * Win11 "Open with" — opens the Windows "Open With → Choose another app"

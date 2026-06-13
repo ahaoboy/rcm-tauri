@@ -1,4 +1,5 @@
 import React from "react"
+
 import type { MenuItem, IndexPath } from "../types/menu"
 import { MenuItemRow } from "./MenuItemRow"
 

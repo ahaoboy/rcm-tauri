@@ -1,8 +1,9 @@
-import React, { useCallback, useRef } from "react"
-import type { MenuItem, IndexPath } from "../types/menu"
-import { getCurrentWindow } from "@tauri-apps/api/window"
 import { emit } from "@tauri-apps/api/event"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import React, { useCallback, useRef } from "react"
+
 import { feLog } from "../feLog"
+import type { MenuItem, IndexPath } from "../types/menu"
 
 /* ── Props ──────────────────────────────────────────────────────────── */
 

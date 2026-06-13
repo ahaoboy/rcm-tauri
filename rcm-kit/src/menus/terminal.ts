@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from "../types"
 import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * "Open in Windows Terminal" menu item.

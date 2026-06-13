@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from "../types"
 import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * Win11 "Open" — launches the selected file/folder with its default handler.

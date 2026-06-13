@@ -1,6 +1,6 @@
-import type { MenuItem, InvokeProps } from "../types"
-import { t } from "../i18n"
 import { COPY_PATH, COPY_NAME, COPY_BASE64 } from "../consts"
+import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 import { copy } from "./clipboard"
 
 const filesArg = (props: InvokeProps) => props.files.map((f) => f.path)

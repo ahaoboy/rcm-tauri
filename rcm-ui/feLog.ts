@@ -23,7 +23,7 @@ function send(tag: string, level: LogLevel, msg: string) {
       console.log(formatted)
   }
   // Send to Rust for file logging (fire-and-forget)
-  emit("log-event", { tag, msg: `[${level}] ${msg}` }).catch(() => { })
+  emit("log-event", { tag, msg: `[${level}] ${msg}` }).catch(() => {})
 }
 
 export const feLog = {

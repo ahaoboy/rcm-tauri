@@ -1,5 +1,5 @@
-import type { MenuItem, InvokeProps } from "../types"
 import { t } from "../i18n"
+import type { MenuItem, InvokeProps } from "../types"
 
 /**
  * Win11 "Open in Terminal" — opens Windows Terminal at the selected folder or file location.
