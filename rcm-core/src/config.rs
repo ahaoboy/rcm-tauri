@@ -206,7 +206,7 @@ pub fn reset() {
     SHOW_ICONS.store(false, Ordering::Relaxed);
     *REMOTE_URL.lock().unwrap() = String::new();
     save();
-    crate::menu_defaults::write_menu_defaults();
+    crate::menu::write_menu_defaults();
     println!("config: reset to defaults");
 }
 

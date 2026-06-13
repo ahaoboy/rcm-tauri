@@ -265,7 +265,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     match rcm_core::config::remote_url() {
                         Some(url) => {
                             log::info("Tray", &format!("updating menu from {url}"));
-                            match rcm_core::menu_defaults::download_menu(&url) {
+                            match rcm_core::menu::download_menu(&url) {
                                 Ok(path) => log::info("Tray", &format!("update saved to {path}")),
                                 Err(e) => log::error("Tray", &format!("update failed: {e}")),
                             }

@@ -7,147 +7,42 @@ use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule, url::UrlModule}
 use rcm_core::{InvokeProps, Menu};
 use rquickjs::function::This;
 use rquickjs::{
-    Context, Function, Module, Result, Runtime,
-    function::Opt,
+    Context, Function, Module, Runtime,
     loader::{BuiltinLoader, BuiltinResolver, ModuleLoader},
-    module::{Declarations, Exports, ModuleDef},
 };
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-use std::path::Path;
-use std::process::Command;
-
-const CREATE_NO_WINDOW: u32 = 0x08000000;
-
 const LIB_MODULE: &str = include_str!("../../rcm-kit/dist/index.js");
-
+const LIB_NAME: &str = "rcm-kit";
+const MENU_NAME: &str = "rcm-menu";
 fn print(s: String) {
     println!("{s}")
 }
 
-fn rquickjs_run<'js>(exe: String, args: Opt<Vec<String>>, options: Opt<rquickjs::Object<'js>>) {
-    let mut cmd = Command::new(exe);
-
-    if let Some(a) = args.0 {
-        cmd.args(a);
-    }
-
-    if let Some(opts) = options.0 {
-        if let Ok(Some(c)) = opts.get::<_, Option<String>>("cwd") {
-            cmd.current_dir(c);
-        }
-
-        #[cfg(target_os = "windows")]
-        if let Ok(Some(w)) = opts.get::<_, Option<String>>("window")
-            && w.eq_ignore_ascii_case("hidden")
-        {
-            cmd.creation_flags(CREATE_NO_WINDOW);
-        }
-    }
-
-    let _ = cmd.spawn(); // execute asynchronously detached
-}
-
-fn rquickjs_which(exe: String) -> Option<String> {
-    if let Ok(output) = Command::new("where").arg(&exe).output()
-        && output.status.success()
-        && let Ok(s) = String::from_utf8(output.stdout)
-        && let Some(first_line) = s.lines().next()
-    {
-        return Some(first_line.trim().to_string());
-    }
-    None
-}
-
-fn rquickjs_find_unique_path(dir: String, name: String) -> String {
-    let base_path = Path::new(&dir).join(&name);
-    if !base_path.exists() {
-        return base_path.to_string_lossy().to_string();
-    }
-
-    let extension = base_path.extension().and_then(|e| e.to_str()).unwrap_or("");
-    let stem = base_path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(&name);
-
-    let mut counter = 2;
-    loop {
-        let new_name = if extension.is_empty() {
-            format!("{}({})", stem, counter)
-        } else {
-            format!("{}({}).{}", stem, counter, extension)
-        };
-
-        let new_path = Path::new(&dir).join(&new_name);
-        if !new_path.exists() {
-            return new_path.to_string_lossy().to_string();
-        }
-        counter += 1;
-    }
-}
-
-pub struct RcmSysModule;
-
-impl ModuleDef for RcmSysModule {
-    fn declare(declare: &Declarations) -> Result<()> {
-        declare.declare("run")?;
-        declare.declare("which")?;
-        declare.declare("where")?;
-        declare.declare("findUniquePath")?;
-        Ok(())
-    }
-
-    fn evaluate<'js>(ctx: &rquickjs::Ctx<'js>, exports: &Exports<'js>) -> Result<()> {
-        exports.export("run", rquickjs::Function::new(ctx.clone(), rquickjs_run)?)?;
-        exports.export(
-            "which",
-            rquickjs::Function::new(ctx.clone(), rquickjs_which)?,
-        )?;
-        exports.export(
-            "where",
-            rquickjs::Function::new(ctx.clone(), rquickjs_which)?,
-        )?;
-        exports.export(
-            "findUniquePath",
-            rquickjs::Function::new(ctx.clone(), rquickjs_find_unique_path)?,
-        )?;
-        Ok(())
-    }
-}
-
 pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
-    println!("{:?}", props);
+    println!("props: {:?}", props);
 
     let rt = Runtime::new()?;
 
-    #[cfg(feature = "llrt")]
-    let resolver = (BuiltinResolver::default()
-        .with_module("rcm")
-        .with_module("fs")
-        .with_module("path")
-        .with_module("url")
-        .with_module("os"),);
-
-    #[cfg(not(feature = "llrt"))]
-    let resolver = (BuiltinResolver::default().with_module("rcm"));
+    let mut resolver = BuiltinResolver::default().with_module(LIB_NAME);
+    let mut loader = (
+        BuiltinLoader::default().with_module(LIB_NAME, LIB_MODULE),
+        ModuleLoader::default(),
+    );
 
     #[cfg(feature = "llrt")]
-    let loader = (
-        BuiltinLoader::default().with_module("rcm", LIB_MODULE),
-        ModuleLoader::default()
+    {
+        resolver = resolver
+            .with_module("fs")
+            .with_module("path")
+            .with_module("url")
+            .with_module("os");
+        loader.1 = loader
+            .1
             .with_module("fs", FsModule)
             .with_module("path", PathModule)
             .with_module("url", UrlModule)
-            .with_module("os", OsModule),
-    );
-
-    #[cfg(not(feature = "llrt"))]
-    let loader = (
-        BuiltinLoader::default().with_module("rcm", LIB_MODULE),
-        ModuleLoader::default(),
-    );
+            .with_module("os", OsModule);
+    }
 
     rt.set_loader(resolver, loader);
 
@@ -162,13 +57,13 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
                 .unwrap();
 
             // Declare the rcm index.js module
-            let module = Module::declare(ctx.clone(), "rcm", LIB_MODULE)?;
+            let module = Module::declare(ctx.clone(), LIB_NAME, LIB_MODULE)?;
             let (_, promise) = module.eval()?;
             promise.finish::<()>()?;
 
             // Declare the menu module (from disk or embedded default)
-            let menu_src = rcm_core::menu_defaults::load_menu_module();
-            let module = Module::declare(ctx.clone(), "menu", menu_src.as_str())?;
+            let menu_src = rcm_core::menu::load_menu_module();
+            let module = Module::declare(ctx.clone(), MENU_NAME, menu_src.as_str())?;
             let (eval_module, promise) = module.eval()?;
             promise.finish::<()>()?;
 
