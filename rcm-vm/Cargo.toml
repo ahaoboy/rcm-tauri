@@ -11,7 +11,7 @@ default = ["llrt"]
 llrt = ["dep:llrt_modules"]
 
 [dependencies]
-rcm-core = { path = "../rcm-core" }
+rcm-core = { path = "../rcm-core", version = "0.1" }
 rcm-com = { workspace = true }
 rquickjs = { workspace = true, features = ["loader"] }
 serde = { workspace = true }
