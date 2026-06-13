@@ -29,7 +29,6 @@ fn get_config() -> ConfigPayload {
     ConfigPayload {
         dev: config::is_dev(),
         icons: config::is_icons(),
-        menu: if config::is_lite() { "lite" } else { "full" },
     }
 }
 

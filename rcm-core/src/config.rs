@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Data
@@ -16,9 +16,6 @@ use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ConfigFile {
-    /// `"lite"` or `"full"`
-    #[serde(default = "default_menu")]
-    menu: String,
     /// Dev mode flag
     #[serde(default)]
     dev: bool,
@@ -28,6 +25,9 @@ struct ConfigFile {
     /// Event filter rules
     #[serde(default = "default_filters")]
     filters: Vec<FilterRule>,
+    /// Remote URL for menu JS updates (empty = disabled)
+    #[serde(default)]
+    url: String,
 }
 
 /// A single filter rule for ignoring context-menu events.
@@ -91,34 +91,28 @@ impl FilterRule {
         }
 
         // file_eq — exact match against any file in the list (skip if empty)
-        if !self.file.is_empty() {
-            if !event.files.iter().any(|f| f == &self.file) {
+        if !self.file.is_empty()
+            && !event.files.iter().any(|f| f == &self.file) {
                 return false;
             }
-        }
 
         // flags_eq — exact match against event flags (skip if None)
-        if let Some(f) = self.flags {
-            if event.event.flags() != f {
+        if let Some(f) = self.flags
+            && event.event.flags() != f {
                 return false;
             }
-        }
 
         true
     }
 }
 
-fn default_menu() -> String {
-    "lite".into()
-}
-
 impl Default for ConfigFile {
     fn default() -> Self {
         Self {
-            menu: default_menu(),
             dev: false,
             icons: false,
             filters: default_filters(),
+            url: String::new(),
         }
     }
 }
@@ -127,10 +121,10 @@ impl Default for ConfigFile {
 // In-memory state (fast atomic reads)
 // ═══════════════════════════════════════════════════════════════════════════
 
-static IS_LITE: AtomicBool = AtomicBool::new(true);
 static DEV_MODE: AtomicBool = AtomicBool::new(false);
 static SHOW_ICONS: AtomicBool = AtomicBool::new(false);
 static FILTERS: OnceLock<Vec<FilterRule>> = OnceLock::new();
+static REMOTE_URL: Mutex<String> = Mutex::new(String::new());
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Init — called once at startup
@@ -149,17 +143,17 @@ pub fn init() {
         }
     };
 
-    IS_LITE.store(cfg.menu == "lite", Ordering::Relaxed);
     DEV_MODE.store(cfg.dev, Ordering::Relaxed);
     SHOW_ICONS.store(cfg.icons, Ordering::Relaxed);
     let _ = FILTERS.set(cfg.filters);
+    *REMOTE_URL.lock().unwrap() = cfg.url;
 
     println!(
-        "config: menu={} dev={} icons={} filters={} ({})",
-        if is_lite() { "lite" } else { "full" },
+        "config: dev={} icons={} filters={} remote={} ({})",
         is_dev(),
         is_icons(),
         filters().len(),
+        remote_url().as_deref().unwrap_or("(none)"),
         path.display(),
     );
 }
@@ -167,10 +161,6 @@ pub fn init() {
 // ═══════════════════════════════════════════════════════════════════════════
 // Getters
 // ═══════════════════════════════════════════════════════════════════════════
-
-pub fn is_lite() -> bool {
-    IS_LITE.load(Ordering::Relaxed)
-}
 
 pub fn is_dev() -> bool {
     DEV_MODE.load(Ordering::Relaxed)
@@ -185,14 +175,15 @@ pub fn filters() -> &'static [FilterRule] {
     FILTERS.get().map(|v| v.as_slice()).unwrap_or(&[])
 }
 
+/// Return the remote menu update URL, or `None` if not configured.
+pub fn remote_url() -> Option<String> {
+    let url = REMOTE_URL.lock().unwrap();
+    if url.is_empty() { None } else { Some(url.clone()) }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Setters — update memory + persist to disk
 // ═══════════════════════════════════════════════════════════════════════════
-
-pub fn set_lite(lite: bool) {
-    IS_LITE.store(lite, Ordering::Relaxed);
-    save();
-}
 
 pub fn set_dev(dev: bool) {
     DEV_MODE.store(dev, Ordering::Relaxed);
@@ -204,11 +195,16 @@ pub fn set_icons(icons: bool) {
     save();
 }
 
+pub fn set_remote_url(url: String) {
+    *REMOTE_URL.lock().unwrap() = url;
+    save();
+}
+
 /// Reset all config and menu files to embedded defaults.
 pub fn reset() {
-    IS_LITE.store(true, Ordering::Relaxed);
     DEV_MODE.store(false, Ordering::Relaxed);
     SHOW_ICONS.store(false, Ordering::Relaxed);
+    *REMOTE_URL.lock().unwrap() = String::new();
     save();
     crate::menu_defaults::write_menu_defaults();
     println!("config: reset to defaults");
@@ -226,14 +222,10 @@ fn config_path() -> PathBuf {
 
 fn save() {
     let cfg = ConfigFile {
-        menu: if IS_LITE.load(Ordering::Relaxed) {
-            "lite".into()
-        } else {
-            "full".into()
-        },
         dev: DEV_MODE.load(Ordering::Relaxed),
         icons: SHOW_ICONS.load(Ordering::Relaxed),
         filters: filters().to_vec(),
+        url: REMOTE_URL.lock().unwrap().clone(),
     };
     save_inner(&config_path(), &cfg);
 }

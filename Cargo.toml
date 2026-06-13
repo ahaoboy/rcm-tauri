@@ -21,6 +21,7 @@ anyhow = "1"
 tokio = "1"
 clap = { version = "4", features = ["derive"] }
 regex = "1"
+ureq = "3"
 
 # https://github.com/time-rs/time/issues/783
 time = "=0.3.47"

@@ -166,13 +166,8 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
             let (_, promise) = module.eval()?;
             promise.finish::<()>()?;
 
-            // Declare the menu module (lite or full, from disk or embedded)
-            let menu_name = if rcm_core::config::is_lite() {
-                "rcm.lite"
-            } else {
-                "rcm.full"
-            };
-            let menu_src = rcm_core::menu_defaults::load_menu_module(menu_name);
+            // Declare the menu module (from disk or embedded default)
+            let menu_src = rcm_core::menu_defaults::load_menu_module();
             let module = Module::declare(ctx.clone(), "menu", menu_src.as_str())?;
             let (eval_module, promise) = module.eval()?;
             promise.finish::<()>()?;

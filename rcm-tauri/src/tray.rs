@@ -1,7 +1,6 @@
 use rcm_core::registry;
 use rcm_core::{config, log};
 use rcm_reg::MenuStyle;
-use std::io::Write;
 use std::time::Duration;
 use tauri::{
     App, Emitter,
@@ -23,24 +22,18 @@ pub const APPLY_ID: &str = "apply";
 pub const REGISTER_ID: &str = "register";
 /// Unregister the shell extension DLL (MenuItem).
 pub const UNREGISTER_ID: &str = "unregister";
-/// Dump all environment variables to a .env file next to the exe (MenuItem).
-pub const DUMP_ENV_ID: &str = "dump_env";
 /// Toggle dev mode — when on, the menu window stays open on focus loss (CheckMenuItem).
 pub const DEV_ID: &str = "dev";
-/// Switch to lite menu (CheckMenuItem).
-pub const MENU_LITE_ID: &str = "menu_lite";
-/// Switch to full menu (CheckMenuItem).
-pub const MENU_FULL_ID: &str = "menu_full";
 /// Toggle icon ribbon visibility (CheckMenuItem).
 pub const ICONS_ID: &str = "icons";
-/// Toggle file logging — when on, all logs are appended to <exe>.log (CheckMenuItem).
-pub const LOG_ID: &str = "log";
 /// Toggle autostart — when on, the app launches at Windows startup (CheckMenuItem).
 pub const AUTOSTART_ID: &str = "autostart";
 /// Reset all config and menu files to embedded defaults (MenuItem).
 pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
+/// Download the latest menu JS from the configured remote URL (MenuItem).
+pub const UPDATE_ID: &str = "update";
 
 // ── Label constants ──────────────────────────────────────────────────────
 
@@ -51,15 +44,12 @@ pub const WIN11_TEXT: &str = "Win11";
 pub const CLASSIC_TEXT: &str = "Classic";
 pub const REGISTER_TEXT: &str = "Register";
 pub const UNREGISTER_TEXT: &str = "Unregister";
-pub const DUMP_ENV_TEXT: &str = "DumpEnv";
 pub const DEV_TEXT: &str = "Dev";
-pub const MENU_LITE_TEXT: &str = "Lite";
-pub const MENU_FULL_TEXT: &str = "Full";
 pub const ICONS_TEXT: &str = "Icons";
-pub const LOG_TEXT: &str = "Log";
 pub const AUTOSTART_TEXT: &str = "Startup";
 pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
+pub const UPDATE_TEXT: &str = "Update";
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -81,44 +71,6 @@ fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &Chec
     let is_win11 = current_is_win11();
     let _ = win11.set_checked(is_win11);
     let _ = classic.set_checked(!is_win11);
-}
-
-/// Write all current process environment variables to `<exe_path>.env`.
-fn dump_env() {
-    let exe = match std::env::current_exe() {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("dump_env: failed to get exe path: {e}");
-            return;
-        }
-    };
-
-    let env_path = {
-        let mut p = exe.clone();
-        p.set_extension("exe.env");
-        p
-    };
-
-    let mut vars: Vec<(String, String)> = std::env::vars().collect();
-    vars.sort_by(|a, b| a.0.cmp(&b.0));
-
-    let mut file = match std::fs::File::create(&env_path) {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!("dump_env: failed to create {}: {}", env_path.display(), e);
-            return;
-        }
-    };
-
-    for (key, value) in &vars {
-        let _ = writeln!(file, "{key}={value}");
-    }
-
-    println!(
-        "dump_env: wrote {} vars to {}",
-        vars.len(),
-        env_path.display()
-    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -161,23 +113,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Action items ─────────────────────────────────────────────────
     let register_i = MenuItem::with_id(app, REGISTER_ID, REGISTER_TEXT, true, None::<&str>)?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
-    let dump_env_i = MenuItem::with_id(app, DUMP_ENV_ID, DUMP_ENV_TEXT, true, None::<&str>)?;
-    let menu_lite_i = CheckMenuItem::with_id(
-        app,
-        MENU_LITE_ID,
-        MENU_LITE_TEXT,
-        true,
-        config::is_lite(),
-        None::<&str>,
-    )?;
-    let menu_full_i = CheckMenuItem::with_id(
-        app,
-        MENU_FULL_ID,
-        MENU_FULL_TEXT,
-        true,
-        !config::is_lite(),
-        None::<&str>,
-    )?;
     let dev_i =
         CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, config::is_dev(), None::<&str>)?;
     let icons_i = CheckMenuItem::with_id(
@@ -188,14 +123,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         config::is_icons(),
         None::<&str>,
     )?;
-    let log_i = CheckMenuItem::with_id(
-        app,
-        LOG_ID,
-        LOG_TEXT,
-        true,
-        log::FILE_LOGGING.load(std::sync::atomic::Ordering::Relaxed),
-        None::<&str>,
-    )?;
     let autostart_i = CheckMenuItem::with_id(
         app,
         AUTOSTART_ID,
@@ -204,6 +131,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         registry::is_autostart_enabled(),
         None::<&str>,
     )?;
+    let update_i = MenuItem::with_id(app, UPDATE_ID, UPDATE_TEXT, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -222,10 +150,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let classic_clone = classic_i.clone();
     let toggle_ctx_clone = toggle_ctx_i.clone();
     let dev_clone = dev_i.clone();
-    let menu_lite_clone = menu_lite_i.clone();
-    let menu_full_clone = menu_full_i.clone();
     let icons_clone = icons_i.clone();
-    let log_clone = log_i.clone();
     let autostart_clone = autostart_i.clone();
 
     // ── Build menu ───────────────────────────────────────────────────
@@ -234,45 +159,50 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ─────────
     //   ✓ Enable / Disable
     //   ─────────
-    //     Register / Unregister / Dump Env
+    //     Register / Unregister
     //   ─────────
-    //   ✓ Lite / Full / Icons
+    //   ✓ Icons
     //   ─────────
     //   ✓ Dev Mode
     //   ─────────
-    //   ✓ Log
-    //   ─────────
     //   ✓ Auto Start
     //   ─────────
+    //     Update          (only if remote_url is set in config)
+    //   ─────────
     //     Apply / Reset / Quit
-    let menu = Menu::with_items(
-        app,
-        &[
-            &win11_i,
-            &classic_i,
-            &sep1,
-            &toggle_ctx_i,
-            &sep2,
-            &register_i,
-            &unregister_i,
-            &dump_env_i,
-            &sep3,
-            &menu_lite_i,
-            &menu_full_i,
-            &icons_i,
-            &sep4,
-            &dev_i,
-            &sep5,
-            &log_i,
-            &sep6,
-            &autostart_i,
-            &sep7,
-            &apply_i,
-            &sep8,
-            &reset_i,
-            &quit_i,
-        ],
-    )?;
+
+    let has_remote = rcm_core::config::remote_url().is_some();
+
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
+        &win11_i,
+        &classic_i,
+        &sep1,
+        &toggle_ctx_i,
+        &sep2,
+        &register_i,
+        &unregister_i,
+        &sep3,
+        &icons_i,
+        &sep4,
+        &dev_i,
+        &sep5,
+        &autostart_i,
+    ];
+
+    if has_remote {
+        items.push(&sep6);
+        items.push(&update_i);
+        items.push(&sep7);
+    } else {
+        items.push(&sep6);
+    }
+
+    items.push(&apply_i);
+    items.push(&sep8);
+    items.push(&reset_i);
+    items.push(&quit_i);
+
+    let menu = Menu::with_items(app, &items)?;
 
     let _tray = TrayIconBuilder::new()
         .icon(app.default_window_icon().unwrap().clone())
@@ -324,23 +254,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     let _ = rcm_com::cmd::unregister();
                 }
 
-                // ── Dump environment variables ────────────────────
-                DUMP_ENV_ID => {
-                    dump_env();
-                }
-
-                // ── Menu mode switching ─────────────────────────
-                MENU_LITE_ID => {
-                    config::set_lite(true);
-                    let _ = menu_lite_clone.set_checked(true);
-                    let _ = menu_full_clone.set_checked(false);
-                }
-                MENU_FULL_ID => {
-                    config::set_lite(false);
-                    let _ = menu_lite_clone.set_checked(false);
-                    let _ = menu_full_clone.set_checked(true);
-                }
-
                 // ── Toggle icons ────────────────────────────────
                 ICONS_ID => {
                     let new_val = !config::is_icons();
@@ -358,22 +271,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     config::set_dev(new_val);
                     let _ = dev_clone.set_checked(new_val);
                     let _ = app.emit("dev-mode", new_val);
-                }
-
-                // ── Toggle file logging ─────────────────────────
-                LOG_ID => {
-                    use std::sync::atomic::Ordering;
-                    let new_val = !log::FILE_LOGGING.load(Ordering::Relaxed);
-                    log::FILE_LOGGING.store(new_val, Ordering::Relaxed);
-                    let _ = log_clone.set_checked(new_val);
-                    log::info(
-                        "Tray",
-                        &format!(
-                            "file logging {} (path: {})",
-                            if new_val { "ON" } else { "OFF" },
-                            log::log_path_display()
-                        ),
-                    );
                 }
 
                 // ── Toggle autostart ──────────────────────────
@@ -401,6 +298,22 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 APPLY_ID => {
                     if let Err(e) = rcm_reg::restart_explorer(Duration::from_secs(3)) {
                         log::error("Tray", &format!("restart Explorer failed: {e}"));
+                    }
+                }
+
+                // ── Update menu from remote URL ─────────────────
+                UPDATE_ID => {
+                    match rcm_core::config::remote_url() {
+                        Some(url) => {
+                            log::info("Tray", &format!("updating menu from {url}"));
+                            match rcm_core::menu_defaults::download_menu(&url) {
+                                Ok(path) => log::info("Tray", &format!("update saved to {path}")),
+                                Err(e) => log::error("Tray", &format!("update failed: {e}")),
+                            }
+                        }
+                        None => {
+                            log::error("Tray", "update: no remote URL configured");
+                        }
                     }
                 }
 
