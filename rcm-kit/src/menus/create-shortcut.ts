@@ -13,7 +13,7 @@ export function createShortcut(): MenuItem {
     action: (props: InvokeProps) => {
       const file = props.files[0]
       return {
-        exe: "powershell",
+        cmd: "powershell",
         args: [
           "-Command",
           `$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('${file.path}.lnk'); $s.TargetPath = '${file.path}'; $s.Save()`,

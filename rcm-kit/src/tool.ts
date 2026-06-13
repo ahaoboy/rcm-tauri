@@ -1,3 +1,12 @@
+import {
+  TEXT_EXTS,
+  VIDEO_EXTS,
+  IMAGE_EXTS,
+  PRINTABLE_EXTS,
+  AUDIO_EXTS,
+  SUBTITLE_EXTS,
+} from "./consts"
+
 /**
  * Archive extensions supported by the Rust backend's `Fmt` enum.
  * Compound extensions (`.tar.gz`) are listed first so they are matched
@@ -46,3 +55,24 @@ export function isExecutable(path: string): boolean {
   const lower = path.toLowerCase()
   return EXECUTABLE_EXTS.some((ext) => lower.endsWith(ext))
 }
+
+// ── Path helpers ────────────────────────────────────────────────────
+
+/** Extract the file name (with extension) from a Windows or Unix path. */
+export function basename(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path
+}
+
+/** Check whether `path` ends with any of the given extensions (case-insensitive). */
+export function hasExt(path: string, ...exts: string[]): boolean {
+  const lower = path.toLowerCase()
+  return exts.some((ext) => lower.endsWith(ext.toLowerCase()))
+}
+
+export const isText = (path: string) => hasExt(path, ...TEXT_EXTS)
+export const isVideo = (path: string) => hasExt(path, ...VIDEO_EXTS)
+export const isAudio = (path: string) => hasExt(path, ...AUDIO_EXTS)
+export const isImage = (path: string) => hasExt(path, ...IMAGE_EXTS)
+export const isSubtitle = (path: string) => hasExt(path, ...SUBTITLE_EXTS)
+export const isMedia = (path: string) => isVideo(path) || isAudio(path)
+export const isPrintable = (path: string) => hasExt(path, ...PRINTABLE_EXTS)

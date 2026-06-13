@@ -20,7 +20,7 @@ export function terminal(labelKey = "open.in.wt"): MenuItem {
       const targetDir =
         props.files.length === 1 && props.files[0].isDir ? props.files[0].path : props.cwd
       return {
-        exe: "wt",
+        cmd: "wt",
         args: ["-d", targetDir],
         cwd: targetDir,
         window: "Hidden",

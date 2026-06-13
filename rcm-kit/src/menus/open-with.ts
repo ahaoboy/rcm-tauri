@@ -20,7 +20,7 @@ export function openWith(): MenuItem {
       const path = target ? target.path : props.cwd
       if (!path || props.files.length > 1) return
       return {
-        exe: OPEN_WITH,
+        cmd: OPEN_WITH,
         args: [path],
         window: "Hidden",
       }

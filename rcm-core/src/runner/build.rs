@@ -3,52 +3,68 @@
 //! Handles path resolution, window visibility (Windows Terminal vs. hidden),
 //! and shell selection for interactive terminal sessions.
 
-use crate::types::CommandPayload;
+use crate::types::{CommandPayload, WindowMode};
 use tokio::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
+#[cfg(target_os = "windows")]
+use windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE;
+
 /// Build a ready-to-spawn [`Command`] from the frontend payload.
 ///
 /// - Bare command names are resolved to full paths via `which`.
-/// - When `window` is `"Show"` / `"Visible"` / `"Maximized"`, the command
-///   is launched inside Windows Terminal + PowerShell so the user can see
-///   the output in a visible tab.
-/// - Otherwise `CREATE_NO_WINDOW` is applied to suppress console windows.
+/// - When `window` is `Show` / `Visible` / `Maximized`, the command
+///   is launched inside Windows Terminal + PowerShell.
+/// - `Minimized` launches the process minimized.
+/// - `Hidden` suppresses the console window entirely via `CREATE_NO_WINDOW`.
 pub fn build_command(cmd: &CommandPayload) -> Command {
-    let exe = resolve_exe(&cmd.exe);
+    let exe = resolve_exe(&cmd.cmd);
 
-    let show_window = matches!(cmd.window.as_str(), "Show" | "Visible" | "Maximized");
-
-    if show_window {
-        let target = if cmd.args.is_empty() {
-            format!("\"{}\"", exe)
-        } else {
-            format!("\"{}\" {}", exe, cmd.args.join(" "))
-        };
-        let shell = resolve_shell();
-        let mut command = Command::new("wt");
-        command.args([&shell, "-NoExit", "-Command", &target]);
-        if !cmd.cwd.is_empty() {
-            command.current_dir(&cmd.cwd);
+    use WindowMode::*;
+    match cmd.window {
+        Visible | Maximized => {
+            let target = if cmd.args.is_empty() {
+                format!("\"{}\"", exe)
+            } else {
+                format!("\"{}\" {}", exe, cmd.args.join(" "))
+            };
+            let shell = resolve_shell();
+            let mut command = Command::new("wt");
+            command.args([&shell, "-NoExit", "-Command", &target]);
+            if !cmd.cwd.is_empty() {
+                command.current_dir(&cmd.cwd);
+            }
+            command
         }
-        command
-    } else {
-        let mut command = Command::new(&exe);
-        if !cmd.args.is_empty() {
-            command.args(&cmd.args);
+        Minimized => {
+            let mut command = build_raw(cmd, &exe);
+            #[cfg(target_os = "windows")]
+            {
+                command.creation_flags(SW_MINIMIZE.0 as u32);
+            }
+            command
         }
-        if !cmd.cwd.is_empty() {
-            command.current_dir(&cmd.cwd);
+        Hidden => {
+            let mut command = build_raw(cmd, &exe);
+            #[cfg(target_os = "windows")]
+            {
+                command.creation_flags(CREATE_NO_WINDOW);
+            }
+            command
         }
-
-        #[cfg(target_os = "windows")]
-        {
-            command.creation_flags(CREATE_NO_WINDOW);
-        }
-
-        command
     }
+}
+
+fn build_raw(cmd: &CommandPayload, exe: &str) -> Command {
+    let mut command = Command::new(exe);
+    if !cmd.args.is_empty() {
+        command.args(&cmd.args);
+    }
+    if !cmd.cwd.is_empty() {
+        command.current_dir(&cmd.cwd);
+    }
+    command
 }
 
 /// Resolve a bare command name to a full path via the `which` crate.

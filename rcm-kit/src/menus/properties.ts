@@ -15,7 +15,7 @@ export function properties(): MenuItem {
       const target = props.files[0]
       const path = target ? target.path : props.cwd
       if (!path) return
-      return { exe: "@properties", args: [path] }
+      return { cmd: "@properties", args: [path] }
     },
   }
 }

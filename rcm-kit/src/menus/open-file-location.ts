@@ -18,7 +18,7 @@ export function openFileLocation(): MenuItem {
       return props.files.length === 1 && !file.isDir && file.path.endsWith(".lnk")
     },
     action: (props: InvokeProps) => ({
-      exe: OPEN_FILE_LOCATION,
+      cmd: OPEN_FILE_LOCATION,
       args: [props.files[0].path],
       cwd: props.cwd,
       window: "Hidden",

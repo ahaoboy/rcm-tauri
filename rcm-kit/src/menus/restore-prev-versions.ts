@@ -10,9 +10,8 @@ export function restorePreviousVersions(): MenuItem {
     label: t("restore.prev.versions"),
     icon: "⏪",
     action: () => ({
-      exe: "control",
+      cmd: "control",
       args: ["/name", "Microsoft.System"],
-      window: "Show",
     }),
   }
 }

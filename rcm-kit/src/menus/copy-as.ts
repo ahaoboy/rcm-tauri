@@ -12,7 +12,7 @@ export function copyAsPath(): MenuItem {
     label: "path",
     icon: "📋",
     action: (props: InvokeProps) => ({
-      exe: COPY_PATH,
+      cmd: COPY_PATH,
       args: filesArg(props),
       cwd: props.cwd,
     }),
@@ -26,7 +26,7 @@ export function copyAsName(): MenuItem {
     label: "name",
     icon: "🏷️",
     action: (props: InvokeProps) => ({
-      exe: COPY_NAME,
+      cmd: COPY_NAME,
       args: filesArg(props),
       cwd: props.cwd,
     }),
@@ -41,7 +41,7 @@ export function copyAsBase64(): MenuItem {
     icon: "🔐",
     match: (props: InvokeProps) => props.files.length === 1,
     action: (props: InvokeProps) => ({
-      exe: COPY_BASE64,
+      cmd: COPY_BASE64,
       args: filesArg(props),
       cwd: props.cwd,
     }),

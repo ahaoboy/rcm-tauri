@@ -74,7 +74,7 @@ export function ssh(): MenuItem {
         label: p.name,
         icon: "🖥️",
         action: (_props: InvokeProps) => ({
-          exe: "wt",
+          cmd: "wt",
           args: ["-w", "0", "new-tab", "--profile", p.name],
           window: "Hidden",
         }),

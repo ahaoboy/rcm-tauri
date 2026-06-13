@@ -17,3 +17,4 @@ rquickjs = { workspace = true, features = ["loader"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 llrt_modules = { workspace = true, optional = true }
+is-admin = { workspace = true }

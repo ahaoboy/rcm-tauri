@@ -11,10 +11,9 @@ export function openInTerminal(): MenuItem {
     icon: "🖥️",
     match: (props: InvokeProps) => props.files.length > 0,
     action: (props: InvokeProps) => ({
-      exe: "wt",
+      cmd: "wt",
       args: ["-d", props.files[0].isDir ? props.files[0].path : props.cwd],
       cwd: props.cwd,
-      window: "Show",
     }),
   }
 }

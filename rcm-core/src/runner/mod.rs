@@ -23,7 +23,7 @@ pub struct ExecResult {
 /// System commands (prefixed with `@`) are intercepted and handled
 /// natively via [`cmds::SystemCommand`].
 pub async fn execute(cmd: &CommandPayload) -> ExecResult {
-    if cmds::is_system_command(&cmd.exe) {
+    if cmds::is_system_command(&cmd.cmd) {
         return run_system_cmd(cmd);
     }
 
@@ -37,7 +37,7 @@ pub async fn execute(cmd: &CommandPayload) -> ExecResult {
             if !output.status.success() {
                 eprintln!(
                     "execute '{}' failed (exit {:?}): {}",
-                    cmd.exe,
+                    cmd.cmd,
                     output.status.code(),
                     stderr
                 );
@@ -50,11 +50,11 @@ pub async fn execute(cmd: &CommandPayload) -> ExecResult {
             }
         }
         Err(e) => {
-            eprintln!("execute '{}' spawn error: {}", cmd.exe, e);
+            eprintln!("execute '{}' spawn error: {}", cmd.cmd, e);
             ExecResult {
                 success: false,
                 stdout: String::new(),
-                stderr: format!("Failed to spawn {}: {}", cmd.exe, e),
+                stderr: format!("Failed to spawn {}: {}", cmd.cmd, e),
                 exit_code: None,
             }
         }
@@ -65,7 +65,7 @@ pub async fn execute(cmd: &CommandPayload) -> ExecResult {
 ///
 /// Returns immediately; the child runs independently.
 pub async fn spawn(cmd: &CommandPayload) -> Result<(), String> {
-    if cmds::is_system_command(&cmd.exe) {
+    if cmds::is_system_command(&cmd.cmd) {
         let result = run_system_cmd(cmd);
         return if result.success {
             Ok(())
@@ -79,13 +79,13 @@ pub async fn spawn(cmd: &CommandPayload) -> Result<(), String> {
     command
         .spawn()
         .map(|_| ())
-        .map_err(|e| format!("Failed to spawn {}: {}", cmd.exe, e))
+        .map_err(|e| format!("Failed to spawn {}: {}", cmd.cmd, e))
 }
 
 /// Run a `@xxx` system command and convert its result to [`ExecResult`].
 fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
     println!("run_system_cmd: {:?}", cmd);
-    match cmd.exe.parse::<cmds::SystemCommand>() {
+    match cmd.cmd.parse::<cmds::SystemCommand>() {
         Ok(sys_cmd) => {
             let result = sys_cmd.run(cmd);
             ExecResult {

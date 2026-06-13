@@ -10,7 +10,7 @@ export function pinToTaskbar(): MenuItem {
     label: t("pin.to.taskbar"),
     icon: "📌",
     action: () => ({
-      exe: "powershell",
+      cmd: "powershell",
       args: ["-Command", ""],
       window: "Hidden",
     }),

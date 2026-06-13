@@ -26,7 +26,7 @@ export function groupBy(): MenuItem {
       label: t(labelKey),
       icon,
       action: (props: InvokeProps) => ({
-        exe: GROUP_BY,
+        cmd: GROUP_BY,
         args: [key],
         cwd: props.cwd,
         window: "Hidden",

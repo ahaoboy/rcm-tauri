@@ -20,12 +20,12 @@ export function newMenu(): MenuItem {
     key: "new",
     label: t("new"),
     icon: "➕",
-    items: NEW_ITEMS.map(([key, labelKey, icon, exe, ext]) => ({
+    items: NEW_ITEMS.map(([key, labelKey, icon, cmd, ext]) => ({
       key,
       label: t(labelKey),
       icon,
       action: (props: InvokeProps) => ({
-        exe,
+        cmd,
         args: ext ? [ext] : [],
         cwd: props.cwd,
         window: "Hidden",

@@ -14,7 +14,7 @@ export function copy(label = t("copy")): MenuItem {
     icon: "📋",
     match: (props: InvokeProps) => props.files.length > 0,
     action: (props: InvokeProps) => ({
-      exe: "@copy",
+      cmd: "@copy",
       args: props.files.map((f) => f.path),
     }),
   }
@@ -28,7 +28,7 @@ export function paste(): MenuItem {
     icon: "📄",
     match: (props: InvokeProps) => props.files.length === 0 && props.clipboard?.has_files === true,
     action: (props: InvokeProps) => ({
-      exe: "@paste-files",
+      cmd: "@paste-files",
       args: [],
       cwd: props.cwd,
     }),
@@ -48,7 +48,7 @@ export function trash(): MenuItem {
     icon: "🗑️",
     match: (props: InvokeProps) => props.files.length > 0,
     action: (props: InvokeProps) => ({
-      exe: "@trash",
+      cmd: "@trash",
       args: props.files.map((f) => f.path),
     }),
   }

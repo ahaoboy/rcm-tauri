@@ -1,24 +1,19 @@
 import { t } from "../i18n"
+import { isText } from "../tool"
 import type { MenuItem, InvokeProps } from "../types"
 
 /**
- * Win11 "Edit" — opens file in Notepad or the default text editor.
+ * Win11 "Edit" — opens text files in Notepad.
  */
 export function edit(): MenuItem {
   return {
     key: "edit",
     label: t("edit"),
     icon: "✏️",
-    match: (props: InvokeProps) => {
-      if (!props.files.length) return false
-      // editable text-ish files
-      const name = props.files[0].name.toLowerCase()
-      return /\.(txt|ini|cfg|log|md|xml|json|yml|yaml|toml|bat|cmd|ps1|reg)$/.test(name)
-    },
+    match: ({ files }: InvokeProps) => files.length > 0 && isText(files[0].path),
     action: (props: InvokeProps) => ({
-      exe: "notepad",
+      cmd: "notepad",
       args: [props.files[0].path],
-      window: "Show",
     }),
   }
 }

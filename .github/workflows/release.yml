@@ -49,7 +49,7 @@ jobs:
           pnpm install
           pnpm update:dll
 
-          cd rcm
+          cd rcm-kit
           pnpm build
 
       - name: Build

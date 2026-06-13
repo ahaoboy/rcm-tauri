@@ -1,8 +1,9 @@
 import { t } from "../i18n"
+import { isExecutable } from "../tool"
 import type { MenuItem, InvokeProps } from "../types"
 
 /**
- * Win11 "Run as administrator" — for executables, scripts, and MSI installers.
+ * Win11 "Run as administrator" — for executables, scripts, and installers.
  */
 export function runAsAdmin(): MenuItem {
   return {
@@ -10,15 +11,10 @@ export function runAsAdmin(): MenuItem {
     label: t("run.as.admin"),
     icon: "🛡️",
     admin: true,
-    match: (props: InvokeProps) => {
-      if (!props.files.length) return false
-      const name = props.files[0].name.toLowerCase()
-      return /\.(exe|bat|cmd|ps1|msi|vbs)$/.test(name)
-    },
+    match: ({ files }: InvokeProps) => files.length > 0 && isExecutable(files[0].path),
     action: (props: InvokeProps) => ({
-      exe: props.files[0].path,
+      cmd: props.files[0].path,
       admin: true,
-      window: "Show",
     }),
   }
 }

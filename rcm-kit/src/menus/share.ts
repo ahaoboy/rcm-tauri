@@ -10,9 +10,8 @@ export function share(): MenuItem {
     label: t("share"),
     icon: "📤",
     action: () => ({
-      exe: "ms-settings:share",
+      cmd: "ms-settings:share",
       args: [],
-      window: "Show",
     }),
   }
 }

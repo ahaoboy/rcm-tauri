@@ -25,7 +25,7 @@ export function sortBy(): MenuItem {
       label: t(labelKey),
       icon,
       action: (props: InvokeProps) => ({
-        exe: SORT_BY,
+        cmd: SORT_BY,
         args: [key],
         cwd: props.cwd,
         window: "Hidden",

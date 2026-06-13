@@ -10,7 +10,7 @@ export function pinToStart(): MenuItem {
     label: t("pin.to.start"),
     icon: "📌",
     action: () => ({
-      exe: "powershell",
+      cmd: "powershell",
       args: ["-Command", ""],
       window: "Hidden",
     }),

@@ -13,7 +13,7 @@ export function open(): MenuItem {
       if (!props.files.length) return
       const target = props.files[0]
       return {
-        exe: "cmd",
+        cmd: "cmd",
         args: ["/c", "start", "", target.path],
         cwd: props.cwd,
         window: "Hidden",

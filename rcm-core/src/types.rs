@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileInfo {
-    pub name: String,
     pub path: String,
     #[serde(rename = "isDir")]
     pub is_dir: bool,
@@ -29,8 +28,6 @@ pub struct InvokeProps {
     pub cwd: String,
     pub env: HashMap<String, String>,
     pub admin: bool,
-    #[serde(rename = "type")]
-    pub type_name: String,
     /// Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported.
     pub lang: String,
     /// Snapshot of clipboard state at the time of the right-click.
@@ -38,9 +35,20 @@ pub struct InvokeProps {
     pub clipboard: ClipboardInfo,
 }
 
+/// Window visibility mode for spawned processes.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "PascalCase")]
+pub enum WindowMode {
+    #[default]
+    Hidden,
+    Visible,
+    Minimized,
+    Maximized,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandPayload {
-    pub exe: String,
+    pub cmd: String,
     #[serde(default)]
     pub args: Vec<String>,
     #[serde(default)]
@@ -48,7 +56,7 @@ pub struct CommandPayload {
     #[serde(default)]
     pub admin: bool,
     #[serde(default)]
-    pub window: String,
+    pub window: WindowMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -64,7 +72,7 @@ pub struct Item {
     #[serde(default)]
     pub admin: bool,
     #[serde(default)]
-    pub window: String,
+    pub window: WindowMode,
     #[serde(default)]
     pub items: Vec<Item>,
     #[serde(default)]

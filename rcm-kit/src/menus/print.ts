@@ -1,4 +1,5 @@
 import { t } from "../i18n"
+import { isPrintable } from "../tool"
 import type { MenuItem, InvokeProps } from "../types"
 
 /**
@@ -9,15 +10,10 @@ export function print(): MenuItem {
     key: "print",
     label: t("print"),
     icon: "🖨️",
-    match: (props: InvokeProps) => {
-      if (!props.files.length) return false
-      const name = props.files[0].name.toLowerCase()
-      return /\.(txt|pdf|docx?|xlsx?|pptx?|jpg|jpeg|png|gif|bmp)$/.test(name)
-    },
+    match: ({ files }: InvokeProps) => files.length > 0 && isPrintable(files[0].path),
     action: (props: InvokeProps) => ({
-      exe: "print",
+      cmd: "print",
       args: [props.files[0].path],
-      window: "Show",
     }),
   }
 }

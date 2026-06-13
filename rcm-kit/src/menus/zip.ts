@@ -17,11 +17,11 @@ export function zip(): MenuItem {
     icon: "🗜️",
     match: ({ files }) => {
       // Only hide when a single archive file is selected — pointless to re-archive it.
-      return !(files.length === 1 && !files[0].isDir && isZip(files[0].name))
+      return !(files.length === 1 && !files[0].isDir && isZip(files[0].path))
     },
     action: (props: InvokeProps) => {
       return {
-        exe: ZIP,
+        cmd: ZIP,
         args: props.files.map((f) => f.path),
         cwd: props.cwd,
         window: "Hidden",

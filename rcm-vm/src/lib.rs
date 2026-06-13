@@ -114,11 +114,6 @@ pub fn from_info(
         .map(|path| {
             let p = std::path::Path::new(path);
             rcm_core::FileInfo {
-                name: p
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("")
-                    .to_string(),
                 path: path.clone(),
                 is_dir: p.is_dir(),
             }
@@ -129,12 +124,7 @@ pub fn from_info(
         files,
         cwd: info.dir.clone(),
         env,
-        admin: false,
-        type_name: if info.bg {
-            "Background".to_string()
-        } else {
-            "File".to_string()
-        },
+        admin: is_admin::is_admin(),
         lang: lang::system_lang(),
         clipboard: clipboard::detect(),
     };

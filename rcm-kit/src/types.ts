@@ -2,13 +2,12 @@
 
 /** File info passed to menu handlers */
 export interface FileInfo {
-  name: string
   path: string
   isDir: boolean
 }
 
 /** Environment variables / context */
-export type Env = Record<string, unknown>
+export type Env = Record<string, string>
 
 /** Snapshot of clipboard state at right-click time. */
 export interface ClipboardInfo {
@@ -23,20 +22,22 @@ export interface InvokeProps {
   cwd: string
   env: Env
   admin: boolean
-  type: string
   /** Current i18n language (e.g. 'en', 'zh'). Falls back to 'en' if unsupported. */
   lang: string
   /** Snapshot of clipboard state at the time of the right-click. */
   clipboard?: ClipboardInfo
 }
 
+/** Window visibility for spawned processes. */
+export type WindowMode = "Hidden" | "Visible" | "Minimized" | "Maximized"
+
 /** Executable command descriptor */
 export interface Command {
-  exe: string
+  cmd: string
   args?: string[]
   cwd?: string
   admin?: boolean
-  window?: "Hidden" | "Show" | "Visible" | "Minimized" | "Maximized"
+  window?: WindowMode
 }
 
 /** Callback signatures */
@@ -50,7 +51,6 @@ export interface MenuItem {
   label?: string
   disable?: boolean
   admin?: boolean
-  window?: "Hidden" | "Show" | "Visible" | "Minimized" | "Maximized"
   items?: MenuItem[]
   match?: MatchFn
   action?: ActionFn

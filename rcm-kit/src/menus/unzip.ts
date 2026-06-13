@@ -16,7 +16,7 @@ export function unzip(): MenuItem {
     match: (props: InvokeProps) =>
       props.files.length > 0 && props.files.every((f) => isZip(f.path)),
     action: (props: InvokeProps) => ({
-      exe: UNZIP,
+      cmd: UNZIP,
       args: props.files.map((f) => f.path),
       cwd: props.cwd,
       window: "Hidden",
