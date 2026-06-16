@@ -31,10 +31,11 @@ pub fn build_command(cmd: &CommandPayload) -> Command {
             };
             let shell = resolve_shell();
             let mut command = Command::new("wt");
-            command.args([&shell, "-NoExit", "-Command", &target]);
             if !cmd.cwd.is_empty() {
-                command.current_dir(&cmd.cwd);
+                command.arg("-d");
+                command.arg(&cmd.cwd);
             }
+            command.args([&shell, "-NoExit", "-Command", &target]);
             command
         }
         Minimized => {
