@@ -234,16 +234,16 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let _sep_prefs = PredefinedMenuItem::separator(app)?;
     let _sep_sys = PredefinedMenuItem::separator(app)?;
 
-    let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = Vec::new();
-
     // Group 1: Style
-    items.push(&win11_i);
-    items.push(&classic_i);
+    let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
+        &win11_i,
+        &classic_i,
+        // Group 2: Preferences
+        &_sep_prefs,
+        &register_i,
+        &unregister_i,
+    ];
 
-    // Group 2: Preferences
-    items.push(&_sep_prefs);
-    items.push(&register_i);
-    items.push(&unregister_i);
     if is_debug {
         items.push(&icons_i);
         items.push(&dev_i);
@@ -277,8 +277,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             }
             REGISTER_ID => handle_register_toggle(true, &register_clone),
             UNREGISTER_ID => handle_register_toggle(false, &register_clone),
-            ICONS_ID => handle_icons_toggle(&app, &icons_clone),
-            DEV_ID => handle_dev_toggle(&app, &dev_clone),
+            ICONS_ID => handle_icons_toggle(app, &icons_clone),
+            DEV_ID => handle_dev_toggle(app, &dev_clone),
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
             APPLY_ID => handle_apply(),
             UPDATE_ID => handle_update(),

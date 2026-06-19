@@ -27,7 +27,9 @@ pub fn build_command(cmd: &CommandPayload) -> Command {
             let target = if cmd.args.is_empty() {
                 format!("\"{}\"", exe)
             } else {
-                format!("\"{}\" {}", exe, cmd.args.join(" "))
+                let quoted_args: Vec<String> =
+                    cmd.args.iter().map(|a| format!("\"{}\"", a)).collect();
+                format!("\"{}\" {}", exe, quoted_args.join(" "))
             };
             let shell = resolve_shell();
             let mut command = Command::new("wt");
