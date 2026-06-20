@@ -6,7 +6,7 @@
 
 A customizable Windows right-click context menu, built with Tauri + React
 
-https://github.com/user-attachments/assets/0bc4867c-07df-4bf9-b4e6-fdc71a6c98d4
+[rcm-tauri.webm](https://github.com/user-attachments/assets/1b6f95bf-3b49-49bc-95ae-3c2663c3c90c)
 
 ## ⚠️ Important Notice
 
