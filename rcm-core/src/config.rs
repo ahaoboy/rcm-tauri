@@ -11,8 +11,7 @@ use std::path::PathBuf;
 // Data
 // ═══════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct ConfigFile {
     /// Dev mode flag
     #[serde(default)]
@@ -24,7 +23,7 @@ struct ConfigFile {
     /// - Missing field → use built-in defaults
     /// - Empty array `[]` → no filtering (allow all events)
     /// - Non-empty → use specified rules
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     filters: Option<Vec<FilterRule>>,
     /// Remote URL for menu JS sync (empty = disabled)
     #[serde(default)]
@@ -106,7 +105,6 @@ impl FilterRule {
         true
     }
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Init — called once at startup
