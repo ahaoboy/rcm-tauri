@@ -152,9 +152,9 @@ Then click **Sync** in the tray menu to download the latest version. This is use
 
 Here are some example configurations from the community. Feel free to submit yours via PR!
 
-| Menu                                                  | Sync URL                                                                 | Preview                                                                                                                            |
-| ----------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| [rcm-tauri](https://github.com/ahaoboy/rcm-tauri)     | `https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js`   | <img width="400" alt="default menu" src="https://github.com/user-attachments/assets/9840dfb6-d74b-417c-ab35-2e8401745791" />       |
-| [rcm-ahaoboy](https://github.com/ahaoboy/rcm-ahaoboy) | `https://github.com/ahaoboy/rcm-ahaoboy/releases/latest/download/rcm.js` | <img width="504" height="491" alt="image" src="https://github.com/user-attachments/assets/0fac2734-38e3-4836-82a0-5cfb8684ef7d" /> |
+| Menu | Preview |
+|------|---------|
+| [rcm-tauri](https://github.com/ahaoboy/rcm-tauri) · [Sync URL](https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js) | <img width="400" alt="default menu" src="https://github.com/user-attachments/assets/9840dfb6-d74b-417c-ab35-2e8401745791" /> |
+| [rcm-ahaoboy](https://github.com/ahaoboy/rcm-ahaoboy) · [Sync URL](https://github.com/ahaoboy/rcm-ahaoboy/releases/latest/download/rcm.js) | <img width="400" alt="rcm-ahaoboy" src="https://github.com/user-attachments/assets/0fac2734-38e3-4836-82a0-5cfb8684ef7d" /> |
 
 > **Want to share your setup?** Open a PR adding your `rcm.js` to this section!
