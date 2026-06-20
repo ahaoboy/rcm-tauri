@@ -8,7 +8,7 @@ pub mod monitor;
 pub mod pipe;
 pub mod tray;
 
-use crate::events::{AutoHideEpoch, ConfigPayload, MAX_SUBMENU_DEPTH, MenuArc, submenu_label};
+use crate::events::{AutoHideEpoch, ConfigPayload, MenuArc, submenu_indices, submenu_label};
 use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
@@ -65,7 +65,7 @@ pub fn run() {
             let epoch = auto_hide_epoch.clone();
 
             // Pre-create submenu windows
-            for d in 0..MAX_SUBMENU_DEPTH {
+            for d in submenu_indices() {
                 let label = submenu_label(d);
                 let mgr = MenuManager {
                     menu: menu.clone(),

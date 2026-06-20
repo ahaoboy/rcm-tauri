@@ -5,6 +5,7 @@
 
 use rcm_core::{CommandPayload, Menu};
 use serde::{Deserialize, Serialize};
+use std::ops::{Range, RangeInclusive};
 use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{Arc, Mutex};
 use tauri::PhysicalPosition;
@@ -154,6 +155,16 @@ pub fn submenu_label(depth: usize) -> String {
 }
 
 /// depth 0 → "main", depth 1 → "submenu-0", depth 2 → "submenu-1", …
+/// Indices used by submenu window labels: 0 -> "submenu-0", etc.
+pub fn submenu_indices() -> Range<usize> {
+    0..MAX_SUBMENU_DEPTH
+}
+
+/// Visible menu depths owned by submenu windows: 1 -> "submenu-0", etc.
+pub fn submenu_window_depths() -> RangeInclusive<usize> {
+    1..=MAX_SUBMENU_DEPTH
+}
+
 pub fn window_label(depth: usize) -> String {
     if depth == 0 {
         root_label().to_string()

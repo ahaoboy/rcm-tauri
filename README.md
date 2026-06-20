@@ -8,8 +8,6 @@ A customizable Windows right-click context menu, built with Tauri + React
 
 https://github.com/user-attachments/assets/0bc4867c-07df-4bf9-b4e6-fdc71a6c98d4
 
-
-
 ## ⚠️ Important Notice
 
 **This project is under active development and is NOT production-ready.**
@@ -54,4 +52,4 @@ After installation, the RCM icon appears in your system tray. Follow these steps
 4. **Apply the changes**
    - Click **Apply** to restart Windows Explorer and activate the shell extension.
    - Your right-click menu should now use the RCM style.
-   [rcm-tauri.webm](https://github.com/user-attachments/assets/2c2c3a88-bb35-46d6-bea3-8d28bab55541)
+     [rcm-tauri.webm](https://github.com/user-attachments/assets/2c2c3a88-bb35-46d6-bea3-8d28bab55541)

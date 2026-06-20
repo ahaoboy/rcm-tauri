@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "fmt": "oxfmt",
-    "lint:fix": "oxlint --fix",
+    "pre-check": "oxfmt && oxlint --fix",
     "dev": "pnpm run build:rcm && vite",
     "build:rcm": "cd rcm-kit && npm run build",
     "build": "pnpm run build:rcm && vite build",

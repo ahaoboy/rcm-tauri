@@ -9,11 +9,17 @@
  *   menu-hover, menu-hover-out, menu-execute
  */
 
+import { invoke } from "@tauri-apps/api/core"
 import { listen, emit } from "@tauri-apps/api/event"
-import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window"
+import { availableMonitors, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window"
 import { useEffect, useRef, useState, useCallback } from "react"
 
-import { EDGE_GAP, SUBMENU_GAP, winPadPhysical } from "../constants/layout"
+import {
+  chooseMonitorForPoint,
+  clampWindowToMonitor,
+  SUBMENU_GAP,
+  winPadPhysical,
+} from "../constants/layout"
 import { feLog } from "../feLog"
 import { useTheme } from "../hooks/useTheme"
 import type { MenuShowPayload, MenuData, IndexPath } from "../types/menu"
@@ -32,7 +38,6 @@ export function SubmenuApp() {
     x: number
     y: number
     parent_x?: number
-    parent_w?: number
   } | null>(null)
 
   // Depth from URL hash: "submenu-0" → depth 1, "submenu-1" → depth 2, etc.
@@ -52,6 +57,13 @@ export function SubmenuApp() {
     win.setPosition(OFF_SCREEN).catch(() => {})
 
     const setup = async () => {
+      try {
+        const cfg = await invoke<{ dev: boolean }>("get_config")
+        devMode.current = cfg.dev
+      } catch {
+        /* ignore */
+      }
+
       // ── Prevent close ──────────────────────────────────────────
       const unlistenClose = await win.onCloseRequested(async (e) => {
         e.preventDefault()
@@ -61,7 +73,7 @@ export function SubmenuApp() {
 
       // ── Rust → Frontend: menu-show for this depth ──────────────
       const unlistenShow = await listen<MenuShowPayload>("menu-show", (event) => {
-        const { menu: menuData, path, x, y, parent_x, parent_w } = event.payload
+        const { menu: menuData, path, x, y, parent_x } = event.payload
 
         const eventDepth = path.length === 0 ? 0 : path.length - 1
         if (eventDepth !== depth) {
@@ -77,7 +89,7 @@ export function SubmenuApp() {
           `submenu-${myLevel} pos=(${x.toFixed(0)},${y.toFixed(0)}) path=[${path}]`,
         )
 
-        pendingShow.current = { x, y, parent_x, parent_w }
+        pendingShow.current = { x, y, parent_x }
         setMenu(menuData)
         setIndexPath(path)
         // Window is off-screen; handleReady will position & show
@@ -133,17 +145,17 @@ export function SubmenuApp() {
     try {
       const win = getCurrentWindow()
       const outerSize = await win.outerSize()
-      const monitor = await currentMonitor()
+      const monitors = await availableMonitors()
+      const monitor = chooseMonitorForPoint(monitors, info.x, info.y)
 
       let finalX = info.x
       let finalY = info.y
 
       if (monitor) {
         const monRight = monitor.position.x + monitor.size.width
-        const monBottom = monitor.position.y + monitor.size.height
 
         // If submenu overflows right edge, flip to the left of the parent
-        if (finalX + outerSize.width > monRight - EDGE_GAP && info.parent_x != null) {
+        if (finalX + outerSize.width > monRight && info.parent_x != null) {
           // Align submenu right edge with parent content left edge, minus gap
           const pad = winPadPhysical()
           const flippedX = info.parent_x + pad - outerSize.width - SUBMENU_GAP
@@ -154,15 +166,9 @@ export function SubmenuApp() {
           finalX = flippedX
         }
 
-        // Clamp to monitor bounds
-        finalX = Math.max(
-          monitor.position.x + EDGE_GAP,
-          Math.min(finalX, monRight - outerSize.width - EDGE_GAP),
-        )
-        finalY = Math.max(
-          monitor.position.y + EDGE_GAP,
-          Math.min(finalY, monBottom - outerSize.height - EDGE_GAP),
-        )
+        const clamped = clampWindowToMonitor(finalX, finalY, outerSize, monitor)
+        finalX = clamped.x
+        finalY = clamped.y
 
         feLog.info(
           `App:submenu-${myLevel}`,

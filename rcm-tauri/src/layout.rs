@@ -3,7 +3,10 @@
 // Handles show/hide/hover/execute/blur for the multi-window context menu.
 // ═══════════════════════════════════════════════════════════════════════════
 
-use crate::events::{AUTO_HIDE_MS, DEEPEST_DEPTH, MAX_SUBMENU_DEPTH, OFF_SCREEN, SUBMENU_GAP};
+use crate::events::{
+    AUTO_HIDE_MS, DEEPEST_DEPTH, MAX_SUBMENU_DEPTH, OFF_SCREEN, SUBMENU_GAP, submenu_indices,
+    submenu_window_depths,
+};
 use crate::events::{
     AutoHideEpoch, MenuArc, MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload,
     MenuHoverPayload, MenuShowPayload,
@@ -14,7 +17,7 @@ use rcm_core::runner::execute;
 use rcm_core::{config, log};
 use std::sync::atomic::Ordering;
 use tauri::window::Color;
-use tauri::{Emitter, Manager, PhysicalPosition, WebviewUrl};
+use tauri::{Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow};
 
 pub struct MenuManager {
     pub menu: MenuArc,
@@ -98,6 +101,8 @@ impl MenuManager {
 
     /// Handle hover on a menu item: show submenu if the item has children.
     pub fn handle_hover(&self, payload: MenuHoverPayload) {
+        self.reset_auto_hide();
+
         log::event(
             "RECV",
             "menu-hover",
@@ -171,7 +176,6 @@ impl MenuManager {
                 parent_w: Some(payload.parent_w),
             },
         );
-        self.reset_auto_hide();
     }
 
     /// Hide all submenu windows (depth > 0), keeping the root window.
@@ -210,14 +214,12 @@ impl MenuManager {
     pub fn hide_all(&self) {
         DEEPEST_DEPTH.store(0, Ordering::SeqCst);
         // Hide root + submenus
-        let _ = self.app.get_webview_window(root_label()).map(|w| {
-            let _ = w.hide();
-            let _ = w.set_position(OFF_SCREEN);
-        });
-        for d in 0..MAX_SUBMENU_DEPTH {
+        if let Some(win) = self.app.get_webview_window(root_label()) {
+            hide_window(&win);
+        }
+        for d in submenu_indices() {
             if let Some(win) = self.app.get_webview_window(&submenu_label(d)) {
-                let _ = win.hide();
-                let _ = win.set_position(OFF_SCREEN);
+                hide_window(&win);
             }
         }
         let _ = self.app.emit("menu-hide-all", true);
@@ -225,10 +227,9 @@ impl MenuManager {
 
     /// Hide all submenu windows strictly deeper than `depth`.
     pub fn hide_deeper_than(&self, depth: usize) {
-        for d in (depth + 1)..=MAX_SUBMENU_DEPTH {
+        for d in submenu_window_depths().filter(|d| *d > depth) {
             if let Some(win) = self.app.get_webview_window(&window_label(d)) {
-                let _ = win.hide();
-                let _ = win.set_position(OFF_SCREEN);
+                hide_window(&win);
             }
         }
         DEEPEST_DEPTH.store(depth, Ordering::SeqCst);
@@ -262,6 +263,16 @@ impl MenuManager {
         #[cfg(not(target_os = "macos"))]
         let builder = builder.transparent(true);
 
-        builder.build().unwrap();
+        if let Err(err) = builder.build() {
+            log::error(
+                "Rust::create_submenu_window",
+                &format!("failed to create '{label}': {err}"),
+            );
+        }
     }
+}
+
+fn hide_window(win: &WebviewWindow) {
+    let _ = win.hide();
+    let _ = win.set_position(OFF_SCREEN);
 }

@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core"
 import { listen, emit } from "@tauri-apps/api/event"
-import { getCurrentWindow, PhysicalPosition, currentMonitor } from "@tauri-apps/api/window"
+import { availableMonitors, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window"
 import { useEffect, useRef, useState, useCallback } from "react"
 
 import { ContextMenu } from "./components"
-import { EDGE_GAP } from "./constants/layout"
+import { chooseMonitorForPoint, clampWindowToMonitor } from "./constants/layout"
 import { feLog } from "./feLog"
 import { useTheme } from "./hooks/useTheme"
 import type { MenuData, MenuShowPayload } from "./types/menu"
@@ -129,30 +129,23 @@ function App() {
     try {
       const win = getCurrentWindow()
       const outerSize = await win.outerSize()
-      const monitor = await currentMonitor()
+      const monitors = await availableMonitors()
+      const monitor = chooseMonitorForPoint(monitors, pos.x, pos.y)
 
       let finalX = pos.x
       let finalY = pos.y
 
       if (monitor) {
         const monRight = monitor.position.x + monitor.size.width
-        const monBottom = monitor.position.y + monitor.size.height
-
         // If menu overflows right edge, flip to the left of the cursor
-        if (finalX + outerSize.width > monRight - EDGE_GAP) {
+        if (finalX + outerSize.width > monRight) {
           finalX = pos.x - outerSize.width
           feLog.info("App:root", `flip: right overflow → left_side=${finalX.toFixed(0)}`)
         }
 
-        // Clamp to monitor bounds (handles all edges including flipped left)
-        finalX = Math.max(
-          monitor.position.x + EDGE_GAP,
-          Math.min(finalX, monRight - outerSize.width - EDGE_GAP),
-        )
-        finalY = Math.max(
-          monitor.position.y + EDGE_GAP,
-          Math.min(finalY, monBottom - outerSize.height - EDGE_GAP),
-        )
+        const clamped = clampWindowToMonitor(finalX, finalY, outerSize, monitor)
+        finalX = clamped.x
+        finalY = clamped.y
 
         feLog.info(
           "App:root",
