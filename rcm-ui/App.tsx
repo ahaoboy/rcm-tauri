@@ -43,7 +43,7 @@ function App() {
     const win = getCurrentWindow()
 
     // Start off-screen
-    win.setPosition(OFF_SCREEN).catch(() => {})
+    win.setPosition(OFF_SCREEN).catch(() => { })
 
     const setup = async () => {
       // ── Fetch initial config ──────────────────────────────────
@@ -155,13 +155,10 @@ function App() {
 
       await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)))
       await win.setAlwaysOnTop(true)
+      menuActive.current = true
+      feLog.info("App:root", "menuActive armed")
       await win.show()
       await win.setFocus()
-
-      setTimeout(() => {
-        menuActive.current = true
-        feLog.info("App:root", "menuActive armed")
-      }, 200)
     } catch (e) {
       feLog.error("App:root", `handleReady error: ${e}`)
     }
