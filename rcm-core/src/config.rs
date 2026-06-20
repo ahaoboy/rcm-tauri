@@ -2,8 +2,7 @@
 //! next to the executable.
 //!
 //! On startup the file is read; if it doesn't exist it is created
-//! with defaults.  Tray toggles update the in-memory state and
-//! persist immediately.
+//! with defaults.  Tray toggles persist immediately.
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -25,7 +24,7 @@ struct ConfigFile {
     /// Event filter rules
     #[serde(default = "default_filters")]
     filters: Vec<FilterRule>,
-    /// Remote URL for menu JS updates (empty = disabled)
+    /// Remote URL for menu JS sync (empty = disabled)
     #[serde(default)]
     url: String,
 }
@@ -91,16 +90,16 @@ impl FilterRule {
         }
 
         // file_eq — exact match against any file in the list (skip if empty)
-        if !self.file.is_empty()
-            && !event.files.iter().any(|f| f == &self.file) {
-                return false;
-            }
+        if !self.file.is_empty() && !event.files.iter().any(|f| f == &self.file) {
+            return false;
+        }
 
         // flags_eq — exact match against event flags (skip if None)
         if let Some(f) = self.flags
-            && event.event.flags() != f {
-                return false;
-            }
+            && event.event.flags() != f
+        {
+            return false;
+        }
 
         true
     }
@@ -175,10 +174,14 @@ pub fn filters() -> &'static [FilterRule] {
     FILTERS.get().map(|v| v.as_slice()).unwrap_or(&[])
 }
 
-/// Return the remote menu update URL, or `None` if not configured.
+/// Return the remote menu sync URL, or `None` if not configured.
 pub fn remote_url() -> Option<String> {
     let url = REMOTE_URL.lock().unwrap();
-    if url.is_empty() { None } else { Some(url.clone()) }
+    if url.is_empty() {
+        None
+    } else {
+        Some(url.clone())
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

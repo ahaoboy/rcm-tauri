@@ -43,7 +43,7 @@ function App() {
     const win = getCurrentWindow()
 
     // Start off-screen
-    win.setPosition(OFF_SCREEN).catch(() => { })
+    win.setPosition(OFF_SCREEN).catch(() => {})
 
     const setup = async () => {
       // ── Fetch initial config ──────────────────────────────────

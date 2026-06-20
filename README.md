@@ -20,7 +20,8 @@ A customizable Windows right-click context menu, built with Tauri + React
 
 - Replace or enhance the standard Windows Explorer context menu.
 - Switch between Windows 11 (compact) and Windows 10 (classic) menu styles.
-- Custom menu scripts with JavaScript (lite / full mode).
+- Custom menu scripts with JavaScript — define your own commands, conditions, and submenus.
+- Remote sync — fetch your `rcm.js` from a URL to share across machines.
 - Optional icon ribbon in the menu.
 - Auto-start with Windows.
 - System tray icon for quick settings access.
@@ -53,3 +54,106 @@ After installation, the RCM icon appears in your system tray. Follow these steps
    - Click **Apply** to restart Windows Explorer and activate the shell extension.
    - Your right-click menu should now use the RCM style.
      [rcm-tauri.webm](https://github.com/user-attachments/assets/2c2c3a88-bb35-46d6-bea3-8d28bab55541)
+
+## Custom Menu
+
+RCM loads its menu from `rcm.js` located next to the executable. You can edit this file to tailor the right-click menu to your workflow.
+
+### How it works
+
+The menu is a tree of **groups** (sections) containing **items**. Each item can be:
+
+- A **built-in action** (e.g. `open()`, `copy()`, `vscode()`, `terminal()`)
+- A **submenu** (`{ label: "...", items: [...] }`)
+- A **custom command** defined with `action` / `match` callbacks
+
+Example — a minimal `rcm.js`:
+
+```js
+import { newMenu, copy, paste, terminal, Menu } from "rcm-kit"
+
+export default new Menu(
+  [
+    {
+      items: [newMenu(), terminal(), { label: "Clipboard", items: [copy(), paste()] }],
+    },
+  ],
+  [],
+)
+```
+
+### Defining custom commands
+
+Use the `action` callback to define your own commands:
+
+```js
+function fsv() {
+  return {
+    key: "fsv",
+    label: "Browse with fsv",
+    action: (props) => {
+      const targets = props.files.length ? props.files.map((f) => f.path) : ["."]
+      return { cmd: "fsv", args: targets, cwd: props.cwd, window: "Visible" }
+    },
+  }
+}
+```
+
+The `props` object provides:
+
+| Field       | Type                                 | Description                                      |
+| ----------- | ------------------------------------ | ------------------------------------------------ |
+| `files`     | `{ path: string, isDir: boolean }[]` | Selected files (empty = background click)        |
+| `cwd`       | `string`                             | Directory where the right-click occurred         |
+| `env`       | `Record<string, string>`             | Environment variables (e.g. `{ OS: "Windows" }`) |
+| `admin`     | `boolean`                            | Whether the process is running as admin          |
+| `lang`      | `string`                             | System language (e.g. `"zh"`, `"en"`)            |
+| `clipboard` | `{ has_text, has_image, has_files }` | Clipboard state snapshot                         |
+
+The `action` return value:
+
+| Field    | Type                                                     | Description             |
+| -------- | -------------------------------------------------------- | ----------------------- |
+| `cmd`    | `string`                                                 | Executable name or path |
+| `args`   | `string[]`                                               | Command-line arguments  |
+| `cwd`    | `string`                                                 | Working directory       |
+| `window` | `"Hidden"` / `"Visible"` / `"Minimized"` / `"Maximized"` | Window mode             |
+
+Use `match` to conditionally show items:
+
+```js
+{
+  key: "only-for-images",
+  label: "Convert to WebP",
+  match: ({ files }) => files.some(f => /\.(png|jpg)$/i.test(f.path)),
+  action: (props) => ({ cmd: "magick", args: [...], window: "Hidden" }),
+}
+```
+
+### Syncing your menu remotely
+
+RCM can fetch your `rcm.js` from a remote URL. Configure the URL in `rcm.config.json`:
+
+```jsonc
+{
+  "url": "https://example.com/my-rcm.js",
+}
+```
+
+Then click **Sync** in the tray menu to download the latest version. This is useful for:
+
+- Keeping your menu in sync across multiple machines
+- Sharing your menu configuration with a team
+- Version-controlling your menu setup (e.g. in a GitHub Gist)
+
+> **Note:** The `Sync` menu item only appears when `url` is configured.
+
+## Community Menus
+
+Here are some example configurations from the community. Feel free to submit yours via PR!
+
+| Author                                | Repository                                            | Sync URL                                                                 |
+| ------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------ |
+| [ahaoboy](https://github.com/ahaoboy) | [rcm-ahaoboy](https://github.com/ahaoboy/rcm-ahaoboy) | `https://github.com/ahaoboy/rcm-ahaoboy/releases/latest/download/rcm.js` |
+
+> **Want to share your setup?** Open a PR adding your `rcm.js` to this section!

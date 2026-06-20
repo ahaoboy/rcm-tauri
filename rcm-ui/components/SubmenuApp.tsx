@@ -54,7 +54,7 @@ export function SubmenuApp() {
     let cleanupFns: (() => void)[] = []
 
     // Start off-screen
-    win.setPosition(OFF_SCREEN).catch(() => { })
+    win.setPosition(OFF_SCREEN).catch(() => {})
 
     const setup = async () => {
       try {

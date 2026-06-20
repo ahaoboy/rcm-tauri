@@ -31,7 +31,7 @@ pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
 /// Download the latest menu JS from the configured remote URL (MenuItem).
-pub const UPDATE_ID: &str = "update";
+pub const SYNC_ID: &str = "sync";
 
 // ── Label constants ──────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ pub const ICONS_TEXT: &str = "Icons";
 pub const AUTOSTART_TEXT: &str = "Startup";
 pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
-pub const UPDATE_TEXT: &str = "Update";
+pub const SYNC_TEXT: &str = "Sync";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -133,16 +133,16 @@ fn handle_autostart_toggle<R: tauri::Runtime>(item: &CheckMenuItem<R>) {
     }
 }
 
-fn handle_update() {
+fn handle_sync() {
     match rcm_core::config::remote_url() {
         Some(url) => {
-            log::info("Tray", &format!("updating menu from {url}"));
+            log::info("Tray", &format!("syncing menu from {url}"));
             match rcm_core::menu::download_menu(&url) {
-                Ok(path) => log::info("Tray", &format!("update saved to {path}")),
-                Err(e) => log::error("Tray", &format!("update failed: {e}")),
+                Ok(path) => log::info("Tray", &format!("sync saved to {path}")),
+                Err(e) => log::error("Tray", &format!("sync failed: {e}")),
             }
         }
-        None => log::error("Tray", "update: no remote URL configured"),
+        None => log::error("Tray", "sync: no remote URL configured"),
     }
 }
 
@@ -202,7 +202,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         registry::is_autostart_enabled(),
         None::<&str>,
     )?;
-    let update_i = MenuItem::with_id(app, UPDATE_ID, UPDATE_TEXT, true, None::<&str>)?;
+    let sync_i = MenuItem::with_id(app, SYNC_ID, SYNC_TEXT, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -225,7 +225,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Dev    (debug)
     //   ✓ Auto Start
     //   ─────────
-    //     Update  (conditional)    ← System
+    //     Sync Menu  (conditional)    ← System
     //     Reset / Apply / Quit
 
     let is_debug = cfg!(debug_assertions);
@@ -253,7 +253,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // Group 3: System
     items.push(&_sep_sys);
     if has_remote {
-        items.push(&update_i);
+        items.push(&sync_i);
     }
     items.push(&reset_i);
     items.push(&apply_i);
@@ -281,7 +281,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             DEV_ID => handle_dev_toggle(app, &dev_clone),
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
             APPLY_ID => handle_apply(),
-            UPDATE_ID => handle_update(),
+            SYNC_ID => handle_sync(),
             RESET_ID => config::reset(),
             _ => {}
         })
