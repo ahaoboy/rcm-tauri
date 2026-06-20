@@ -67,6 +67,7 @@ jobs:
           prerelease: false
 
       - name: Upload rcm.js to Release
+        shell: bash
         run: |
           cp rcm-kit/dist/full.js rcm.js
           if [ "${{ github.ref_type }}" = "tag" ]; then
