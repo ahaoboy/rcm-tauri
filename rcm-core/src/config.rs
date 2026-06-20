@@ -6,14 +6,13 @@
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Mutex, OnceLock};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Data
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 struct ConfigFile {
     /// Dev mode flag
     #[serde(default)]
@@ -21,9 +20,12 @@ struct ConfigFile {
     /// Show icon ribbon at top of menu
     #[serde(default)]
     icons: bool,
-    /// Event filter rules
-    #[serde(default = "default_filters")]
-    filters: Vec<FilterRule>,
+    /// Event filter rules.
+    /// - Missing field → use built-in defaults
+    /// - Empty array `[]` → no filtering (allow all events)
+    /// - Non-empty → use specified rules
+    #[serde(default)]
+    filters: Option<Vec<FilterRule>>,
     /// Remote URL for menu JS sync (empty = disabled)
     #[serde(default)]
     url: String,
@@ -105,47 +107,19 @@ impl FilterRule {
     }
 }
 
-impl Default for ConfigFile {
-    fn default() -> Self {
-        Self {
-            dev: false,
-            icons: false,
-            filters: default_filters(),
-            url: String::new(),
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// In-memory state (fast atomic reads)
-// ═══════════════════════════════════════════════════════════════════════════
-
-static DEV_MODE: AtomicBool = AtomicBool::new(false);
-static SHOW_ICONS: AtomicBool = AtomicBool::new(false);
-static FILTERS: OnceLock<Vec<FilterRule>> = OnceLock::new();
-static REMOTE_URL: Mutex<String> = Mutex::new(String::new());
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Init — called once at startup
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Load config from `<exe_dir>/rcm.config.json`, or create it with defaults.
+/// Ensure the config file exists (creating defaults if missing),
+/// then log the current configuration.
 pub fn init() {
     let path = config_path();
 
-    let cfg: ConfigFile = match std::fs::read_to_string(&path) {
-        Ok(text) => serde_json::from_str(&text).unwrap_or_default(),
-        Err(_) => {
-            let default = ConfigFile::default();
-            save_inner(&path, &default);
-            default
-        }
-    };
-
-    DEV_MODE.store(cfg.dev, Ordering::Relaxed);
-    SHOW_ICONS.store(cfg.icons, Ordering::Relaxed);
-    let _ = FILTERS.set(cfg.filters);
-    *REMOTE_URL.lock().unwrap() = cfg.url;
+    if std::fs::read_to_string(&path).is_err() {
+        save_inner(&path, &ConfigFile::default());
+    }
 
     println!(
         "config: dev={} icons={} filters={} remote={} ({})",
@@ -158,25 +132,27 @@ pub fn init() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Getters
+// Getters — always read from file so manual edits take effect immediately
 // ═══════════════════════════════════════════════════════════════════════════
 
 pub fn is_dev() -> bool {
-    DEV_MODE.load(Ordering::Relaxed)
+    read_config().dev
 }
 
 pub fn is_icons() -> bool {
-    SHOW_ICONS.load(Ordering::Relaxed)
+    read_config().icons
 }
 
 /// Return the current list of event filter rules.
-pub fn filters() -> &'static [FilterRule] {
-    FILTERS.get().map(|v| v.as_slice()).unwrap_or(&[])
+/// - `None` in config → built-in defaults.
+/// - `[]` in config → empty (allow all events).
+pub fn filters() -> Vec<FilterRule> {
+    read_config().filters.unwrap_or_else(default_filters)
 }
 
 /// Return the remote menu sync URL, or `None` if not configured.
 pub fn remote_url() -> Option<String> {
-    let url = REMOTE_URL.lock().unwrap();
+    let url = &read_config().url;
     if url.is_empty() {
         None
     } else {
@@ -185,30 +161,24 @@ pub fn remote_url() -> Option<String> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Setters — update memory + persist to disk
+// Setters — read-modify-write the config file
 // ═══════════════════════════════════════════════════════════════════════════
 
 pub fn set_dev(dev: bool) {
-    DEV_MODE.store(dev, Ordering::Relaxed);
-    save();
+    update_config(|cfg| cfg.dev = dev);
 }
 
 pub fn set_icons(icons: bool) {
-    SHOW_ICONS.store(icons, Ordering::Relaxed);
-    save();
+    update_config(|cfg| cfg.icons = icons);
 }
 
 pub fn set_remote_url(url: String) {
-    *REMOTE_URL.lock().unwrap() = url;
-    save();
+    update_config(|cfg| cfg.url = url);
 }
 
 /// Reset all config and menu files to embedded defaults.
 pub fn reset() {
-    DEV_MODE.store(false, Ordering::Relaxed);
-    SHOW_ICONS.store(false, Ordering::Relaxed);
-    *REMOTE_URL.lock().unwrap() = String::new();
-    save();
+    save_inner(&config_path(), &ConfigFile::default());
     crate::menu::write_menu_defaults();
     println!("config: reset to defaults");
 }
@@ -223,14 +193,21 @@ fn config_path() -> PathBuf {
     p
 }
 
-fn save() {
-    let cfg = ConfigFile {
-        dev: DEV_MODE.load(Ordering::Relaxed),
-        icons: SHOW_ICONS.load(Ordering::Relaxed),
-        filters: filters().to_vec(),
-        url: REMOTE_URL.lock().unwrap().clone(),
-    };
-    save_inner(&config_path(), &cfg);
+/// Read and parse the config file, falling back to defaults on any error.
+fn read_config() -> ConfigFile {
+    let path = config_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .unwrap_or_default()
+}
+
+/// Read the config file, apply `f`, and write it back.
+fn update_config(f: impl FnOnce(&mut ConfigFile)) {
+    let path = config_path();
+    let mut cfg = read_config();
+    f(&mut cfg);
+    save_inner(&path, &cfg);
 }
 
 fn save_inner(path: &std::path::Path, cfg: &ConfigFile) {
