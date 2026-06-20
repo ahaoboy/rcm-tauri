@@ -4,10 +4,7 @@
   <img src="public/icon-tray.ico" alt="RCM Icon" width="128" />
 </p>
 
-A customizable Windows right-click context menu, built with Tauri + React (with an experimental [Slint](https://slint.dev/) backend).
-
-
- 
+A customizable Windows right-click context menu, built with Tauri + React
 
 https://github.com/user-attachments/assets/0bc4867c-07df-4bf9-b4e6-fdc71a6c98d4
 
