@@ -147,6 +147,59 @@ Then click **Sync** in the tray menu to download the latest version. This is use
 - Version-controlling your menu setup (e.g. in a GitHub Gist)
 
 > **Note:** The `Sync` menu item only appears when `url` is configured.
+> After modifying `url`, restart RCM for the **Sync** button to appear.
+
+## Custom Style
+
+RCM also supports custom CSS through `style.css` located next to the executable.
+
+### How it works
+
+- On first launch, RCM writes the default `style.css` to the executable directory.
+- If you edit or replace `style.css`, the menu will use your version.
+- Click **Reset** in the tray menu to restore the default `style.css` (along with `rcm.config.json` and `rcm.js`).
+
+> **Note:** Changes to `style.css` take effect after restarting RCM.
+
+### What you can customize
+
+The CSS uses design tokens (custom properties) prefixed with `--rcm-`. You can override any of them to change the menu appearance without touching the layout rules:
+
+```css
+:root {
+  /* Colors */
+  --rcm-bg: #fff5f7; /* Menu background */
+  --rcm-border: #f2c4d0; /* Menu border */
+  --rcm-text: #b84664; /* Text color */
+  --rcm-text-disabled: rgba(…); /* Disabled item text */
+
+  /* Items */
+  --rcm-item-hover: #ffe8ef; /* Hover background */
+  --rcm-item-active: #ffd4e0; /* Active/pressed background */
+  --rcm-item-height: 32px; /* Row height */
+  --rcm-item-radius: 10px; /* Corner roundness */
+
+  /* Layout */
+  --rcm-font-family: "Segoe UI Variable", …;
+  --rcm-font-size: 13px;
+  --rcm-icon-size: 18px;
+  --rcm-radius: 12px; /* Menu container roundness */
+  --rcm-padding: 3px; /* Inner padding */
+
+  /* Shadows */
+  --rcm-shadow: 0 1px 2px rgba(…), …;
+
+  /* Separator & Ribbon */
+  --rcm-separator: #f2c4d0;
+  --rcm-ribbon-border: #f2c4d0;
+
+  /* Arrows & Focus */
+  --rcm-arrow-color: #e0a0b4;
+  --rcm-accent: #ff85a2; /* Focus ring color */
+}
+```
+
+Dark mode overrides use `@media (prefers-color-scheme: dark)` or the class selectors `.rcm-light` / `.rcm-dark`.
 
 ## Community Menus
 

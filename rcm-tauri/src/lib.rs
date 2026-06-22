@@ -39,7 +39,7 @@ async fn create_window(app: tauri::AppHandle, label: String) {
     mgr.create_submenu_window(&label);
 }
 
-const DEFAULT_STYLE: &str = include_str!("../../rcm-ui/styles/style.css");
+const DEFAULT_STYLE: &str = include_str!("../../rcm-ui/style.css");
 
 /// Write the embedded default style CSS file next to the exe.
 pub fn write_style_defaults() {
