@@ -4,8 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 use crate::events::{
-    AUTO_HIDE_MS, DEEPEST_DEPTH, MAX_SUBMENU_DEPTH, OFF_SCREEN, SUBMENU_GAP, submenu_indices,
-    submenu_window_depths,
+    AUTO_HIDE_MS, DEEPEST_DEPTH, MAX_SUBMENU_DEPTH, OFF_SCREEN, SUBMENU_GAP, submenu_window_depths,
 };
 use crate::events::{
     AutoHideEpoch, MenuArc, MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload,
@@ -217,7 +216,7 @@ impl MenuManager {
         if let Some(win) = self.app.get_webview_window(root_label()) {
             hide_window(&win);
         }
-        for d in submenu_indices() {
+        for d in 0..MAX_SUBMENU_DEPTH {
             if let Some(win) = self.app.get_webview_window(&submenu_label(d)) {
                 hide_window(&win);
             }

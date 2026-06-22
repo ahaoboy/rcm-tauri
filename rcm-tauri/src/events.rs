@@ -155,9 +155,13 @@ pub fn submenu_label(depth: usize) -> String {
 }
 
 /// depth 0 → "main", depth 1 → "submenu-0", depth 2 → "submenu-1", …
+/// How many submenu windows to pre-create at startup (0..3 = submenu-0 … submenu-2).
+/// Deeper levels are created lazily via the `create_window` command.
+pub const PRE_CREATED_WINDOWS: usize = 3;
+
 /// Indices used by submenu window labels: 0 -> "submenu-0", etc.
 pub fn submenu_indices() -> Range<usize> {
-    0..MAX_SUBMENU_DEPTH
+    0..PRE_CREATED_WINDOWS
 }
 
 /// Visible menu depths owned by submenu windows: 1 -> "submenu-0", etc.

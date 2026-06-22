@@ -52,29 +52,36 @@ pub fn write_style_defaults() {
 }
 
 /// Return CSS content for the frontend.
-/// - If `style.css` exists next to the executable, return its content.
-/// - Otherwise, write the default and return it.
+/// Cached after the first load — all windows share the same CSS.
 #[tauri::command]
 fn get_style_css() -> String {
-    let file_path = rcm_core::exe_dir().join("style.css");
-
-    if file_path.exists() {
-        match std::fs::read_to_string(&file_path) {
-            Ok(css) => {
-                println!("get_style_css: using style.css from disk");
-                return css;
+    static LOADED: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    LOADED
+        .get_or_init(|| {
+            let file_path = rcm_core::exe_dir().join("style.css");
+            if file_path.exists() {
+                match std::fs::read_to_string(&file_path) {
+                    Ok(css) => {
+                        log::info("Style", "loaded style.css from disk");
+                        return css;
+                    }
+                    Err(e) => log::error(
+                        "Style",
+                        &format!("read {} failed: {e}", file_path.display()),
+                    ),
+                }
             }
-            Err(e) => eprintln!("get_style_css: read {} failed: {e}", file_path.display()),
-        }
-    }
-
-    if let Err(e) = std::fs::write(&file_path, DEFAULT_STYLE) {
-        eprintln!("get_style_css: write {} failed: {e}", file_path.display());
-    } else {
-        println!("get_style_css: wrote default style.css");
-    }
-
-    DEFAULT_STYLE.to_string()
+            if let Err(e) = std::fs::write(&file_path, DEFAULT_STYLE) {
+                log::error(
+                    "Style",
+                    &format!("write {} failed: {e}", file_path.display()),
+                );
+            } else {
+                log::info("Style", "wrote default style.css");
+            }
+            DEFAULT_STYLE.to_string()
+        })
+        .clone()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
