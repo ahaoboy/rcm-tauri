@@ -186,9 +186,7 @@ pub fn reset() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 fn config_path() -> PathBuf {
-    let mut p = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-    p.set_file_name("rcm.config.json");
-    p
+    crate::exe_dir().join("rcm.config.json")
 }
 
 /// Read and parse the config file, falling back to defaults on any error.

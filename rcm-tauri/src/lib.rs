@@ -45,16 +45,7 @@ async fn create_window(app: tauri::AppHandle, label: String) {
 #[tauri::command]
 fn get_style_css() -> String {
     let default_css = include_str!("../../rcm-ui/styles/style.css");
-
-    let exe_dir = match std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-    {
-        Some(d) => d,
-        None => return default_css.to_string(),
-    };
-
-    let style_path = exe_dir.join("style.css");
+    let style_path = rcm_core::exe_dir().join("style.css");
 
     if style_path.exists() {
         std::fs::read_to_string(&style_path).unwrap_or_else(|_| default_css.to_string())

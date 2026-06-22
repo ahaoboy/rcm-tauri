@@ -25,9 +25,11 @@ static FILE_MUTEX: Mutex<()> = Mutex::new(());
 // ═══════════════════════════════════════════════════════════════════════════
 
 fn log_path() -> PathBuf {
-    let mut p = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("rcm-tauri"));
-    p.set_extension("log");
-    p
+    let exe_name = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.file_stem().map(|s| s.to_os_string()))
+        .unwrap_or_else(|| "rcm-tauri".into());
+    crate::exe_dir().join(exe_name).with_extension("log")
 }
 
 fn timestamp() -> String {
