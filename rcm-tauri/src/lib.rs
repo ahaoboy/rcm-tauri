@@ -39,6 +39,31 @@ async fn create_window(app: tauri::AppHandle, label: String) {
     mgr.create_submenu_window(&label);
 }
 
+/// Return CSS content for the frontend.
+/// - If `style.css` exists next to the executable, return its content.
+/// - Otherwise, write the default `menu.css` to `style.css` and return it.
+#[tauri::command]
+fn get_style_css() -> String {
+    let default_css = include_str!("../../rcm-ui/styles/style.css");
+
+    let exe_dir = match std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+    {
+        Some(d) => d,
+        None => return default_css.to_string(),
+    };
+
+    let style_path = exe_dir.join("style.css");
+
+    if style_path.exists() {
+        std::fs::read_to_string(&style_path).unwrap_or_else(|_| default_css.to_string())
+    } else {
+        let _ = std::fs::write(&style_path, default_css);
+        default_css.to_string()
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
 // ═══════════════════════════════════════════════════════════════════════════
@@ -168,7 +193,11 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![create_window, get_config,])
+        .invoke_handler(tauri::generate_handler![
+            create_window,
+            get_config,
+            get_style_css
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

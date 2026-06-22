@@ -48,10 +48,6 @@ windows = { version = "0.61", features = [
   "Win32_System_SystemInformation",
 ] }
 
-# ── Slint (native UI) ──────────────────────────────────────────────────
-slint = "1.14"
-slint-build = "1.14"
-
 # ── Tray icon (cross-platform system tray) ─────────────────────────────
 tray-icon = "0.24"
 
@@ -74,15 +70,3 @@ easy-archive = { version = "0.2", git = "https://github.com/ahaoboy/easy-archive
 # rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false, version = "0.12" }
 rquickjs = { default-features = false, version = "0.12" }
 llrt_modules = { git = "https://github.com/awslabs/llrt", version = "0.8.1-beta" }
-
-# [patch."https://github.com/DelSkayn/rquickjs.git"]
-# rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-
-# [patch.crates-io]
-# rquickjs = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-core = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-sys = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
-# rquickjs-macro = { git = "https://github.com/ahaoboy/rquickjs", rev = "7d5254cee57718160fdb4595a8d9b9201ef56622" }
