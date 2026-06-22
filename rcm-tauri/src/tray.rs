@@ -282,7 +282,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
             APPLY_ID => handle_apply(),
             SYNC_ID => handle_sync(),
-            RESET_ID => config::reset(),
+            RESET_ID => {
+                config::reset();
+                crate::write_style_defaults();
+            }
             _ => {}
         })
         .build(app)?;

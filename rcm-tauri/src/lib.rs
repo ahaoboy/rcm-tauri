@@ -39,20 +39,42 @@ async fn create_window(app: tauri::AppHandle, label: String) {
     mgr.create_submenu_window(&label);
 }
 
+const DEFAULT_STYLE: &str = include_str!("../../rcm-ui/styles/style.css");
+
+/// Write the embedded default style CSS file next to the exe.
+pub fn write_style_defaults() {
+    let path = rcm_core::exe_dir().join("style.css");
+    if let Err(e) = std::fs::write(&path, DEFAULT_STYLE) {
+        eprintln!("write_style_defaults: write {} failed: {e}", path.display());
+    } else {
+        println!("write_style_defaults: wrote {}", path.display());
+    }
+}
+
 /// Return CSS content for the frontend.
 /// - If `style.css` exists next to the executable, return its content.
-/// - Otherwise, write the default `style.css` to the exe directory and return it.
+/// - Otherwise, write the default and return it.
 #[tauri::command]
 fn get_style_css() -> String {
-    let default_css = include_str!("../../rcm-ui/styles/style.css");
-    let style_path = rcm_core::exe_dir().join("style.css");
+    let file_path = rcm_core::exe_dir().join("style.css");
 
-    if style_path.exists() {
-        std::fs::read_to_string(&style_path).unwrap_or_else(|_| default_css.to_string())
-    } else {
-        let _ = std::fs::write(&style_path, default_css);
-        default_css.to_string()
+    if file_path.exists() {
+        match std::fs::read_to_string(&file_path) {
+            Ok(css) => {
+                println!("get_style_css: using style.css from disk");
+                return css;
+            }
+            Err(e) => eprintln!("get_style_css: read {} failed: {e}", file_path.display()),
+        }
     }
+
+    if let Err(e) = std::fs::write(&file_path, DEFAULT_STYLE) {
+        eprintln!("get_style_css: write {} failed: {e}", file_path.display());
+    } else {
+        println!("get_style_css: wrote default style.css");
+    }
+
+    DEFAULT_STYLE.to_string()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
