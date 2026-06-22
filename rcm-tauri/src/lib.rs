@@ -41,7 +41,7 @@ async fn create_window(app: tauri::AppHandle, label: String) {
 
 /// Return CSS content for the frontend.
 /// - If `style.css` exists next to the executable, return its content.
-/// - Otherwise, write the default `menu.css` to `style.css` and return it.
+/// - Otherwise, write the default `style.css` to the exe directory and return it.
 #[tauri::command]
 fn get_style_css() -> String {
     let default_css = include_str!("../../rcm-ui/styles/style.css");

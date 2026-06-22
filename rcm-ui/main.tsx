@@ -10,7 +10,7 @@ const isSubmenu = window.location.hash.startsWith("#submenu-")
 
 // Load CSS dynamically from the Rust backend:
 // - If style.css exists next to the exe, it is used.
-// - Otherwise the default menu.css is written to style.css and loaded.
+// - Otherwise the default style.css is written next to the exe and loaded.
 async function loadStyle() {
   try {
     const css = await invoke<string>("get_style_css")

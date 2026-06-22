@@ -1,88 +1,70 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    RCM — Right-Click Menu Styles  ·  Win11 Fluent Design
-   Supports: nested submenus, icon ribbon, separators, light/dark themes
+   DOM: .rcm-root > .rcm-ribbon? + .rcm-group(.rcm-item) / .rcm-item
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Design tokens (Win11 light) ────────────────────────────────────── */
+/* ── Design tokens ──────────────────────────────────────────────────── */
 :root {
   --rcm-font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --rcm-font-size: 13px;
-  --rcm-font-size-sm: 12px;
+  --rcm-icon-size: 18px;
+  --rcm-radius: 9px;
+  --rcm-padding: 2px;
+  --rcm-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Solid surface — always legible */
+  /* Light defaults */
   --rcm-bg: #f3f3f3;
   --rcm-border: rgba(0, 0, 0, 0.08);
   --rcm-top-highlight: rgba(255, 255, 255, 0.55);
-
-  /* Shadow: layered, soft — Win11 Fluent */
+  --rcm-text: #1b1b1b;
+  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
   --rcm-shadow:
     0 0.3px 0.6px rgba(0, 0, 0, 0.028), 0 1.2px 2.4px rgba(0, 0, 0, 0.042),
     0 4px 9px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-
-  --rcm-radius: 9px;
-  --rcm-padding: 2px;
-
   --rcm-item-hover: rgba(0, 0, 0, 0.038);
   --rcm-item-active: rgba(0, 0, 0, 0.065);
   --rcm-item-height: 30px;
   --rcm-item-radius: 6px;
-
-  --rcm-text: #1b1b1b;
-  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
-  --rcm-text-shortcut: rgba(27, 27, 27, 0.52);
-
   --rcm-separator: rgba(0, 0, 0, 0.08);
   --rcm-separator-margin: 4px 10px;
-
-  --rcm-icon-size: 18px;
   --rcm-icon-gap: 12px;
   --rcm-arrow-color: rgba(0, 0, 0, 0.36);
-
   --rcm-ribbon-gap: 2px;
   --rcm-ribbon-padding: 2px 4px 4px 4px;
   --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
-
-  --rcm-submenu-offset: 6px;
-  --rcm-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ── Dark theme (Win11 dark) ────────────────────────────────────────── */
+/* ── Dark theme ─────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
     --rcm-bg: #2c2c2c;
     --rcm-border: rgba(255, 255, 255, 0.08);
     --rcm-top-highlight: rgba(255, 255, 255, 0.04);
-
+    --rcm-text: #f4f4f4;
+    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
     --rcm-shadow:
       0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
       0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
-
     --rcm-item-hover: rgba(255, 255, 255, 0.045);
     --rcm-item-active: rgba(255, 255, 255, 0.075);
-
-    --rcm-text: #f4f4f4;
-    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
-    --rcm-text-shortcut: rgba(244, 244, 244, 0.48);
-
     --rcm-separator: rgba(255, 255, 255, 0.08);
     --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
     --rcm-arrow-color: rgba(255, 255, 255, 0.36);
   }
 }
 
-/* ── Theme class overrides (for programmatic toggling) ───────────────── */
+/* ── Programmatic theme toggles ─────────────────────────────────────── */
 :root.rcm-light {
   --rcm-bg: #f3f3f3;
   --rcm-border: rgba(0, 0, 0, 0.08);
   --rcm-top-highlight: rgba(255, 255, 255, 0.55);
+  --rcm-text: #1b1b1b;
+  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
   --rcm-shadow:
     0 0.3px 0.6px rgba(0, 0, 0, 0.028), 0 1.2px 2.4px rgba(0, 0, 0, 0.042),
     0 4px 9px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   --rcm-item-hover: rgba(0, 0, 0, 0.038);
   --rcm-item-active: rgba(0, 0, 0, 0.065);
-  --rcm-text: #1b1b1b;
-  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
-  --rcm-text-shortcut: rgba(27, 27, 27, 0.52);
   --rcm-separator: rgba(0, 0, 0, 0.08);
   --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
   --rcm-arrow-color: rgba(0, 0, 0, 0.36);
@@ -92,20 +74,21 @@
   --rcm-bg: #2c2c2c;
   --rcm-border: rgba(255, 255, 255, 0.08);
   --rcm-top-highlight: rgba(255, 255, 255, 0.04);
+  --rcm-text: #f4f4f4;
+  --rcm-text-disabled: rgba(244, 244, 244, 0.36);
   --rcm-shadow:
     0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
     0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
   --rcm-item-hover: rgba(255, 255, 255, 0.045);
   --rcm-item-active: rgba(255, 255, 255, 0.075);
-  --rcm-text: #f4f4f4;
-  --rcm-text-disabled: rgba(244, 244, 244, 0.36);
-  --rcm-text-shortcut: rgba(244, 244, 244, 0.48);
   --rcm-separator: rgba(255, 255, 255, 0.08);
   --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
   --rcm-arrow-color: rgba(255, 255, 255, 0.36);
 }
 
-/* ── Global reset ────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base
+   ═══════════════════════════════════════════════════════════════════════════ */
 body {
   margin: 0;
   padding: 0;
@@ -123,35 +106,33 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  min-height: 100vh;
   padding: 4px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Context Menu — root container  (Win11 Fluent surface)
+   Menu container — .rcm-root
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-root {
   display: flex;
   flex-direction: column;
   width: max-content;
   min-width: 140px;
+  position: relative;
 
-  /* Mica-like translucent surface */
   background-color: var(--rcm-bg);
   border: 1px solid var(--rcm-border);
   border-radius: var(--rcm-radius);
   box-shadow: var(--rcm-shadow);
   padding: var(--rcm-padding);
 
-  /* Acrylic / Mica backdrop blur — Win11 signature effect */
   backdrop-filter: blur(40px) saturate(1.8);
   -webkit-backdrop-filter: blur(40px) saturate(1.8);
 
-  /* Subtle top highlight for depth */
-  position: relative;
+  animation: rcm-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity;
 }
 
-/* Thin top-edge highlight (Win11 surface sheen) */
+/* Top-edge highlight sheen */
 .rcm-root::before {
   content: "";
   position: absolute;
@@ -162,14 +143,13 @@ body {
   z-index: 1;
 }
 
-/* Ensure content sits above the sheen pseudo-element */
 .rcm-root > * {
   position: relative;
   z-index: 2;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Icon Ribbon — top icon bar
+   Icon Ribbon — .rcm-ribbon > .rcm-ribbon-btn
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-ribbon {
   display: flex;
@@ -191,22 +171,19 @@ body {
   background: transparent;
   color: var(--rcm-text);
   cursor: pointer;
+  font-size: var(--rcm-icon-size);
   transition:
     background-color var(--rcm-transition),
     transform 100ms cubic-bezier(0.16, 1, 0.3, 1);
-  font-size: var(--rcm-icon-size);
-  position: relative;
 }
 
 .rcm-ribbon-btn:hover {
   background-color: var(--rcm-item-hover);
 }
-
 .rcm-ribbon-btn:active {
   background-color: var(--rcm-item-active);
   transform: scale(0.94);
 }
-
 .rcm-ribbon-btn[aria-disabled="true"] {
   opacity: 0.36;
   cursor: default;
@@ -214,7 +191,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Menu Group — vertical section of items
+   Menu Group — .rcm-group
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-group {
   display: flex;
@@ -222,7 +199,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Separator
+   Separator — .rcm-separator
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-separator {
   height: 1px;
@@ -232,7 +209,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Menu Item Row — single clickable row  (Win11 Fluent)
+   Menu Item — .rcm-item > .rcm-item-icon + .rcm-item-label + .rcm-item-arrow?
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-item {
   display: flex;
@@ -252,19 +229,16 @@ body {
 .rcm-item:hover {
   background-color: var(--rcm-item-hover);
 }
-
 .rcm-item:active {
   background-color: var(--rcm-item-active);
   transition: background-color 40ms ease;
 }
-
 .rcm-item[aria-disabled="true"] {
   color: var(--rcm-text-disabled);
   cursor: default;
   pointer-events: none;
 }
 
-/* ── Icon ─────────────────────────────────────────────────────────── */
 .rcm-item-icon {
   display: inline-flex;
   align-items: center;
@@ -277,25 +251,12 @@ body {
   opacity: 0.8;
 }
 
-/* ── Label ────────────────────────────────────────────────────────── */
 .rcm-item-label {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 400;
-  letter-spacing: 0.01em;
 }
 
-/* ── Shortcut hint ────────────────────────────────────────────────── */
-.rcm-item-shortcut {
-  margin-left: 28px;
-  font-size: var(--rcm-font-size-sm);
-  color: var(--rcm-text-shortcut);
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-/* ── Submenu arrow  (Win11 chevron) ───────────────────────────────── */
 .rcm-item-arrow {
   margin-left: 6px;
   color: var(--rcm-arrow-color);
@@ -304,45 +265,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Submenu — flyout panel
-   ═══════════════════════════════════════════════════════════════════════════ */
-.rcm-submenu {
-  display: none;
-  position: absolute;
-  left: calc(100% + var(--rcm-submenu-offset));
-  top: calc(-1 * var(--rcm-padding));
-  min-width: 200px;
-  max-width: 320px;
-  background-color: var(--rcm-bg);
-  border: 1px solid var(--rcm-border);
-  border-radius: var(--rcm-radius);
-  box-shadow: var(--rcm-shadow);
-  padding: var(--rcm-padding);
-  z-index: 1000;
-  flex-direction: column;
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
-}
-
-/* Show submenu on hover */
-.rcm-item:hover > .rcm-submenu,
-.rcm-submenu:hover {
-  display: flex;
-}
-
-/* Edge case: submenu that would overflow to the right → flip left */
-.rcm-submenu.rcm-flip {
-  left: auto;
-  right: calc(100% + var(--rcm-submenu-offset));
-}
-
-/* Nested submenus inside submenus */
-.rcm-submenu .rcm-submenu {
-  top: calc(-1 * var(--rcm-padding));
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   Accessibility & focus  (Win11 accent-style focus ring)
+   Focus ring
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-item:focus-visible,
 .rcm-ribbon-btn:focus-visible {
@@ -352,13 +275,12 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Animations  (Win11 Fluent — gentle scale+fade)
+   Animations
    ═══════════════════════════════════════════════════════════════════════════ */
 @keyframes rcm-fade-in {
   from {
     opacity: 0;
     transform: scale(0.94);
-    /* Subtle vertical slide — feels grounded */
     translate: 0 4px;
   }
   to {
@@ -366,27 +288,4 @@ body {
     transform: scale(1);
     translate: 0 0;
   }
-}
-
-.rcm-root {
-  animation: rcm-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
-}
-
-@keyframes rcm-submenu-in {
-  from {
-    opacity: 0;
-    transform: scale(0.94);
-    translate: -6px 0;
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-    translate: 0 0;
-  }
-}
-
-.rcm-submenu {
-  animation: rcm-submenu-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
 }
