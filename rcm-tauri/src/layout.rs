@@ -1,6 +1,14 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Menu manager — central hub for all menu window logic.
-// Handles show/hide/hover/execute/blur for the multi-window context menu.
+// Menu manager — central hub for menu window lifecycle.
+// Handles show/hide/hover/execute/blur for the multi-window menu.
+//
+// Layout flow (frontend-driven):
+//   1. Rust emits `menu-show` with ideal .rcm-root position (+ parent root X
+//      for submenu flip).
+//   2. Frontend renders content, measures DOM, resizes window, computes the
+//      final position (clamp, flip, edge cases), and shows the window.
+//   3. Rust does NOT participate in positioning — it only computes the ideal
+//      position for submenus (parent root right edge + gap).
 // ═══════════════════════════════════════════════════════════════════════════
 
 use crate::events::{
@@ -16,7 +24,7 @@ use rcm_core::runner::execute;
 use rcm_core::{config, log};
 use std::sync::atomic::Ordering;
 use tauri::window::Color;
-use tauri::{Emitter, Manager, PhysicalPosition, WebviewUrl, WebviewWindow};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 pub struct MenuManager {
     pub menu: MenuArc,
@@ -52,8 +60,8 @@ impl MenuManager {
     }
 
     /// Show the root menu at the cursor position.
+    /// Emits `menu-show` — the frontend measures and positions the window.
     pub fn show_root(&self, menu: rcm_core::Menu, x: f64, y: f64) {
-        // Hide any lingering submenus from a previous invocation
         self.hide_all_submenus();
 
         log::info(
@@ -78,11 +86,6 @@ impl MenuManager {
             }
         }
 
-        let label = root_label();
-        if let Some(win) = self.app.get_webview_window(label) {
-            let _ = win.set_position(PhysicalPosition { x, y });
-        }
-
         let _ = self.app.emit(
             "menu-show",
             MenuShowPayload {
@@ -90,15 +93,14 @@ impl MenuManager {
                 path: vec![],
                 x,
                 y,
-                parent_x: None,
-                parent_y: None,
-                parent_w: None,
+                parent_root_x: None,
             },
         );
         self.reset_auto_hide();
     }
 
-    /// Handle hover on a menu item: show submenu if the item has children.
+    /// Handle hover on a menu item: compute the ideal submenu position
+    /// and emit `menu-show`. The frontend measures and positions the window.
     pub fn handle_hover(&self, payload: MenuHoverPayload) {
         self.reset_auto_hide();
 
@@ -108,7 +110,6 @@ impl MenuManager {
             &format!("depth={} path={:?}", payload.depth, payload.path),
         );
 
-        // Lock once, clone what we need, then drop
         let (menu, item) = {
             let guard = self.menu.lock().unwrap();
             let menu = match guard.as_ref() {
@@ -139,40 +140,23 @@ impl MenuManager {
             return;
         }
 
-        // ── Position submenu at parent's right edge ──
-        let sub_x = if payload.parent_content_w > 0.0 {
-            payload.parent_x + payload.parent_content_w + SUBMENU_GAP
-        } else if payload.content_right > 0.0 {
-            payload.content_right
-        } else {
-            payload.parent_x + payload.parent_w - 28.0
-        };
-
-        let ideal_y = payload.parent_y + payload.item_y;
-        let sub_y = if ideal_y > payload.parent_y + payload.parent_h {
-            payload.parent_y + payload.parent_h
-        } else {
-            ideal_y
-        };
+        // Ideal position for the submenu's .rcm-root:
+        //   X = parent root right edge + gap
+        //   Y = parent root top + hovered item offset
+        let ideal_x = payload.root_x + payload.root_w + SUBMENU_GAP;
+        let ideal_y = payload.root_y + payload.item_y;
 
         self.hide_deeper_than(child_depth);
-
-        let child_label = window_label(child_depth);
-        if let Some(win) = self.app.get_webview_window(&child_label) {
-            let _ = win.set_position(PhysicalPosition { x: sub_x, y: sub_y });
-        }
-
         DEEPEST_DEPTH.store(child_depth, Ordering::SeqCst);
+
         let _ = self.app.emit(
             "menu-show",
             MenuShowPayload {
                 menu,
                 path: payload.path,
-                x: sub_x,
-                y: sub_y,
-                parent_x: Some(payload.parent_x),
-                parent_y: Some(payload.parent_y),
-                parent_w: Some(payload.parent_w),
+                x: ideal_x,
+                y: ideal_y,
+                parent_root_x: Some(payload.root_x),
             },
         );
     }
@@ -212,7 +196,7 @@ impl MenuManager {
     /// Hide all menu windows.
     pub fn hide_all(&self) {
         DEEPEST_DEPTH.store(0, Ordering::SeqCst);
-        // Hide root + submenus
+
         if let Some(win) = self.app.get_webview_window(root_label()) {
             hide_window(&win);
         }
@@ -241,23 +225,22 @@ impl MenuManager {
         }
 
         let url = format!("index.html#{label}");
-        let builder =
-            tauri::WebviewWindowBuilder::new(&self.app, label, WebviewUrl::App(url.into()))
-                .title("rcm-submenu")
-                .decorations(false)
-                .background_color(Color(0, 0, 0, 0))
-                .position(0., 0.)
-                .inner_size(1., 1.)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .fullscreen(false)
-                .visible(false)
-                .closable(false)
-                .resizable(false)
-                .minimizable(false)
-                .maximizable(false)
-                .focused(false)
-                .shadow(false);
+        let builder = WebviewWindowBuilder::new(&self.app, label, WebviewUrl::App(url.into()))
+            .title("rcm-submenu")
+            .decorations(false)
+            .background_color(Color(0, 0, 0, 0))
+            .position(0., 0.)
+            .inner_size(1., 1.)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .fullscreen(false)
+            .visible(false)
+            .closable(false)
+            .resizable(false)
+            .minimizable(false)
+            .maximizable(false)
+            .focused(false)
+            .shadow(false);
 
         #[cfg(not(target_os = "macos"))]
         let builder = builder.transparent(true);

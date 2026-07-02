@@ -1,7 +1,7 @@
-import { invoke } from "@tauri-apps/api/core"
 import React from "react"
 import ReactDOM from "react-dom/client"
 
+import { getStyleCss } from "./api/menuEvents"
 import App from "./App"
 import { SubmenuApp } from "./components/SubmenuApp"
 
@@ -13,7 +13,7 @@ const isSubmenu = window.location.hash.startsWith("#submenu-")
 // - Otherwise the default style.css is written next to the exe and loaded.
 async function loadStyle() {
   try {
-    const css = await invoke<string>("get_style_css")
+    const css = await getStyleCss()
     const style = document.createElement("style")
     style.textContent = css
     document.head.appendChild(style)

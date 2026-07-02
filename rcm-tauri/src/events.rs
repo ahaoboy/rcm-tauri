@@ -14,7 +14,7 @@ use tauri::PhysicalPosition;
 // Constants
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Maximum submenu depth (0 = root, 1-3 = submenus).
+/// Maximum submenu depth (0 = root, 1-4 = submenus).
 pub const MAX_SUBMENU_DEPTH: usize = 4;
 
 /// Off-screen position for hidden windows.
@@ -66,22 +66,23 @@ pub struct MenuShowPayload {
     pub menu: Menu,
     /// Index path to render. Empty `[]` = root.
     pub path: Vec<i32>,
-    /// Ideal screen position (frontend will clamp after measuring DOM).
+    /// Ideal screen position for .rcm-root (physical px).
+    /// The frontend measures the DOM, computes the final position
+    /// (clamp, flip, edge cases), and shows the window.
     pub x: f64,
     pub y: f64,
-    /// Parent window info for submenu flip logic (None for root).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_x: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_y: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_w: Option<f64>,
+    /// Parent's .rcm-root left X for submenu flip logic (physical px).
+    /// `None` for the root menu.
+    #[serde(skip_serializing_if = "Option::is_none", rename = "parentRootX")]
+    pub parent_root_x: Option<f64>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Event payloads — Frontend → Rust
 // ═══════════════════════════════════════════════════════════════════════════
 
+/// Frontend reports the hovered item's parent .rcm-root geometry.
+/// Rust uses this to compute the ideal submenu position.
 #[derive(Debug, Clone, Deserialize)]
 #[allow(dead_code)]
 pub struct MenuHoverPayload {
@@ -89,35 +90,22 @@ pub struct MenuHoverPayload {
     pub depth: usize,
     /// Index path to the hovered item.
     pub path: Vec<i32>,
-    /// Parent window's absolute screen position.
-    #[serde(rename = "parentX")]
-    pub parent_x: f64,
-    #[serde(rename = "parentY")]
-    pub parent_y: f64,
-    /// Parent window's size.
-    #[serde(rename = "parentW")]
-    pub parent_w: f64,
-    #[serde(rename = "parentH")]
-    pub parent_h: f64,
-    /// Hovered item's position relative to the parent window.
-    #[serde(rename = "itemX")]
-    pub item_x: f64,
+    /// Parent .rcm-root absolute screen position (physical px).
+    #[serde(rename = "rootX")]
+    pub root_x: f64,
+    #[serde(rename = "rootY")]
+    pub root_y: f64,
+    /// Parent .rcm-root rendered size (physical px).
+    #[serde(rename = "rootW")]
+    pub root_w: f64,
+    #[serde(rename = "rootH")]
+    pub root_h: f64,
+    /// Hovered item's Y offset from .rcm-root top (physical px).
     #[serde(rename = "itemY")]
     pub item_y: f64,
-    /// Hovered item's size.
-    #[serde(rename = "itemW")]
-    pub item_w: f64,
+    /// Hovered item's height (physical px).
     #[serde(rename = "itemH")]
     pub item_h: f64,
-    /// Absolute screen X of the parent window's content right edge (no shadow).
-    #[serde(default)]
-    pub content_right: f64,
-    /// Height of the parent's .rcm-root content element (for boundary clamping).
-    #[serde(rename = "parentContentHeight", default)]
-    pub parent_content_h: f64,
-    /// Width of the parent's .rcm-root content element (for precise X alignment).
-    #[serde(rename = "parentContentWidth", default)]
-    pub parent_content_w: f64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

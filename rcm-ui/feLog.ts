@@ -6,7 +6,7 @@
  * when the "Log" tray toggle is enabled.
  */
 
-import { emit } from "@tauri-apps/api/event"
+import { emitLog } from "./api/menuEvents"
 
 type LogLevel = "INFO" | "WARN" | "ERROR"
 
@@ -23,7 +23,7 @@ function send(tag: string, level: LogLevel, msg: string) {
       console.log(formatted)
   }
   // Send to Rust for file logging (fire-and-forget)
-  emit("log-event", { tag, msg: `[${level}] ${msg}` }).catch(() => {})
+  emitLog(tag, `[${level}] ${msg}`)
 }
 
 export const feLog = {

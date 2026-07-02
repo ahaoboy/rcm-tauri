@@ -1,29 +1,27 @@
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window"
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import {
+  availableMonitors,
+  getCurrentWindow,
+  LogicalSize,
+  PhysicalPosition,
+} from "@tauri-apps/api/window"
+import React, { useCallback, useEffect, useRef } from "react"
 
-import { WINDOW_PADDING } from "../constants/layout"
+import { feLog } from "../feLog"
 import type { MenuData, MenuItem, IndexPath } from "../types/menu"
-/* ── Sub-components ─────────────────────────────────────────────────── */
+import { computeWindowPosition } from "../utils/layout"
+import type { PendingPos } from "../utils/layout"
 import { IconRibbon } from "./IconRibbon"
 import { MenuGroup } from "./MenuGroup"
 import { MenuSeparator } from "./MenuSeparator"
 
-/* ── Props ──────────────────────────────────────────────────────────── */
-
 interface ContextMenuProps {
-  /** Window depth: 0 = root. */
   depth: number
-  /** Index path to the submenu this window renders. Empty = root. */
   indexPath: IndexPath
-  /** Full menu data — every window has the complete tree. */
   menu: MenuData
   showIcons?: boolean
-  /** Called after the window has been resized to fit content.
-   *  The parent can then clamp position and show the window. */
-  onReady?: () => void
+  menuActiveRef?: React.RefObject<boolean>
+  pendingPosRef?: React.RefObject<PendingPos | null>
 }
-
-/* ── Navigation helpers ─────────────────────────────────────────────── */
 
 /**
  * Navigate the menu tree following `path` and return the items to display.
@@ -34,115 +32,144 @@ function navigateMenu(
   menu: MenuData,
   path: IndexPath,
 ):
-  | {
-      type: "root"
-      iconItems: MenuItem[]
-      groups: MenuItem[]
-    }
-  | {
-      type: "submenu"
-      items: MenuItem[]
-    }
+  | { type: "root"; iconItems: MenuItem[]; groups: MenuItem[] }
+  | { type: "submenu"; items: MenuItem[] }
   | null {
   if (path.length === 0) {
     return { type: "root", iconItems: menu.iconItems, groups: menu.groups }
   }
 
-  // Walk the path to find the target item
   const [first, ...rest] = path
   let item: MenuItem | undefined
 
   if (first === -1) {
-    // Icon ribbon path: [-1, iconIdx, ...deeper]
     const idx = rest[0]
     if (idx === undefined) return null
     item = menu.iconItems[idx]
     if (!item) return null
-    // Walk deeper
     for (let i = 1; i < rest.length; i++) {
       item = item.items[rest[i]]
       if (!item) return null
     }
   } else {
-    // Group path: [groupIdx, itemIdx, ...deeper]
     const groupIdx = first
     const itemIdx = rest[0]
     if (itemIdx === undefined) return null
     item = menu.groups[groupIdx]?.items[itemIdx]
     if (!item) return null
-    // Walk deeper
     for (let i = 1; i < rest.length; i++) {
       item = item.items[rest[i]]
       if (!item) return null
     }
   }
 
-  // Return the item's children as a flat submenu
   return { type: "submenu", items: item.items || [] }
 }
-
-/* ═══════════════════════════════════════════════════════════════════════
-   ContextMenu — renders root or submenu based on indexPath
-   ═══════════════════════════════════════════════════════════════════════ */
 
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   depth,
   indexPath,
   menu,
   showIcons = false,
-  onReady,
+  menuActiveRef,
+  pendingPosRef,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null)
-  const [menuSize, setMenuSize] = useState({ width: 280, height: 400 })
-  const readyCalled = useRef(false)
+  const measuredRef = useRef(false)
 
-  // Resolve what to render
   const resolved = navigateMenu(menu, indexPath)
 
-  // Resize window to fit content, then signal parent
-  const resizeWindow = useCallback(async () => {
-    if (!rootRef.current) return
-    const rect = rootRef.current.getBoundingClientRect()
-    const w = Math.ceil(rect.width) + WINDOW_PADDING
-    const h = Math.ceil(rect.height) + WINDOW_PADDING
-    if (w === menuSize.width && h === menuSize.height) {
-      // Already correct size — signal ready
-      if (!readyCalled.current) {
-        readyCalled.current = true
-        onReady?.()
-      }
-      return
-    }
-    setMenuSize({ width: w, height: h })
+  /**
+   * Measure .rcm-root and the #root container's CSS padding, resize the
+   * Tauri window to fit, compute the final position (clamp, flip, edge
+   * cases), then position and show the window.
+   *
+   * The padding is read from computed style at runtime — no hardcoded
+   * WINDOW_PADDING constant. Users can freely change `--rcm-window-pad`
+   * in CSS and the layout will adapt automatically.
+   *
+   * Uses offsetWidth/offsetHeight — NOT affected by CSS transforms (the
+   * rcm-fade-in animation's scale(0.94) would shrink getBoundingClientRect).
+   */
+  const resizeAndShow = useCallback(async () => {
+    if (!rootRef.current || measuredRef.current) return
+
+    const pos = pendingPosRef?.current
+    if (!pos) return
+
+    const rootEl = rootRef.current
+    const containerEl = rootEl.parentElement ?? rootEl
+    const style = getComputedStyle(containerEl)
+
+    const padLeft = parseFloat(style.paddingLeft) || 0
+    const padRight = parseFloat(style.paddingRight) || 0
+    const padTop = parseFloat(style.paddingTop) || 0
+    const padBottom = parseFloat(style.paddingBottom) || 0
+
+    const rootW = rootEl.offsetWidth
+    const rootH = rootEl.offsetHeight
+
+    const w = rootW + padLeft + padRight
+    const h = rootH + padTop + padBottom
+
+    measuredRef.current = true
+    pendingPosRef.current = null
+
+    const win = getCurrentWindow()
+    const dpi = window.devicePixelRatio || 1
+
     try {
-      await getCurrentWindow().setSize(new LogicalSize(w, h))
-      // Signal parent that the window is now correctly sized
-      if (!readyCalled.current) {
-        readyCalled.current = true
-        onReady?.()
-      }
+      await win.setSize(new LogicalSize(w, h))
     } catch {
       // Window may not be available yet
     }
-  }, [menuSize, onReady])
 
-  // Reset ready flag when menu data changes
+    // Compute final window position (clamp, flip, edge cases)
+    const monitors = await availableMonitors()
+    const { x: finalX, y: finalY } = computeWindowPosition(
+      {
+        idealX: pos.x,
+        idealY: pos.y,
+        parentRootX: pos.parentRootX,
+        winW: w * dpi,
+        winH: h * dpi,
+        rootOffsetX: padLeft * dpi,
+        rootOffsetY: padTop * dpi,
+        rootW: rootW * dpi,
+      },
+      monitors,
+    )
+
+    feLog.info(
+      `ContextMenu:d${depth}`,
+      `win=(${w}x${h}) pos=(${finalX.toFixed(0)},${finalY.toFixed(0)})`,
+    )
+
+    await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)))
+    await win.setAlwaysOnTop(true)
+    if (menuActiveRef) {
+      menuActiveRef.current = true
+    }
+    await win.show()
+    await win.setFocus()
+  }, [depth, menuActiveRef, pendingPosRef])
+
+  // Reset measured flag when menu data changes
   useEffect(() => {
-    readyCalled.current = false
+    measuredRef.current = false
   }, [menu, indexPath])
 
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
-      resizeWindow()
+      resizeAndShow()
     })
     return () => cancelAnimationFrame(raf)
-  }, [resolved, resizeWindow])
+  }, [resolved, resizeAndShow])
 
   if (!resolved) {
     return <div className="rcm-root" />
   }
 
-  // ── Root rendering ──────────────────────────────────────────────
   if (resolved.type === "root") {
     const { iconItems, groups } = resolved
     const hasIconItems = iconItems && iconItems.length > 0
@@ -168,7 +195,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     )
   }
 
-  // ── Submenu rendering ───────────────────────────────────────────
   return (
     <div className="rcm-root" ref={rootRef} role="menu">
       {resolved.items.map((item, idx) => (
@@ -183,8 +209,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     </div>
   )
 }
-
-/* ── Small wrapper to avoid circular imports ────────────────────────── */
 
 import { MenuItemRow } from "./MenuItemRow"
 

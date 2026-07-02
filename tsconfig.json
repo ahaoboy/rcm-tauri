@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["rcm-web"],
+  "include": ["rcm-ui"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

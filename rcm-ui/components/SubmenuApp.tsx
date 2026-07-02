@@ -5,196 +5,33 @@
  * Each window receives `menu-show` events from Rust with the full menu
  * data and an index path telling it which submenu to render.
  *
- * All hover/click coordination happens through Rust via events:
- *   menu-hover, menu-hover-out, menu-execute
+ * All hover/click coordination happens through Rust via events.
+ * Positioning is handled by the frontend: ContextMenu measures the DOM
+ * and computes the final window position.
  */
 
-import { invoke } from "@tauri-apps/api/core"
-import { listen, emit } from "@tauri-apps/api/event"
-import { availableMonitors, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window"
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect } from "react"
 
-import {
-  chooseMonitorForPoint,
-  clampWindowToMonitor,
-  SUBMENU_GAP,
-  winPadPhysical,
-} from "../constants/layout"
-import { feLog } from "../feLog"
+import { useMenuWindow } from "../hooks/useMenuWindow"
 import { useTheme } from "../hooks/useTheme"
-import type { MenuShowPayload, MenuData, IndexPath } from "../types/menu"
 import { ContextMenu } from "./ContextMenu"
 
-const OFF_SCREEN = new PhysicalPosition(-9999, -9999)
-
 export function SubmenuApp() {
-  const [menu, setMenu] = useState<MenuData | null>(null)
-  const [indexPath, setIndexPath] = useState<IndexPath>([])
-  const devMode = useRef(false)
-  const menuActive = useRef(false)
   const theme = useTheme()
-  /** Pending show info from menu-show event; consumed by handleReady. */
-  const pendingShow = useRef<{
-    x: number
-    y: number
-    parent_x?: number
-  } | null>(null)
 
   // Depth from URL hash: "submenu-0" → depth 1, "submenu-1" → depth 2, etc.
   const myLevel = parseInt(window.location.hash.replace("#submenu-", ""), 10) || 0
-  const depth = myLevel + 1 // submenu-0 = depth 1, submenu-1 = depth 2, …
+  const depth = myLevel + 1
+
+  const { menu, indexPath, menuActive, pendingPos } = useMenuWindow({
+    depth,
+    tag: `App:submenu-${myLevel}`,
+  })
 
   useEffect(() => {
     document.documentElement.classList.remove("rcm-light", "rcm-dark")
     document.documentElement.classList.add(`rcm-${theme}`)
   }, [theme])
-
-  useEffect(() => {
-    const win = getCurrentWindow()
-    let cleanupFns: (() => void)[] = []
-
-    // Start off-screen
-    win.setPosition(OFF_SCREEN).catch(() => {})
-
-    const setup = async () => {
-      try {
-        const cfg = await invoke<{ dev: boolean }>("get_config")
-        devMode.current = cfg.dev
-      } catch {
-        /* ignore */
-      }
-
-      // ── Prevent close ──────────────────────────────────────────
-      const unlistenClose = await win.onCloseRequested(async (e) => {
-        e.preventDefault()
-        await hideSubmenu(win)
-      })
-      cleanupFns.push(unlistenClose)
-
-      // ── Rust → Frontend: menu-show for this depth ──────────────
-      const unlistenShow = await listen<MenuShowPayload>("menu-show", (event) => {
-        const { menu: menuData, path, x, y, parent_x } = event.payload
-
-        const eventDepth = path.length === 0 ? 0 : path.length - 1
-        if (eventDepth !== depth) {
-          feLog.info(
-            `App:submenu-${myLevel}`,
-            `menu-show SKIP (eventDepth=${eventDepth} != myDepth=${depth})`,
-          )
-          return
-        }
-
-        feLog.eventRecv(
-          "menu-show",
-          `submenu-${myLevel} pos=(${x.toFixed(0)},${y.toFixed(0)}) path=[${path}]`,
-        )
-
-        pendingShow.current = { x, y, parent_x }
-        setMenu(menuData)
-        setIndexPath(path)
-        // Window is off-screen; handleReady will position & show
-      })
-      cleanupFns.push(unlistenShow)
-
-      // ── Rust → Frontend: hide all ──────────────────────────────
-      const unlistenHide = await listen("menu-hide-all", () => {
-        feLog.eventRecv("menu-hide-all", `submenu-${myLevel}`)
-        if (devMode.current) {
-          feLog.info(`App:submenu-${myLevel}`, "dev mode, ignoring hide")
-          return
-        }
-        hideSubmenu(win)
-      })
-      cleanupFns.push(unlistenHide)
-
-      // ── Dev mode toggle ────────────────────────────────────────
-      const unlistenDev = await listen<boolean>("dev-mode", (event) => {
-        devMode.current = event.payload
-      })
-      cleanupFns.push(unlistenDev)
-
-      // ── Blur → Rust decides whether to hide all ─────────────────
-      const unlistenFocus = await win.onFocusChanged(({ payload: focused }) => {
-        feLog.info(
-          `App:submenu-${myLevel}`,
-          `onFocusChanged focused=${focused} menuActive=${menuActive.current}`,
-        )
-        if (!focused && !devMode.current && menuActive.current) {
-          feLog.eventSend("menu-blur", `depth=${depth}`)
-          emit("menu-blur", { depth })
-        }
-      })
-      cleanupFns.push(unlistenFocus)
-
-      // Signal that this submenu window is ready
-      // (no longer needed since Rust pre-creates windows)
-    }
-
-    setup()
-    return () => {
-      cleanupFns.forEach((fn) => fn())
-    }
-  }, [depth])
-
-  /** Called by ContextMenu after the window has been resized to fit content. */
-  const handleReady = useCallback(async () => {
-    const info = pendingShow.current
-    if (!info) return
-    pendingShow.current = null
-
-    try {
-      const win = getCurrentWindow()
-      const outerSize = await win.outerSize()
-      const monitors = await availableMonitors()
-      const monitor = chooseMonitorForPoint(monitors, info.x, info.y)
-
-      let finalX = info.x
-      let finalY = info.y
-
-      if (monitor) {
-        const monRight = monitor.position.x + monitor.size.width
-
-        // If submenu overflows right edge, flip to the left of the parent
-        if (finalX + outerSize.width > monRight && info.parent_x != null) {
-          // Align submenu right edge with parent content left edge, minus gap
-          const pad = winPadPhysical()
-          const flippedX = info.parent_x + pad - outerSize.width - SUBMENU_GAP
-          feLog.info(
-            `App:submenu-${myLevel}`,
-            `flip: right overflow → left_side=${flippedX.toFixed(0)} (pad=${pad.toFixed(0)})`,
-          )
-          finalX = flippedX
-        }
-
-        const clamped = clampWindowToMonitor(finalX, finalY, outerSize, monitor)
-        finalX = clamped.x
-        finalY = clamped.y
-
-        feLog.info(
-          `App:submenu-${myLevel}`,
-          `clamp: size=(${outerSize.width}x${outerSize.height}) raw=(${info.x.toFixed(0)},${info.y.toFixed(0)}) -> (${finalX.toFixed(0)},${finalY.toFixed(0)})`,
-        )
-      }
-
-      await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)))
-      await win.setAlwaysOnTop(true)
-      menuActive.current = true
-      feLog.info(`App:submenu-${myLevel}`, "menuActive armed")
-      await win.show()
-      await win.setFocus()
-    } catch (e) {
-      feLog.error(`App:submenu-${myLevel}`, `handleReady error: ${e}`)
-    }
-  }, [myLevel])
-
-  async function hideSubmenu(win: ReturnType<typeof getCurrentWindow>) {
-    if (devMode.current) return
-    menuActive.current = false
-    await win.hide()
-    await win.setPosition(OFF_SCREEN)
-    setMenu(null)
-    setIndexPath([])
-  }
 
   if (!menu) {
     return <div className="rcm-root" />
@@ -206,7 +43,8 @@ export function SubmenuApp() {
       indexPath={indexPath}
       menu={menu}
       showIcons={false}
-      onReady={handleReady}
+      menuActiveRef={menuActive}
+      pendingPosRef={pendingPos}
     />
   )
 }

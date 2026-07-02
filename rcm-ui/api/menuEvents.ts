@@ -1,0 +1,108 @@
+/**
+ * Menu event API — centralized Tauri event emit/listen functions.
+ *
+ * All communication with the Rust backend goes through this module.
+ * Components and hooks should NEVER import `@tauri-apps/api/event`
+ * directly. Instead, use the functions provided here.
+ *
+ * Event flow:
+ *   Rust  → FE:  menu-show, menu-hide-all, dev-mode, icons-changed
+ *   FE    → Rust: menu-hover, menu-hover-out, menu-execute, menu-blur,
+ *                 menu-close-all, log-event
+ */
+
+import { invoke } from "@tauri-apps/api/core"
+import { emit } from "@tauri-apps/api/event"
+import type { UnlistenFn } from "@tauri-apps/api/event"
+
+import type { MenuData, IndexPath, CommandPayload } from "../types/menu"
+
+// ═══════════════════════════════════════════════════════════════════════
+// Types — payloads sent from frontend to Rust
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface MenuHoverData {
+  depth: number
+  path: IndexPath
+  rootX: number
+  rootY: number
+  rootW: number
+  rootH: number
+  itemY: number
+  itemH: number
+}
+
+export interface MenuShowEvent {
+  menu: MenuData
+  path: IndexPath
+  x: number
+  y: number
+  parentRootX?: number
+}
+
+export interface AppConfig {
+  dev: boolean
+  icons: boolean
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Emit — Frontend → Rust
+// ═══════════════════════════════════════════════════════════════════════
+
+export function emitMenuHover(data: MenuHoverData): Promise<void> {
+  return emit("menu-hover", data)
+}
+
+export function emitMenuHoverOut(depth: number): Promise<void> {
+  return emit("menu-hover-out", { depth })
+}
+
+export function emitMenuExecute(path: IndexPath, command: CommandPayload): Promise<void> {
+  return emit("menu-execute", { path, command })
+}
+
+export function emitMenuBlur(depth: number): Promise<void> {
+  return emit("menu-blur", { depth })
+}
+
+export function emitMenuCloseAll(): Promise<void> {
+  return emit("menu-close-all")
+}
+
+export function emitLog(tag: string, msg: string): Promise<void> {
+  return emit("log-event", { tag, msg }).catch(() => {})
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Invoke — Tauri commands
+// ═══════════════════════════════════════════════════════════════════════
+
+export function getConfig(): Promise<AppConfig> {
+  return invoke<AppConfig>("get_config")
+}
+
+export function getStyleCss(): Promise<string> {
+  return invoke<string>("get_style_css")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Listen — Rust → Frontend
+// ═══════════════════════════════════════════════════════════════════════
+
+import { listen } from "@tauri-apps/api/event"
+
+export function onMenuShow(handler: (payload: MenuShowEvent) => void): Promise<UnlistenFn> {
+  return listen<MenuShowEvent>("menu-show", (e) => handler(e.payload))
+}
+
+export function onMenuHideAll(handler: () => void): Promise<UnlistenFn> {
+  return listen("menu-hide-all", () => handler())
+}
+
+export function onDevMode(handler: (dev: boolean) => void): Promise<UnlistenFn> {
+  return listen<boolean>("dev-mode", (e) => handler(e.payload))
+}
+
+export function onIconsChanged(handler: (icons: boolean) => void): Promise<UnlistenFn> {
+  return listen<boolean>("icons-changed", (e) => handler(e.payload))
+}

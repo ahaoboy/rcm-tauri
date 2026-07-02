@@ -1,60 +1,34 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    RCM — Right-Click Menu Styles  ·  Win11 Fluent Design
-   DOM: .rcm-root > .rcm-ribbon? + .rcm-group(.rcm-item) / .rcm-item
+   DOM: #root > .rcm-root > .rcm-ribbon? + .rcm-group(.rcm-item) / .rcm-item
+
+   User-editable: all visual properties are CSS variables on :root.
+   Layout-critical: --rcm-window-pad controls the gap between the window
+   edge and .rcm-root. The frontend reads this at runtime, so changing it
+   will NOT break positioning (no hardcoded magic constants in JS).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Design tokens ──────────────────────────────────────────────────── */
 :root {
+  /* Typography */
   --rcm-font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
   --rcm-font-size: 13px;
   --rcm-icon-size: 18px;
+
+  /* Geometry */
   --rcm-radius: 9px;
   --rcm-padding: 2px;
-  --rcm-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Light defaults */
-  --rcm-bg: #f3f3f3;
-  --rcm-border: rgba(0, 0, 0, 0.08);
-  --rcm-top-highlight: rgba(255, 255, 255, 0.55);
-  --rcm-text: #1b1b1b;
-  --rcm-text-disabled: rgba(27, 27, 27, 0.36);
-  --rcm-shadow:
-    0 0.3px 0.6px rgba(0, 0, 0, 0.028), 0 1.2px 2.4px rgba(0, 0, 0, 0.042),
-    0 4px 9px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  --rcm-item-hover: rgba(0, 0, 0, 0.038);
-  --rcm-item-active: rgba(0, 0, 0, 0.065);
+  --rcm-window-pad: 4px; /* #root padding — gap around .rcm-root */
   --rcm-item-height: 30px;
   --rcm-item-radius: 6px;
-  --rcm-separator: rgba(0, 0, 0, 0.08);
-  --rcm-separator-margin: 4px 10px;
   --rcm-icon-gap: 12px;
-  --rcm-arrow-color: rgba(0, 0, 0, 0.36);
   --rcm-ribbon-gap: 2px;
-  --rcm-ribbon-padding: 2px 4px 4px 4px;
-  --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
-}
+  --rcm-ribbon-btn-size: 38px;
 
-/* ── Dark theme ─────────────────────────────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --rcm-bg: #2c2c2c;
-    --rcm-border: rgba(255, 255, 255, 0.08);
-    --rcm-top-highlight: rgba(255, 255, 255, 0.04);
-    --rcm-text: #f4f4f4;
-    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
-    --rcm-shadow:
-      0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
-      0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
-    --rcm-item-hover: rgba(255, 255, 255, 0.045);
-    --rcm-item-active: rgba(255, 255, 255, 0.075);
-    --rcm-separator: rgba(255, 255, 255, 0.08);
-    --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
-    --rcm-arrow-color: rgba(255, 255, 255, 0.36);
-  }
-}
+  /* Motion */
+  --rcm-transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
 
-/* ── Programmatic theme toggles ─────────────────────────────────────── */
-:root.rcm-light {
+  /* Light theme (default) */
   --rcm-bg: #f3f3f3;
   --rcm-border: rgba(0, 0, 0, 0.08);
   --rcm-top-highlight: rgba(255, 255, 255, 0.55);
@@ -66,10 +40,15 @@
   --rcm-item-hover: rgba(0, 0, 0, 0.038);
   --rcm-item-active: rgba(0, 0, 0, 0.065);
   --rcm-separator: rgba(0, 0, 0, 0.08);
+  --rcm-separator-margin: 4px 10px;
   --rcm-ribbon-border: rgba(0, 0, 0, 0.06);
   --rcm-arrow-color: rgba(0, 0, 0, 0.36);
+  --rcm-accent: #60cdff;
 }
 
+/* ── Dark theme ───────────────────────────────────────────────────────
+   Applied via the .rcm-dark class (set by useTheme hook).
+   Also applied via @media as a fallback for non-JS contexts.            */
 :root.rcm-dark {
   --rcm-bg: #2c2c2c;
   --rcm-border: rgba(255, 255, 255, 0.08);
@@ -84,6 +63,24 @@
   --rcm-separator: rgba(255, 255, 255, 0.08);
   --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
   --rcm-arrow-color: rgba(255, 255, 255, 0.36);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.rcm-light) {
+    --rcm-bg: #2c2c2c;
+    --rcm-border: rgba(255, 255, 255, 0.08);
+    --rcm-top-highlight: rgba(255, 255, 255, 0.04);
+    --rcm-text: #f4f4f4;
+    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
+    --rcm-shadow:
+      0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
+      0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+    --rcm-item-hover: rgba(255, 255, 255, 0.045);
+    --rcm-item-active: rgba(255, 255, 255, 0.075);
+    --rcm-separator: rgba(255, 255, 255, 0.08);
+    --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
+    --rcm-arrow-color: rgba(255, 255, 255, 0.36);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -102,11 +99,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* #root is the React mount point. Its padding creates transparent space
+   around .rcm-root for shadows and the fade-in animation. The value is
+   read at runtime by the frontend — no hardcoded JS constant needed. */
 #root {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  padding: 4px;
+  padding: var(--rcm-window-pad);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -116,7 +116,6 @@ body {
   display: flex;
   flex-direction: column;
   width: max-content;
-  min-width: 140px;
   position: relative;
 
   background-color: var(--rcm-bg);
@@ -155,7 +154,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: var(--rcm-ribbon-gap);
-  padding: var(--rcm-ribbon-padding);
+  padding: var(--rcm-ribbon-padding, 2px 4px 4px 4px);
   border-bottom: 1px solid var(--rcm-ribbon-border);
   margin-bottom: 4px;
 }
@@ -164,8 +163,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: var(--rcm-ribbon-btn-size);
+  height: var(--rcm-ribbon-btn-size);
   border: none;
   border-radius: var(--rcm-item-radius);
   background: transparent;
@@ -269,7 +268,7 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 .rcm-item:focus-visible,
 .rcm-ribbon-btn:focus-visible {
-  outline: 2px solid var(--rcm-accent, #60cdff);
+  outline: 2px solid var(--rcm-accent);
   outline-offset: -2px;
   border-radius: var(--rcm-item-radius);
 }
