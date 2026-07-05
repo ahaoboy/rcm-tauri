@@ -1,6 +1,5 @@
 //! `@open-file-location` — Open the containing folder in Explorer and
-//! select the file. For shortcut (.lnk) files, resolves the target first
-//! and opens that location instead.
+//! select the file. For shortcut (.lnk) files, resolves the target first.
 
 use super::{SystemCmdResult, powershell};
 use crate::types::CommandPayload;
@@ -50,23 +49,22 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     // If the target is a directory, open it directly. Otherwise use /select
     // to highlight the file in its parent folder.
     let is_dir = Path::new(&target).is_dir();
-    let explorer_arg = if is_dir {
-        target.clone()
-    } else {
-        format!("/select,{target}")
-    };
-    let msg = format!("Opened location: {explorer_arg}");
 
-    match std::process::Command::new("explorer")
-        .arg(&explorer_arg)
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-    {
+    let mut cmd = std::process::Command::new("explorer");
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    if is_dir {
+        cmd.arg(&target);
+    } else {
+        cmd.arg("/select,").arg(&target);
+    }
+
+    match cmd.spawn() {
         Ok(_) => {
             crate::log::info("Rust::open_file_location", "explorer launched OK");
             SystemCmdResult {
                 success: true,
-                message: msg,
+                message: format!("Opened location for: {target}"),
             }
         }
         Err(e) => SystemCmdResult {
