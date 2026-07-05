@@ -54,6 +54,13 @@ pub struct FilterRule {
 
 fn default_filters() -> Vec<FilterRule> {
     vec![
+        // RCM's own transparent overlay windows — prevent self-trigger loops
+        FilterRule {
+            class: r"^Tauri Window$".into(),
+            file: String::new(),
+            flags: None,
+            reason: "RCM self-window (Tauri Window)".into(),
+        },
         // OpenWith dialog
         FilterRule {
             class: r"^Chrome_WidgetWin_".into(),
@@ -61,10 +68,16 @@ fn default_filters() -> Vec<FilterRule> {
             flags: Some(16),
             reason: "OpenWith dialog (Chrome_WidgetWin_, flags=16)".into(),
         },
-        // UWP system UI (taskbar jump lists, etc.) — all events from
-        // Windows.UI.Core.CoreWindow are spurious; flags vary
-        // (observed: 2048=CMF_OPTIMIZEFORINVOKE, 32770=CMF_VERBSONLY|0x8000)
-        // so we match any flags by leaving it None.
+        // Generic Windows dialogs (#32770) — installer completion,
+        // message boxes, file-open dialogs, etc.
+        // https://learn.microsoft.com/en-us/windows/win32/winauto/dialog-box
+        FilterRule {
+            class: r"^#32770$".into(),
+            file: String::new(),
+            flags: None,
+            reason: "Windows dialog (#32770)".into(),
+        },
+        // UWP system UI (taskbar jump lists, etc.)
         FilterRule {
             class: r"^Windows\.UI\.Core\.CoreWindow$".into(),
             file: String::new(),
