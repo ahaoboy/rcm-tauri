@@ -86,6 +86,22 @@ export function getStyleCss(): Promise<string> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Config editor — file read/write/open
+// ═══════════════════════════════════════════════════════════════════════
+
+export function readConfigFile(name: string): Promise<string> {
+  return invoke<string>("read_config_file", { name })
+}
+
+export function saveConfigFile(name: string, content: string): Promise<void> {
+  return invoke("save_config_file", { name, content })
+}
+
+export function openInEditor(name: string): Promise<void> {
+  return invoke("open_in_editor", { name })
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Listen — Rust → Frontend
 // ═══════════════════════════════════════════════════════════════════════
 

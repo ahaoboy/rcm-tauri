@@ -29,6 +29,10 @@ fn should_ignore(event: &rcm_com::ContextMenuInfo) -> Option<String> {
 /// Start listening for external right-click events from the rcm_com pipe.
 /// This runs in a background task and never returns.
 pub fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: AutoHideEpoch) {
+    println!(
+        "Rust::monitor: starting rcm_com listener (dev={})",
+        config::is_dev()
+    );
     log::info("Rust::monitor", "begin listening for rcm_com events");
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {

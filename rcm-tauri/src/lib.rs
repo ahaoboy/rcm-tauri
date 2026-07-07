@@ -84,23 +84,136 @@ fn get_style_css() -> String {
         .clone()
 }
 
+// ── Config editor commands ───────────────────────────────────────────────
+
+const VALID_FILES: &[&str] = &["rcm.js", "style.css", "rcm.config.json"];
+
+fn is_valid_config_file(name: &str) -> bool {
+    VALID_FILES.contains(&name)
+}
+
+/// Read a config file from the exe directory.
+#[tauri::command]
+fn read_config_file(name: String) -> Result<String, String> {
+    if !is_valid_config_file(&name) {
+        return Err(format!("Invalid file: {name}"));
+    }
+    let path = rcm_core::exe_dir().join(&name);
+    std::fs::read_to_string(&path).map_err(|e| format!("Read failed: {e}"))
+}
+
+/// Save content to a config file in the exe directory.
+#[tauri::command]
+fn save_config_file(name: String, content: String) -> Result<(), String> {
+    if !is_valid_config_file(&name) {
+        return Err(format!("Invalid file: {name}"));
+    }
+    let path = rcm_core::exe_dir().join(&name);
+    std::fs::write(&path, &content).map_err(|e| format!("Save failed: {e}"))
+}
+
+/// Open a config file with the system default program.
+#[tauri::command]
+fn open_in_editor(name: String) -> Result<(), String> {
+    if !is_valid_config_file(&name) {
+        return Err(format!("Invalid file: {name}"));
+    }
+    let path = rcm_core::exe_dir().join(&name);
+    std::process::Command::new("cmd")
+        .args(["/c", "start", "", &path.to_string_lossy()])
+        .spawn()
+        .map_err(|e| format!("Open failed: {e}"))?;
+    Ok(())
+}
+
+/// Create the config editor window.
+#[tauri::command]
+async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
+    let label = "config-editor";
+    if app.get_webview_window(label).is_some() {
+        // Already open — focus it
+        if let Some(win) = app.get_webview_window(label) {
+            let _ = win.show();
+            let _ = win.set_focus();
+        }
+        return Ok(());
+    }
+
+    let url = "index.html#config/rcm.js".to_string();
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(url.into()))
+        .title("RCM Config Editor")
+        .inner_size(700.0, 520.0)
+        .resizable(true)
+        .build()
+        .map_err(|e| format!("Failed to create window: {e}"))?;
+
+    Ok(())
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
 // ═══════════════════════════════════════════════════════════════════════════
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    if pipe::check_client_cli() {
+    // Step 1: check if another RCM process is already running
+    if pipe::is_rcm_process_running() {
+        eprintln!("rcm-tauri: another instance is already running");
+        run_error("Another instance of RCM is already running.\n\nPlease close it before starting a new one.");
         return;
     }
 
+    run_app()
+}
+
+/// Minimal Tauri app that only shows an error window.
+fn run_error(message: &str) {
+    let url = format!("index.html#error/{}", urlencoding(message));
+    tauri::Builder::default()
+        .setup(move |app| {
+            tauri::WebviewWindowBuilder::new(app, "rcm-error", tauri::WebviewUrl::App(url.into()))
+                .title("RCM Error")
+                .inner_size(440.0, 220.0)
+                .resizable(false)
+                .center()
+                .build()?;
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error window failed");
+}
+
+fn urlencoding(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for b in s.bytes() {
+        match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(b as char)
+            }
+            b' ' => out.push_str("%20"),
+            b'\n' => out.push_str("%0A"),
+            _ => {
+                let h = format!("%{:02X}", b);
+                out.push_str(&h);
+            }
+        }
+    }
+    out
+}
+
+fn run_app() {
     let menu: MenuArc = Arc::new(Mutex::new(None));
     let auto_hide_epoch: AutoHideEpoch = Arc::new(AtomicU64::new(0));
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_single_instance::init(|_app, _args, _cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|_app, args, _cwd| {
+            eprintln!(
+                "rcm-tauri: another instance is already running (args: {:?})",
+                args
+            );
+        }))
         .manage(menu.clone())
         .manage(auto_hide_epoch.clone())
         .setup(move |app| {
@@ -216,7 +329,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             create_window,
             get_config,
-            get_style_css
+            get_style_css,
+            read_config_file,
+            save_config_file,
+            open_in_editor,
+            create_config_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

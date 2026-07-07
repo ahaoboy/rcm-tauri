@@ -19,7 +19,6 @@ base64 = "0.22"
 winreg = "0.56"
 anyhow = "1"
 tokio = "1"
-clap = { version = "4", features = ["derive"] }
 regex = "1"
 ureq = "3"
 autorun = { version = "0.1", git = "https://github.com/ahaoboy/autorun", default-features = false }

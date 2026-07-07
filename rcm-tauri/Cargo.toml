@@ -30,7 +30,6 @@ tauri-plugin-updater = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-clap = { workspace = true }
 which = { workspace = true }
 rcm-com = { workspace = true }
 rcm-reg = { workspace = true }

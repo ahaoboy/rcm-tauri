@@ -30,6 +30,8 @@ pub const AUTOSTART_ID: &str = "autostart";
 pub const RESET_ID: &str = "reset";
 /// Exit the application (MenuItem).
 pub const QUIT_ID: &str = "quit";
+/// Open the config editor window (MenuItem).
+pub const CONFIG_ID: &str = "config";
 /// Download the latest menu JS from the configured remote URL (MenuItem).
 pub const SYNC_ID: &str = "sync";
 
@@ -46,6 +48,7 @@ pub const AUTOSTART_TEXT: &str = "Startup";
 pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
 pub const SYNC_TEXT: &str = "Sync";
+pub const CONFIG_TEXT: &str = "Config";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -203,6 +206,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         None::<&str>,
     )?;
     let sync_i = MenuItem::with_id(app, SYNC_ID, SYNC_TEXT, true, None::<&str>)?;
+    let config_i = MenuItem::with_id(app, CONFIG_ID, CONFIG_TEXT, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
@@ -255,6 +259,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     if has_remote {
         items.push(&sync_i);
     }
+    items.push(&config_i);
     items.push(&reset_i);
     items.push(&apply_i);
     items.push(&quit_i);
@@ -282,6 +287,12 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
             APPLY_ID => handle_apply(),
             SYNC_ID => handle_sync(),
+            CONFIG_ID => {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::create_config_window(app_handle).await;
+                });
+            }
             RESET_ID => {
                 config::reset();
                 crate::write_style_defaults();
