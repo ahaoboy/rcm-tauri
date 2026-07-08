@@ -4,7 +4,7 @@ use rcm_reg::MenuStyle;
 use std::time::Duration;
 use tauri::{
     App, Emitter,
-    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::TrayIconBuilder,
 };
 
@@ -53,13 +53,9 @@ pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
 pub const SYNC_TEXT: &str = "Sync";
 pub const CONFIG_TEXT: &str = "Config";
-pub const THEME_SYSTEM_TEXT: &str = "Theme System";
-pub const THEME_LIGHT_TEXT: &str = "Theme Light";
-pub const THEME_DARK_TEXT: &str = "Theme Dark";
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Helpers
-// ═══════════════════════════════════════════════════════════════════════════
+pub const THEME_SYSTEM_TEXT: &str = "System";
+pub const THEME_LIGHT_TEXT: &str = "Light";
+pub const THEME_DARK_TEXT: &str = "Dark";
 
 fn is_win11() -> bool {
     MenuStyle::current() == MenuStyle::Windows11
@@ -76,10 +72,6 @@ fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &Chec
     let _ = win11.set_checked(win11_active);
     let _ = classic.set_checked(!win11_active);
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Event handlers
-// ═══════════════════════════════════════════════════════════════════════════
 
 fn handle_style_switch<R: tauri::Runtime>(
     style: MenuStyle,
@@ -175,10 +167,6 @@ fn handle_theme<R: tauri::Runtime>(
     let _ = dark.set_checked(theme == rcm_core::config::Theme::Dark);
     let _ = app.emit("theme-changed", theme.as_str());
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Tray setup
-// ═══════════════════════════════════════════════════════════════════════════
 
 pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Create menu items ────────────────────────────────────────────
@@ -286,6 +274,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let _sep_prefs = PredefinedMenuItem::separator(app)?;
     let _sep_sys = PredefinedMenuItem::separator(app)?;
 
+    // Theme submenu
+    let theme_menu = Submenu::with_items(app, "Theme", true, &[&theme_sys_i, &theme_light_i, &theme_dark_i])?;
+
     // Group 1: Style
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
         &win11_i,
@@ -301,9 +292,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         items.push(&dev_i);
     }
     items.push(&autostart_i);
-    items.push(&theme_sys_i);
-    items.push(&theme_light_i);
-    items.push(&theme_dark_i);
+    items.push(&theme_menu);
 
     // Group 3: System
     items.push(&_sep_sys);
