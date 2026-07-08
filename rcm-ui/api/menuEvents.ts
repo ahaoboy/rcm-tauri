@@ -107,6 +107,26 @@ export function notifyStyleUpdated(css: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Pull — download latest files from configured remote URLs
+// ═══════════════════════════════════════════════════════════════════════
+
+export function pullJs(): Promise<string> {
+  return invoke<string>("pull_js")
+}
+
+export function pullCss(): Promise<string> {
+  return invoke<string>("pull_css")
+}
+
+export function pullConfig(): Promise<string> {
+  return invoke<string>("pull_config")
+}
+
+export function showError(message: string): Promise<void> {
+  return invoke("show_error", { message })
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Listen — Rust → Frontend
 // ═══════════════════════════════════════════════════════════════════════
 

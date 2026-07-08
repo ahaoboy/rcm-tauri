@@ -36,8 +36,11 @@ pub const RESET_ID: &str = "reset";
 pub const QUIT_ID: &str = "quit";
 /// Open the config editor window (MenuItem).
 pub const CONFIG_ID: &str = "config";
-/// Download the latest menu JS from the configured remote URL (MenuItem).
-pub const SYNC_ID: &str = "sync";
+/// Download the latest files from configured remote URLs (Pull submenu).
+pub const PULL_ID: &str = "pull";
+pub const PULL_JS_ID: &str = "pull_js";
+pub const PULL_CSS_ID: &str = "pull_css";
+pub const PULL_CONFIG_ID: &str = "pull_config";
 
 // ── Label constants ──────────────────────────────────────────────────────
 
@@ -51,7 +54,10 @@ pub const ICONS_TEXT: &str = "Icons";
 pub const AUTOSTART_TEXT: &str = "Startup";
 pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
-pub const SYNC_TEXT: &str = "Sync";
+pub const PULL_TEXT: &str = "Pull";
+pub const PULL_JS_TEXT: &str = "JS";
+pub const PULL_CSS_TEXT: &str = "CSS";
+pub const PULL_CONFIG_TEXT: &str = "Config";
 pub const CONFIG_TEXT: &str = "Config";
 pub const THEME_SYSTEM_TEXT: &str = "System";
 pub const THEME_LIGHT_TEXT: &str = "Light";
@@ -135,16 +141,47 @@ fn handle_autostart_toggle<R: tauri::Runtime>(item: &CheckMenuItem<R>) {
     }
 }
 
-fn handle_sync() {
-    match rcm_core::config::remote_url() {
-        Some(url) => {
-            log::info("Tray", &format!("syncing menu from {url}"));
-            match rcm_core::menu::download_menu(&url) {
-                Ok(path) => log::info("Tray", &format!("sync saved to {path}")),
-                Err(e) => log::error("Tray", &format!("sync failed: {e}")),
-            }
+fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
+    let (label, result) = match file {
+        "js" => (
+            "rcm.js",
+            rcm_core::config::remote_js_url()
+                .ok_or_else(|| "No remote URL configured for rcm.js".to_string())
+                .and_then(|url| {
+                    log::info("Pull", &format!("pulling rcm.js from {url}"));
+                    rcm_core::menu::download_menu(&url)
+                }),
+        ),
+        "css" => (
+            "style.css",
+            rcm_core::config::remote_css_url()
+                .ok_or_else(|| "No remote URL configured for style.css".to_string())
+                .and_then(|url| {
+                    log::info("Pull", &format!("pulling style.css from {url}"));
+                    rcm_core::menu::download_style(&url)
+                }),
+        ),
+        "config" => (
+            "rcm.config.json",
+            rcm_core::config::remote_config_url()
+                .ok_or_else(|| "No remote URL configured for rcm.config.json".to_string())
+                .and_then(|url| {
+                    log::info("Pull", &format!("pulling rcm.config.json from {url}"));
+                    rcm_core::menu::download_config(&url)
+                }),
+        ),
+        _ => {
+            log::error("Pull", &format!("unknown file: {file}"));
+            return;
         }
-        None => log::error("Tray", "sync: no remote URL configured"),
+    };
+
+    match result {
+        Ok(path) => log::info("Pull", &format!("{label} saved to {path}")),
+        Err(e) => {
+            log::error("Pull", &format!("{label} failed: {e}"));
+            crate::show_error_window(app, &format!("Pull {label} Failed"), &e);
+        }
     }
 }
 
@@ -238,7 +275,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         registry::is_autostart_enabled(),
         None::<&str>,
     )?;
-    let sync_i = MenuItem::with_id(app, SYNC_ID, SYNC_TEXT, true, None::<&str>)?;
+    let pull_js_i = MenuItem::with_id(app, PULL_JS_ID, PULL_JS_TEXT, true, None::<&str>)?;
+    let pull_css_i = MenuItem::with_id(app, PULL_CSS_ID, PULL_CSS_TEXT, true, None::<&str>)?;
+    let pull_config_i =
+        MenuItem::with_id(app, PULL_CONFIG_ID, PULL_CONFIG_TEXT, true, None::<&str>)?;
     let config_i = MenuItem::with_id(app, CONFIG_ID, CONFIG_TEXT, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
@@ -265,17 +305,34 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Dev    (debug)
     //   ✓ Auto Start
     //   ─────────
-    //     Sync Menu  (conditional)    ← System
+    //   Pull ▾                       ← Pull submenu (conditional)
+    //     ─────
+    //     Pull JS / Pull CSS / Pull Config
     //     Reset / Apply / Quit
 
     let is_debug = cfg!(debug_assertions);
-    let has_remote = rcm_core::config::remote_url().is_some();
+    let has_remote = rcm_core::config::remote_js_url().is_some()
+        || rcm_core::config::remote_css_url().is_some()
+        || rcm_core::config::remote_config_url().is_some();
 
     let _sep_prefs = PredefinedMenuItem::separator(app)?;
     let _sep_sys = PredefinedMenuItem::separator(app)?;
 
     // Theme submenu
-    let theme_menu = Submenu::with_items(app, "Theme", true, &[&theme_sys_i, &theme_light_i, &theme_dark_i])?;
+    let theme_menu = Submenu::with_items(
+        app,
+        "Theme",
+        true,
+        &[&theme_sys_i, &theme_light_i, &theme_dark_i],
+    )?;
+
+    // Pull submenu
+    let pull_menu = Submenu::with_items(
+        app,
+        PULL_TEXT,
+        true,
+        &[&pull_js_i, &pull_css_i, &pull_config_i],
+    )?;
 
     // Group 1: Style
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
@@ -297,7 +354,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // Group 3: System
     items.push(&_sep_sys);
     if has_remote {
-        items.push(&sync_i);
+        items.push(&pull_menu);
     }
     items.push(&config_i);
     items.push(&reset_i);
@@ -347,7 +404,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 &theme_dark_clone,
             ),
             APPLY_ID => handle_apply(),
-            SYNC_ID => handle_sync(),
+            PULL_JS_ID => handle_pull(app, "js"),
+            PULL_CSS_ID => handle_pull(app, "css"),
+            PULL_CONFIG_ID => handle_pull(app, "config"),
             CONFIG_ID => {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {

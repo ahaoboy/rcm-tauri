@@ -37,7 +37,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -70,6 +70,7 @@ jobs:
         shell: bash
         run: |
           cp rcm-kit/dist/full.js rcm.js
+          cp rcm-ui/style.css style.css
           if [ "${{ github.ref_type }}" = "tag" ]; then
             TAG="app-${{ github.ref_name }}"
           else
@@ -77,4 +78,4 @@ jobs:
             TAG="app-v$VERSION"
           fi
           echo "Uploading rcm.js to release tag: $TAG"
-          gh release upload "$TAG" rcm.js --clobber
+          gh release upload "$TAG" rcm.js style.css --clobber

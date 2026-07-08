@@ -1,5 +1,7 @@
 const DEFAULT_MODULE: &str = include_str!("../../rcm-kit/dist/full.js");
 const MENU_FILE: &str = "rcm.js";
+const STYLE_FILE: &str = "style.css";
+const CONFIG_FILE: &str = "rcm.config.json";
 
 /// Write the embedded default menu JS file next to the exe.
 pub fn write_menu_defaults() {
@@ -45,19 +47,34 @@ pub fn load_menu_module() -> String {
 ///
 /// Returns the path that was written on success, or an error string.
 pub fn download_menu(url: &str) -> Result<String, String> {
+    download_file(url, MENU_FILE)
+}
+
+/// Download style.css from `url` and save it next to the executable.
+pub fn download_style(url: &str) -> Result<String, String> {
+    download_file(url, STYLE_FILE)
+}
+
+/// Download rcm.config.json from `url` and save it next to the executable.
+pub fn download_config(url: &str) -> Result<String, String> {
+    download_file(url, CONFIG_FILE)
+}
+
+/// Download a file from `url` and save it as `filename` next to the executable.
+fn download_file(url: &str, filename: &str) -> Result<String, String> {
     let body = ureq::get(url)
         .call()
-        .map_err(|e| format!("download failed: {e}"))?
+        .map_err(|e| format!("download {url} failed: {e}"))?
         .into_body()
         .read_to_string()
-        .map_err(|e| format!("read response failed: {e}"))?;
+        .map_err(|e| format!("read {url} failed: {e}"))?;
 
-    let file_path = crate::exe_dir().join(MENU_FILE);
+    let file_path = crate::exe_dir().join(filename);
 
     std::fs::write(&file_path, &body)
         .map_err(|e| format!("write {} failed: {e}", file_path.display()))?;
 
     let disp = file_path.display().to_string();
-    println!("download_menu: saved {} bytes to {disp}", body.len());
+    println!("download: saved {} bytes to {disp}", body.len());
     Ok(disp)
 }

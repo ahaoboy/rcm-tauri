@@ -162,6 +162,39 @@ async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Pull latest rcm.js from configured remote URL.
+#[tauri::command]
+fn pull_js() -> Result<String, String> {
+    let url = rcm_core::config::remote_js_url()
+        .ok_or_else(|| "No remote URL configured for rcm.js".to_string())?;
+    log::info("Pull", &format!("pulling rcm.js from {url}"));
+    let path = rcm_core::menu::download_menu(&url)?;
+    log::info("Pull", &format!("rcm.js saved to {path}"));
+    Ok(path)
+}
+
+/// Pull latest style.css from configured remote URL.
+#[tauri::command]
+fn pull_css() -> Result<String, String> {
+    let url = rcm_core::config::remote_css_url()
+        .ok_or_else(|| "No remote URL configured for style.css".to_string())?;
+    log::info("Pull", &format!("pulling style.css from {url}"));
+    let path = rcm_core::menu::download_style(&url)?;
+    log::info("Pull", &format!("style.css saved to {path}"));
+    Ok(path)
+}
+
+/// Pull latest rcm.config.json from configured remote URL.
+#[tauri::command]
+fn pull_config() -> Result<String, String> {
+    let url = rcm_core::config::remote_config_url()
+        .ok_or_else(|| "No remote URL configured for rcm.config.json".to_string())?;
+    log::info("Pull", &format!("pulling rcm.config.json from {url}"));
+    let path = rcm_core::menu::download_config(&url)?;
+    log::info("Pull", &format!("rcm.config.json saved to {path}"));
+    Ok(path)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
 // ═══════════════════════════════════════════════════════════════════════════
@@ -194,6 +227,27 @@ fn run_error(message: &str) {
         })
         .run(tauri::generate_context!())
         .expect("error window failed");
+}
+
+/// Show a small error window (non-blocking).
+#[tauri::command]
+fn show_error(app: tauri::AppHandle, message: String) {
+    show_error_window(&app, "RCM Error", &message);
+}
+
+fn show_error_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>, title: &str, message: &str) {
+    let url = format!("index.html#error/{}", urlencoding(message));
+    let label = format!("rcm-error-{}", std::process::id());
+    if let Err(e) =
+        tauri::WebviewWindowBuilder::new(app, &label, tauri::WebviewUrl::App(url.into()))
+            .title(title)
+            .inner_size(440.0, 220.0)
+            .resizable(false)
+            .center()
+            .build()
+    {
+        log::error("ErrorWindow", &format!("failed to create: {e}"));
+    }
 }
 
 fn urlencoding(s: &str) -> String {
@@ -364,6 +418,10 @@ fn run_app() {
             open_in_editor,
             notify_style_updated,
             create_config_window,
+            pull_js,
+            pull_css,
+            pull_config,
+            show_error,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -30,7 +30,7 @@ impl Theme {
 // Data
 // ═══════════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct ConfigFile {
     /// Dev mode flag
     #[serde(default)]
@@ -48,8 +48,38 @@ struct ConfigFile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     filters: Option<Vec<FilterRule>>,
     /// Remote URL for menu JS sync (empty = disabled)
-    #[serde(default)]
-    url: String,
+    #[serde(default = "default_js_url")]
+    js_url: String,
+    /// Remote URL for style CSS sync (empty = disabled)
+    #[serde(default = "default_css_url")]
+    css_url: String,
+    /// Remote URL for config JSON sync (empty = disabled)
+    #[serde(default = "default_config_url")]
+    config_url: String,
+}
+
+fn default_js_url() -> String {
+    "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js".into()
+}
+fn default_css_url() -> String {
+    "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/style.css".into()
+}
+fn default_config_url() -> String {
+    "".into()
+}
+
+impl Default for ConfigFile {
+    fn default() -> Self {
+        Self {
+            dev: false,
+            icons: false,
+            theme: Theme::default(),
+            filters: None,
+            js_url: default_js_url(),
+            css_url: default_css_url(),
+            config_url: default_config_url(),
+        }
+    }
 }
 
 /// A single filter rule for ignoring context-menu events.
@@ -155,12 +185,14 @@ pub fn init() {
     }
 
     println!(
-        "config: dev={} icons={} theme={:?} filters={} remote={} ({})",
+        "config: dev={} icons={} theme={:?} filters={} js_url={} css_url={} cfg_url={} ({})",
         is_dev(),
         is_icons(),
         theme(),
         filters().len(),
-        remote_url().as_deref().unwrap_or("(none)"),
+        remote_js_url().as_deref().unwrap_or("(none)"),
+        remote_css_url().as_deref().unwrap_or("(none)"),
+        remote_config_url().as_deref().unwrap_or("(none)"),
         path.display(),
     );
 }
@@ -189,12 +221,21 @@ pub fn theme() -> Theme {
 }
 
 /// Return the remote menu sync URL, or `None` if not configured.
-pub fn remote_url() -> Option<String> {
-    let url = &read_config().url;
-    if url.is_empty() {
+pub fn remote_js_url() -> Option<String> {
+    url_or_none(&read_config().js_url)
+}
+pub fn remote_css_url() -> Option<String> {
+    url_or_none(&read_config().css_url)
+}
+pub fn remote_config_url() -> Option<String> {
+    url_or_none(&read_config().config_url)
+}
+
+fn url_or_none(s: &str) -> Option<String> {
+    if s.is_empty() {
         None
     } else {
-        Some(url.clone())
+        Some(s.to_string())
     }
 }
 
@@ -210,8 +251,14 @@ pub fn set_icons(icons: bool) {
     update_config(|cfg| cfg.icons = icons);
 }
 
-pub fn set_remote_url(url: String) {
-    update_config(|cfg| cfg.url = url);
+pub fn set_remote_js_url(url: String) {
+    update_config(|cfg| cfg.js_url = url);
+}
+pub fn set_remote_css_url(url: String) {
+    update_config(|cfg| cfg.css_url = url);
+}
+pub fn set_remote_config_url(url: String) {
+    update_config(|cfg| cfg.config_url = url);
 }
 
 pub fn set_theme(theme: Theme) {

@@ -18,7 +18,16 @@ import { EditorView, keymap } from "@codemirror/view"
 import { basicSetup } from "codemirror"
 import React, { useEffect, useState, useRef, useCallback } from "react"
 
-import { readConfigFile, saveConfigFile, openInEditor, notifyStyleUpdated } from "../api/menuEvents"
+import {
+  readConfigFile,
+  saveConfigFile,
+  openInEditor,
+  notifyStyleUpdated,
+  pullJs,
+  pullCss,
+  pullConfig,
+  showError,
+} from "../api/menuEvents"
 import { BodyReset } from "./BodyReset"
 
 const FILES = [
@@ -210,6 +219,18 @@ export const ConfigEditor: React.FC = () => {
     }
   }, [active])
 
+  const handlePull = useCallback(async () => {
+    setError(null)
+    const pullFn = active === "rcm.js" ? pullJs : active === "style.css" ? pullCss : pullConfig
+    try {
+      const path = await pullFn()
+      setReloadKey((k) => k + 1)
+      setError(`Pulled → ${path}`)
+    } catch (e) {
+      showError(String(e))
+    }
+  }, [active])
+
   return (
     <>
       <BodyReset />
@@ -232,6 +253,9 @@ export const ConfigEditor: React.FC = () => {
           <button onClick={triggerSave} style={styles.btn}>
             💾 Save
           </button>
+          <button onClick={handlePull} style={styles.btn}>
+            ⬇️ Pull
+          </button>
           <button onClick={() => setReloadKey((k) => k + 1)} style={styles.btn}>
             🔄 Reload
           </button>
@@ -249,7 +273,7 @@ export const ConfigEditor: React.FC = () => {
 
         {!loaded && <div style={styles.loading}>Loading…</div>}
         <div style={styles.editor}>
-          {FILES.map(f => (
+          {FILES.map((f) => (
             <EditorActivity
               key={f.key}
               fileKey={f.key}
