@@ -54,6 +54,7 @@ pub type AutoHideEpoch = Arc<AtomicU64>;
 pub struct ConfigPayload {
     pub dev: bool,
     pub icons: bool,
+    pub theme: String,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

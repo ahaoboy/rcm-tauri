@@ -26,6 +26,7 @@ fn get_config() -> ConfigPayload {
     ConfigPayload {
         dev: config::is_dev(),
         icons: config::is_icons(),
+        theme: config::theme().as_str().into(),
     }
 }
 

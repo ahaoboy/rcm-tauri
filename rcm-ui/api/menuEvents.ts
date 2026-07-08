@@ -43,6 +43,7 @@ export interface MenuShowEvent {
 export interface AppConfig {
   dev: boolean
   icons: boolean
+  theme: string
 }
 
 // ═══════════════════════════════════════════════════════════════════════

@@ -7,6 +7,25 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+impl Theme {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Theme::System => "system",
+            Theme::Light => "light",
+            Theme::Dark => "dark",
+        }
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Data
 // ═══════════════════════════════════════════════════════════════════════════
@@ -19,6 +38,9 @@ struct ConfigFile {
     /// Show icon ribbon at top of menu
     #[serde(default)]
     icons: bool,
+    /// Menu theme: system (follow OS), light, or dark
+    #[serde(default)]
+    theme: Theme,
     /// Event filter rules.
     /// - Missing field → use built-in defaults
     /// - Empty array `[]` → no filtering (allow all events)
@@ -133,9 +155,10 @@ pub fn init() {
     }
 
     println!(
-        "config: dev={} icons={} filters={} remote={} ({})",
+        "config: dev={} icons={} theme={:?} filters={} remote={} ({})",
         is_dev(),
         is_icons(),
+        theme(),
         filters().len(),
         remote_url().as_deref().unwrap_or("(none)"),
         path.display(),
@@ -159,6 +182,10 @@ pub fn is_icons() -> bool {
 /// - `[]` in config → empty (allow all events).
 pub fn filters() -> Vec<FilterRule> {
     read_config().filters.unwrap_or_else(default_filters)
+}
+
+pub fn theme() -> Theme {
+    read_config().theme
 }
 
 /// Return the remote menu sync URL, or `None` if not configured.
@@ -185,6 +212,10 @@ pub fn set_icons(icons: bool) {
 
 pub fn set_remote_url(url: String) {
     update_config(|cfg| cfg.url = url);
+}
+
+pub fn set_theme(theme: Theme) {
+    update_config(|cfg| cfg.theme = theme);
 }
 
 /// Reset all config and menu files to embedded defaults.

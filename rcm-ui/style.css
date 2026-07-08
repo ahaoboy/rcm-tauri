@@ -55,24 +55,6 @@
   --rcm-arrow-color: rgba(255, 255, 255, 0.36);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.rcm-light) {
-    --rcm-bg: #2c2c2c;
-    --rcm-border: rgba(255, 255, 255, 0.08);
-    --rcm-top-highlight: rgba(255, 255, 255, 0.04);
-    --rcm-text: #f4f4f4;
-    --rcm-text-disabled: rgba(244, 244, 244, 0.36);
-    --rcm-shadow:
-      0 0.3px 0.6px rgba(0, 0, 0, 0.16), 0 1.2px 2.4px rgba(0, 0, 0, 0.2),
-      0 4px 9px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
-    --rcm-item-hover: rgba(255, 255, 255, 0.045);
-    --rcm-item-active: rgba(255, 255, 255, 0.075);
-    --rcm-separator: rgba(255, 255, 255, 0.08);
-    --rcm-ribbon-border: rgba(255, 255, 255, 0.06);
-    --rcm-arrow-color: rgba(255, 255, 255, 0.36);
-  }
-}
-
 /* Base */
 body {
   margin: 0;

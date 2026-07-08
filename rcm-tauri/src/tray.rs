@@ -24,6 +24,10 @@ pub const UNREGISTER_ID: &str = "unregister";
 pub const DEV_ID: &str = "dev";
 /// Toggle icon ribbon visibility (CheckMenuItem).
 pub const ICONS_ID: &str = "icons";
+/// Menu theme: system / light / dark (CheckMenuItem).
+pub const THEME_SYSTEM_ID: &str = "theme_system";
+pub const THEME_LIGHT_ID: &str = "theme_light";
+pub const THEME_DARK_ID: &str = "theme_dark";
 /// Toggle autostart — when on, the app launches at Windows startup (CheckMenuItem).
 pub const AUTOSTART_ID: &str = "autostart";
 /// Reset all config and menu files to embedded defaults (MenuItem).
@@ -49,6 +53,9 @@ pub const RESET_TEXT: &str = "Reset";
 pub const APPLY_TEXT: &str = "Apply";
 pub const SYNC_TEXT: &str = "Sync";
 pub const CONFIG_TEXT: &str = "Config";
+pub const THEME_SYSTEM_TEXT: &str = "Theme System";
+pub const THEME_LIGHT_TEXT: &str = "Theme Light";
+pub const THEME_DARK_TEXT: &str = "Theme Dark";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -155,6 +162,20 @@ fn handle_apply() {
     }
 }
 
+fn handle_theme<R: tauri::Runtime>(
+    theme: rcm_core::config::Theme,
+    app: &tauri::AppHandle<R>,
+    sys: &CheckMenuItem<R>,
+    light: &CheckMenuItem<R>,
+    dark: &CheckMenuItem<R>,
+) {
+    config::set_theme(theme);
+    let _ = sys.set_checked(theme == rcm_core::config::Theme::System);
+    let _ = light.set_checked(theme == rcm_core::config::Theme::Light);
+    let _ = dark.set_checked(theme == rcm_core::config::Theme::Dark);
+    let _ = app.emit("theme-changed", theme.as_str());
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Tray setup
 // ═══════════════════════════════════════════════════════════════════════════
@@ -187,6 +208,30 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         None::<&str>,
     )?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
+    let theme_sys_i = CheckMenuItem::with_id(
+        app,
+        THEME_SYSTEM_ID,
+        THEME_SYSTEM_TEXT,
+        true,
+        config::theme() == rcm_core::config::Theme::System,
+        None::<&str>,
+    )?;
+    let theme_light_i = CheckMenuItem::with_id(
+        app,
+        THEME_LIGHT_ID,
+        THEME_LIGHT_TEXT,
+        true,
+        config::theme() == rcm_core::config::Theme::Light,
+        None::<&str>,
+    )?;
+    let theme_dark_i = CheckMenuItem::with_id(
+        app,
+        THEME_DARK_ID,
+        THEME_DARK_TEXT,
+        true,
+        config::theme() == rcm_core::config::Theme::Dark,
+        None::<&str>,
+    )?;
     let icons_i = CheckMenuItem::with_id(
         app,
         ICONS_ID,
@@ -219,6 +264,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let dev_clone = dev_i.clone();
     let icons_clone = icons_i.clone();
     let autostart_clone = autostart_i.clone();
+    let theme_sys_clone = theme_sys_i.clone();
+    let theme_light_clone = theme_light_i.clone();
+    let theme_dark_clone = theme_dark_i.clone();
 
     // ── Build menu (3 groups) ────────────────────────────────────────
     //
@@ -253,6 +301,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         items.push(&dev_i);
     }
     items.push(&autostart_i);
+    items.push(&theme_sys_i);
+    items.push(&theme_light_i);
+    items.push(&theme_dark_i);
 
     // Group 3: System
     items.push(&_sep_sys);
@@ -285,6 +336,27 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             ICONS_ID => handle_icons_toggle(app, &icons_clone),
             DEV_ID => handle_dev_toggle(app, &dev_clone),
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
+            THEME_SYSTEM_ID => handle_theme(
+                rcm_core::config::Theme::System,
+                app,
+                &theme_sys_clone,
+                &theme_light_clone,
+                &theme_dark_clone,
+            ),
+            THEME_LIGHT_ID => handle_theme(
+                rcm_core::config::Theme::Light,
+                app,
+                &theme_sys_clone,
+                &theme_light_clone,
+                &theme_dark_clone,
+            ),
+            THEME_DARK_ID => handle_theme(
+                rcm_core::config::Theme::Dark,
+                app,
+                &theme_sys_clone,
+                &theme_light_clone,
+                &theme_dark_clone,
+            ),
             APPLY_ID => handle_apply(),
             SYNC_ID => handle_sync(),
             CONFIG_ID => {
