@@ -26,150 +26,189 @@ const FILES = [
   { key: "rcm.js", label: "rcm.js", lang: "javascript" },
   { key: "style.css", label: "style.css", lang: "css" },
 ] as const
-
 type FileKey = (typeof FILES)[number]["key"]
 
 const LANG: Record<string, () => Extension> = {
-  javascript: () => javascript(),
-  css: () => css(),
-  json: () => json(),
+  javascript,
+  json,
+  css,
 }
+
+const FILE_BY_KEY: Record<FileKey, (typeof FILES)[number]> = Object.fromEntries(
+  FILES.map((f) => [f.key, f]),
+) as any
 
 function fileFromHash(): FileKey {
   const raw = window.location.hash.replace("#config/", "")
-  return FILES.find((f) => f.key === raw) ? (raw as FileKey) : "rcm.config.json"
+  return FILE_BY_KEY[raw as FileKey] ? (raw as FileKey) : "rcm.config.json"
 }
 
+const SCROLLBAR_THEME = EditorView.theme({
+  "&": { height: "100%" },
+  ".cm-scroller": { overflow: "auto" },
+  ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
+  ".cm-scroller::-webkit-scrollbar-track": { background: "#1e1e1e" },
+  ".cm-scroller::-webkit-scrollbar-thumb": { background: "#424242", borderRadius: "4px" },
+  ".cm-scroller::-webkit-scrollbar-thumb:hover": { background: "#555" },
+})
+
+function createEditorState(
+  doc: string,
+  lang: string,
+  isDark: boolean,
+  onDirty: () => void,
+  onSave: () => void,
+) {
+  return EditorState.create({
+    doc,
+    extensions: [
+      basicSetup,
+      ...(isDark ? [oneDark] : []),
+      LANG[lang]?.(),
+      keymap.of([
+        {
+          key: "Ctrl-s",
+          run: () => {
+            onSave()
+            return true
+          },
+        },
+        {
+          key: "Mod-s",
+          run: () => {
+            onSave()
+            return true
+          },
+        },
+        indentWithTab,
+      ]),
+      EditorView.updateListener.of((u) => {
+        if (u.docChanged) onDirty()
+      }),
+      SCROLLBAR_THEME,
+    ],
+  })
+}
+
+// ── EditorActivity — owns a single CodeMirror editor, lazy-created on first activation ──
+const EditorActivity: React.FC<{
+  fileKey: FileKey
+  active: boolean
+  reloadKey: number
+  isDark: boolean
+  onDirty: () => void
+  onError: (msg: string) => void
+  onLoaded: () => void
+  registerView: (key: FileKey, view: EditorView | null) => void
+  triggerSave: () => void
+}> = ({
+  fileKey,
+  active,
+  reloadKey,
+  isDark,
+  onDirty,
+  onError,
+  onLoaded,
+  registerView,
+  triggerSave,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
+  const createdRef = useRef(false)
+
+  // Create editor on first activation
+  useEffect(() => {
+    if (!active || createdRef.current) return
+    const el = containerRef.current
+    if (!el) return
+
+    readConfigFile(fileKey)
+      .then((data) => {
+        if (viewRef.current) return
+        viewRef.current = new EditorView({
+          state: createEditorState(data, FILE_BY_KEY[fileKey].lang, isDark, onDirty, triggerSave),
+          parent: el,
+        })
+        registerView(fileKey, viewRef.current)
+        createdRef.current = true
+        onLoaded()
+      })
+      .catch((e) => onError(String(e)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active])
+
+  // Reload: destroy & re-trigger creation
+  useEffect(() => {
+    if (reloadKey === 0 || !createdRef.current) return
+    viewRef.current?.destroy()
+    viewRef.current = null
+    registerView(fileKey, null)
+    createdRef.current = false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey])
+
+  // Cleanup on unmount
+  useEffect(
+    () => () => {
+      viewRef.current?.destroy()
+      registerView(fileKey, null)
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [],
+  )
+
+  return <div ref={containerRef} style={{ height: "100%", display: active ? "" : "none" }} />
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ConfigEditor — parent that manages tabs & toolbar
+// ═══════════════════════════════════════════════════════════════════════════════
 export const ConfigEditor: React.FC = () => {
   const [active, setActive] = useState<FileKey>(fileFromHash)
   const [saved, setSaved] = useState(true)
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
-  const editorRef = useRef<HTMLDivElement>(null)
-  const viewRef = useRef<EditorView | null>(null)
-  const dark = useRef(window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const darkRef = useRef(window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const [dark, setDark] = useState(darkRef.current)
+  const viewMapRef = useRef<Map<string, EditorView>>(new Map())
+  const [loaded, setLoaded] = useState(false)
 
-  // Listen for system theme changes
+  // Track system theme
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)")
     const handler = (e: MediaQueryListEvent) => {
-      dark.current = e.matches
+      darkRef.current = e.matches
+      setDark(e.matches)
       setReloadKey((k) => k + 1)
     }
     mq.addEventListener("change", handler)
     return () => mq.removeEventListener("change", handler)
   }, [])
 
-  const doSave = useCallback(async () => {
-    if (!viewRef.current) return
-    const content = viewRef.current.state.doc.toString()
-    try {
-      await saveConfigFile(active, content)
-      setSaved(true)
-      setError(null)
-      // Notify all windows if style.css was edited
-      if (active === "style.css") {
-        notifyStyleUpdated(content).catch(console.error)
-      }
-    } catch (e) {
-      setError(String(e))
-    }
-  }, [active])
-
-  // Create / recreate editor when file changes
-  useEffect(() => {
-    const el = editorRef.current
-    if (!el) return
-
-    setLoading(true)
-    setError(null)
-
-    readConfigFile(active)
-      .then((data) => {
-        // Destroy previous editor
-        viewRef.current?.destroy()
-
-        const updateListener = EditorView.updateListener.of((update) => {
-          if (update.docChanged) setSaved(false)
-        })
-
-        const saveKeymap = keymap.of([
-          {
-            key: "Ctrl-s",
-            run: () => {
-              doSave()
-              return true
-            },
-          },
-          {
-            key: "Mod-s",
-            run: () => {
-              doSave()
-              return true
-            },
-          },
-        ])
-
-        const view = new EditorView({
-          state: EditorState.create({
-            doc: data,
-            extensions: [
-              basicSetup,
-              ...(dark.current ? [oneDark] : []),
-              LANG[FILES.find((f) => f.key === active)?.lang ?? "javascript"]?.(),
-              updateListener,
-              saveKeymap,
-              keymap.of([indentWithTab]),
-              EditorView.theme({
-                "&": { height: "100%" },
-                ".cm-scroller": { overflow: "auto" },
-                ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
-                ".cm-scroller::-webkit-scrollbar-track": { background: "#1e1e1e" },
-                ".cm-scroller::-webkit-scrollbar-thumb": {
-                  background: "#424242",
-                  borderRadius: "4px",
-                },
-                ".cm-scroller::-webkit-scrollbar-thumb:hover": { background: "#555" },
-              }),
-            ],
-          }),
-          parent: el,
-        })
-
-        viewRef.current = view
-        setSaved(true)
-        setLoading(false)
-      })
-      .catch((e) => {
-        setError(String(e))
-        setLoading(false)
-      })
-
-    return () => {
-      viewRef.current?.destroy()
-      viewRef.current = null
-    }
-  }, [active, reloadKey, doSave])
-
-  // Listen for hash changes
+  // Hash → tab
   useEffect(() => {
     const onHashChange = () => setActive(fileFromHash())
     window.addEventListener("hashchange", onHashChange)
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
 
-  const handleOpenExternal = async () => {
+  const registerView = useCallback((key: FileKey, view: EditorView | null) => {
+    if (view) viewMapRef.current.set(key, view)
+    else viewMapRef.current.delete(key)
+  }, [])
+
+  const triggerSave = useCallback(async () => {
+    const view = viewMapRef.current.get(active)
+    if (!view) return
     try {
-      await openInEditor(active)
+      await saveConfigFile(active, view.state.doc.toString())
+      setSaved(true)
+      setError(null)
+      if (active === "style.css") notifyStyleUpdated(view.state.doc.toString()).catch(console.error)
     } catch (e) {
       setError(String(e))
     }
-  }
-
-  const handleTabClick = (key: FileKey) => {
-    window.location.hash = `config/${key}`
-  }
+  }, [active])
 
   return (
     <>
@@ -179,7 +218,9 @@ export const ConfigEditor: React.FC = () => {
           {FILES.map((f) => (
             <button
               key={f.key}
-              onClick={() => handleTabClick(f.key)}
+              onClick={() => {
+                window.location.hash = `config/${f.key}`
+              }}
               style={{ ...styles.tab, ...(active === f.key ? styles.tabActive : {}) }}
             >
               {f.label}
@@ -188,21 +229,41 @@ export const ConfigEditor: React.FC = () => {
         </div>
 
         <div style={styles.toolbar}>
-          <button onClick={doSave} disabled={loading} style={styles.btn}>
+          <button onClick={triggerSave} style={styles.btn}>
             💾 Save
           </button>
-          <button onClick={() => setReloadKey((k) => k + 1)} disabled={loading} style={styles.btn}>
+          <button onClick={() => setReloadKey((k) => k + 1)} style={styles.btn}>
             🔄 Reload
           </button>
-          <button onClick={handleOpenExternal} style={styles.btn}>
+          <button
+            onClick={() => {
+              openInEditor(active).catch((e) => setError(String(e)))
+            }}
+            style={styles.btn}
+          >
             📂 Open
           </button>
           {!saved && <span style={styles.unsaved}>● Unsaved</span>}
           {error && <span style={styles.err}>{error}</span>}
         </div>
 
-        {loading && !viewRef.current ? <div style={styles.loading}>Loading…</div> : null}
-        <div ref={editorRef} style={styles.editor} />
+        {!loaded && <div style={styles.loading}>Loading…</div>}
+        <div style={styles.editor}>
+          {FILES.map(f => (
+            <EditorActivity
+              key={f.key}
+              fileKey={f.key}
+              active={active === f.key}
+              reloadKey={active === f.key ? reloadKey : 0}
+              isDark={dark}
+              onDirty={() => setSaved(false)}
+              onError={setError}
+              onLoaded={() => setLoaded(true)}
+              registerView={registerView}
+              triggerSave={triggerSave}
+            />
+          ))}
+        </div>
       </div>
     </>
   )
@@ -230,7 +291,9 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontSize: 13,
     fontFamily: "inherit",
-    borderBottom: "2px solid transparent",
+    borderBottomWidth: 2,
+    borderBottomStyle: "solid",
+    borderBottomColor: "transparent",
   },
   tabActive: { color: "#fff", borderBottomColor: "#ff85a2" },
   toolbar: {
