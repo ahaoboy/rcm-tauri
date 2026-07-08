@@ -1,14 +1,6 @@
-/* ═══════════════════════════════════════════════════════════════════════════
-   RCM — Right-Click Menu Styles  ·  Win11 Fluent Design
-   DOM: #root > .rcm-root > .rcm-ribbon? + .rcm-group(.rcm-item) / .rcm-item
+/* RCM — Right-Click Menu Styles · Win11 Fluent Design */
 
-   User-editable: all visual properties are CSS variables on :root.
-   Layout-critical: --rcm-window-pad controls the gap between the window
-   edge and .rcm-root. The frontend reads this at runtime, so changing it
-   will NOT break positioning (no hardcoded magic constants in JS).
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── Design tokens ──────────────────────────────────────────────────── */
+/* Design tokens */
 :root {
   /* Typography */
   --rcm-font-family: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -46,9 +38,7 @@
   --rcm-accent: #60cdff;
 }
 
-/* ── Dark theme ───────────────────────────────────────────────────────
-   Applied via the .rcm-dark class (set by useTheme hook).
-   Also applied via @media as a fallback for non-JS contexts.            */
+/* Dark theme */
 :root.rcm-dark {
   --rcm-bg: #2c2c2c;
   --rcm-border: rgba(255, 255, 255, 0.08);
@@ -83,9 +73,7 @@
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Base
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Base */
 body {
   margin: 0;
   padding: 0;
@@ -99,9 +87,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* #root is the React mount point. Its padding creates transparent space
-   around .rcm-root for shadows and the fade-in animation. The value is
-   read at runtime by the frontend — no hardcoded JS constant needed. */
+/* #root — transparent gap around .rcm-root for shadows */
 #root {
   display: flex;
   align-items: flex-start;
@@ -109,9 +95,7 @@ body {
   padding: var(--rcm-window-pad);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Menu container — .rcm-root
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* .rcm-root — Menu container */
 .rcm-root {
   display: flex;
   flex-direction: column;
@@ -147,9 +131,7 @@ body {
   z-index: 2;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Icon Ribbon — .rcm-ribbon > .rcm-ribbon-btn
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Icon Ribbon */
 .rcm-ribbon {
   display: flex;
   flex-wrap: wrap;
@@ -189,17 +171,13 @@ body {
   pointer-events: none;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Menu Group — .rcm-group
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Menu Group */
 .rcm-group {
   display: flex;
   flex-direction: column;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Separator — .rcm-separator
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Separator */
 .rcm-separator {
   height: 1px;
   background-color: var(--rcm-separator);
@@ -207,9 +185,7 @@ body {
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Menu Item — .rcm-item > .rcm-item-icon + .rcm-item-label + .rcm-item-arrow?
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Menu Item */
 .rcm-item {
   display: flex;
   align-items: center;
@@ -263,9 +239,7 @@ body {
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Focus ring
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Focus ring */
 .rcm-item:focus-visible,
 .rcm-ribbon-btn:focus-visible {
   outline: 2px solid var(--rcm-accent);
@@ -273,9 +247,7 @@ body {
   border-radius: var(--rcm-item-radius);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Animations
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* Animations */
 @keyframes rcm-fade-in {
   from {
     opacity: 0;

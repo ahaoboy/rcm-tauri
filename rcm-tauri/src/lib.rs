@@ -12,6 +12,7 @@ use crate::events::{AutoHideEpoch, ConfigPayload, MenuArc, submenu_indices, subm
 use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
+use std::os::windows::process::CommandExt;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use tauri::{Listener, Manager};
@@ -121,6 +122,7 @@ fn open_in_editor(name: String) -> Result<(), String> {
     let path = rcm_core::exe_dir().join(&name);
     std::process::Command::new("cmd")
         .args(["/c", "start", "", &path.to_string_lossy()])
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map_err(|e| format!("Open failed: {e}"))?;
     Ok(())
@@ -142,7 +144,7 @@ async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
     let url = "index.html#config/rcm.js".to_string();
     tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(url.into()))
         .title("RCM Config Editor")
-        .inner_size(700.0, 520.0)
+        .inner_size(800.0, 550.0)
         .resizable(true)
         .build()
         .map_err(|e| format!("Failed to create window: {e}"))?;
