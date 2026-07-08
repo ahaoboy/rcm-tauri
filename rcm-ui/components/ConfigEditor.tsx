@@ -108,8 +108,11 @@ export const ConfigEditor: React.FC = () => {
           <button onClick={handleSave} disabled={loading} style={styles.btn}>
             💾 Save
           </button>
+          <button onClick={() => loadFile(active)} disabled={loading} style={styles.btn}>
+            🔄 Reload
+          </button>
           <button onClick={handleOpenExternal} style={styles.btn}>
-            📂 Open externally
+            📂 Open
           </button>
           {!saved && <span style={styles.unsaved}>● Unsaved</span>}
           {error && <span style={styles.err}>{error}</span>}
