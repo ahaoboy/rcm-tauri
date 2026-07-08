@@ -151,7 +151,7 @@ async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let url = "index.html#config/rcm.js".to_string();
+    let url = "index.html#config/rcm.config.json".to_string();
     tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(url.into()))
         .title("RCM Config Editor")
         .inner_size(800.0, 550.0)
