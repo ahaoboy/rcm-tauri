@@ -161,10 +161,11 @@ pub fn run() {
     // Step 1: check if another RCM process is already running
     if pipe::is_rcm_process_running() {
         eprintln!("rcm-tauri: another instance is already running");
-        run_error("Another instance of RCM is already running.\n\nPlease close it before starting a new one.");
+        run_error(
+            "Another instance of RCM is already running.\n\nPlease close it before starting a new one.",
+        );
         return;
     }
-
     run_app()
 }
 
@@ -221,6 +222,22 @@ fn run_app() {
         .setup(move |app| {
             config::init();
             tray::setup_tray(app)?;
+
+            // Create a hidden window to warm up WebView2
+            let warmup = tauri::WebviewWindowBuilder::new(
+                app,
+                "_warmup",
+                tauri::WebviewUrl::App("index.html#warmup".into()),
+            )
+            .visible(false)
+            .inner_size(1.0, 1.0)
+            .build()?;
+
+            let w = warmup.clone();
+            app.listen("warmup-ready", move |_| {
+                println!("warmup: WebView2 ready");
+                let _ = w.close();
+            });
 
             let epoch = auto_hide_epoch.clone();
 
