@@ -27,6 +27,7 @@ import {
   pullCss,
   pullConfig,
   showError,
+  getConfig,
 } from "../api/menuEvents"
 import { BodyReset } from "./BodyReset"
 
@@ -65,7 +66,7 @@ function createEditorState(
   doc: string,
   lang: string,
   isDark: boolean,
-  onDirty: () => void,
+  onContentChange: (content: string) => void,
   onSave: () => void,
 ) {
   return EditorState.create({
@@ -92,7 +93,7 @@ function createEditorState(
         indentWithTab,
       ]),
       EditorView.updateListener.of((u) => {
-        if (u.docChanged) onDirty()
+        if (u.docChanged) onContentChange(u.state.doc.toString())
       }),
       SCROLLBAR_THEME,
     ],
@@ -105,9 +106,9 @@ const EditorActivity: React.FC<{
   active: boolean
   reloadKey: number
   isDark: boolean
-  onDirty: () => void
+  onContentChange: (content: string) => void
   onError: (msg: string) => void
-  onLoaded: () => void
+  onLoaded: (originalContent: string) => void
   registerView: (key: FileKey, view: EditorView | null) => void
   triggerSave: () => void
 }> = ({
@@ -115,7 +116,7 @@ const EditorActivity: React.FC<{
   active,
   reloadKey,
   isDark,
-  onDirty,
+  onContentChange,
   onError,
   onLoaded,
   registerView,
@@ -124,6 +125,7 @@ const EditorActivity: React.FC<{
   const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const createdRef = useRef(false)
+  const lastReloadRef = useRef(0)
 
   // Create editor on first activation
   useEffect(() => {
@@ -135,26 +137,51 @@ const EditorActivity: React.FC<{
       .then((data) => {
         if (viewRef.current) return
         viewRef.current = new EditorView({
-          state: createEditorState(data, FILE_BY_KEY[fileKey].lang, isDark, onDirty, triggerSave),
+          state: createEditorState(
+            data,
+            FILE_BY_KEY[fileKey].lang,
+            isDark,
+            onContentChange,
+            triggerSave,
+          ),
           parent: el,
         })
         registerView(fileKey, viewRef.current)
         createdRef.current = true
-        onLoaded()
+        onLoaded(data)
       })
       .catch((e) => onError(String(e)))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
 
-  // Reload: destroy & re-trigger creation
+  // Reload: re-read file from disk, update editor content in-place.
+  // Only fires when reloadKey actually increments (not on every parent re-render).
   useEffect(() => {
-    if (reloadKey === 0 || !createdRef.current) return
-    viewRef.current?.destroy()
-    viewRef.current = null
-    registerView(fileKey, null)
-    createdRef.current = false
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reloadKey])
+    if (reloadKey === 0 || reloadKey <= lastReloadRef.current || !createdRef.current) return
+    lastReloadRef.current = reloadKey
+
+    readConfigFile(fileKey)
+      .then((data) => {
+        const view = viewRef.current
+        if (!view) {
+          createdRef.current = false
+          return
+        }
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: data },
+        })
+        onLoaded(data)
+      })
+      .catch((e) => onError(String(e)))
+  }, [reloadKey, fileKey, onError, onLoaded])
+
+  // Refresh layout when becoming visible (CodeMirror needs remeasure after display:none)
+  useEffect(() => {
+    if (active && viewRef.current) {
+      // Delay to let the browser apply display:"" before measuring
+      requestAnimationFrame(() => viewRef.current?.requestMeasure())
+    }
+  }, [active])
 
   // Cleanup on unmount
   useEffect(
@@ -180,7 +207,9 @@ export const ConfigEditor: React.FC = () => {
   const darkRef = useRef(window.matchMedia("(prefers-color-scheme: dark)").matches)
   const [dark, setDark] = useState(darkRef.current)
   const viewMapRef = useRef<Map<string, EditorView>>(new Map())
+  const originalRef = useRef<Map<string, string>>(new Map())
   const [loaded, setLoaded] = useState(false)
+  const [urls, setUrls] = useState<Record<string, string | null>>({})
 
   // Track system theme
   useEffect(() => {
@@ -201,6 +230,21 @@ export const ConfigEditor: React.FC = () => {
     return () => window.removeEventListener("hashchange", onHashChange)
   }, [])
 
+  // Fetch pull URLs
+  useEffect(() => {
+    getConfig()
+      .then((cfg) =>
+        setUrls({
+          "rcm.js": cfg.js_url,
+          "style.css": cfg.css_url,
+          "rcm.config.json": cfg.config_url,
+        }),
+      )
+      .catch(() => {})
+  }, [])
+
+  const canPull = !!urls[active]
+
   const registerView = useCallback((key: FileKey, view: EditorView | null) => {
     if (view) viewMapRef.current.set(key, view)
     else viewMapRef.current.delete(key)
@@ -209,11 +253,13 @@ export const ConfigEditor: React.FC = () => {
   const triggerSave = useCallback(async () => {
     const view = viewMapRef.current.get(active)
     if (!view) return
+    const content = view.state.doc.toString()
     try {
-      await saveConfigFile(active, view.state.doc.toString())
+      await saveConfigFile(active, content)
+      originalRef.current.set(active, content)
       setSaved(true)
       setError(null)
-      if (active === "style.css") notifyStyleUpdated(view.state.doc.toString()).catch(console.error)
+      if (active === "style.css") notifyStyleUpdated(content).catch(console.error)
     } catch (e) {
       setError(String(e))
     }
@@ -227,7 +273,7 @@ export const ConfigEditor: React.FC = () => {
       setReloadKey((k) => k + 1)
       setError(`Pulled → ${path}`)
     } catch (e) {
-      showError(String(e))
+      showError(String(e)).catch(() => setError(String(e)))
     }
   }, [active])
 
@@ -253,7 +299,11 @@ export const ConfigEditor: React.FC = () => {
           <button onClick={triggerSave} style={styles.btn}>
             💾 Save
           </button>
-          <button onClick={handlePull} style={styles.btn}>
+          <button
+            onClick={handlePull}
+            disabled={!canPull}
+            style={{ ...styles.btn, ...(canPull ? {} : styles.btnDisabled) }}
+          >
             ⬇️ Pull
           </button>
           <button onClick={() => setReloadKey((k) => k + 1)} style={styles.btn}>
@@ -280,9 +330,15 @@ export const ConfigEditor: React.FC = () => {
               active={active === f.key}
               reloadKey={active === f.key ? reloadKey : 0}
               isDark={dark}
-              onDirty={() => setSaved(false)}
+              onContentChange={(content) => {
+                setSaved(originalRef.current.get(f.key) === content)
+              }}
               onError={setError}
-              onLoaded={() => setLoaded(true)}
+              onLoaded={(original) => {
+                originalRef.current.set(f.key, original)
+                setSaved(true)
+                setLoaded(true)
+              }}
               registerView={registerView}
               triggerSave={triggerSave}
             />
@@ -338,6 +394,10 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontSize: 12,
     fontFamily: "inherit",
+  },
+  btnDisabled: {
+    opacity: 0.35,
+    cursor: "not-allowed",
   },
   unsaved: { color: "#f0c040", fontSize: 12, marginLeft: 8 },
   err: { color: "#f44747", fontSize: 12, marginLeft: 8 },

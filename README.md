@@ -21,10 +21,12 @@ A customizable Windows right-click context menu, built with Tauri + React
 - Replace or enhance the standard Windows Explorer context menu.
 - Switch between Windows 11 (compact) and Windows 10 (classic) menu styles.
 - Custom menu scripts with JavaScript — define your own commands, conditions, and submenus.
-- Remote sync — fetch your `rcm.js` from a URL to share across machines.
+- Remote pull — fetch `rcm.js`, `style.css`, and `rcm.config.json` from URLs to share across machines.
+- Built-in config editor with syntax highlighting for live editing.
 - Optional icon ribbon in the menu.
 - Auto-start with Windows.
 - System tray icon for quick settings access.
+- Dark / light theme support.
 
 ## Installation
 
@@ -130,24 +132,37 @@ Use `match` to conditionally show items:
 }
 ```
 
-### Syncing your menu remotely
+### Pulling updates remotely
 
-RCM can fetch your `rcm.js` from a remote URL. Configure the URL in `rcm.config.json`:
+RCM can fetch your configuration files from remote URLs. Configure the URLs in `rcm.config.json`:
 
 ```jsonc
 {
-  "url": "https://example.com/my-rcm.js",
+  // GitHub release URLs (set as defaults when no URLs are configured)
+  "js_url": "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js",
+  "css_url": "https://github.com/ahaoboy/rcm-tauri/releases/latest/download/style.css",
+  // config URL is empty by default — set it to pull rcm.config.json updates
+  "config_url": "",
 }
 ```
 
-Then click **Sync** in the tray menu to download the latest version. This is useful for:
+> **Defaults:** `js_url` and `css_url` point to this repo's latest release. `config_url` is empty by default.
 
-- Keeping your menu in sync across multiple machines
-- Sharing your menu configuration with a team
-- Version-controlling your menu setup (e.g. in a GitHub Gist)
+**Pull from tray:** Open the tray, click **Pull ▸ JS** / **CSS** / **Config** to download the latest version of each file.
 
-> **Note:** The `Sync` menu item only appears when `url` is configured.
-> After modifying `url`, restart RCM for the **Sync** button to appear.
+**Pull from editor:** Open the config editor (tray → **Config**), switch to the file tab, and click **⬇️ Pull**. On success the editor reloads automatically; on failure an error window pops up.
+
+> **Note:** The **Pull** submenu only appears in the tray when at least one URL is configured. After changing URLs, restart RCM for the **Pull** menu to update.
+
+### Config Editor
+
+RCM includes a built-in editor for `rcm.js`, `style.css`, and `rcm.config.json` with syntax highlighting.
+
+- Open via tray → **Config**, or run `rcm-tauri.exe config` from the command line.
+- **💾 Save** — writes the file and broadcasts CSS changes to all open menus instantly.
+- **⬇️ Pull** — downloads the latest version from the configured remote URL.
+- **🔄 Reload** — discards unsaved changes and re-reads the file from disk.
+- **📂 Open** — opens the file with your system default editor.
 
 ## Custom Style
 
@@ -157,9 +172,9 @@ RCM also supports custom CSS through `style.css` located next to the executable.
 
 - On first launch, RCM writes the default `style.css` to the executable directory.
 - If you edit or replace `style.css`, the menu will use your version.
+- Use the config editor (**Config** → `style.css` tab) or **Pull ▸ CSS** to fetch remote updates.
+- When you save `style.css` in the config editor, all open menus receive the update instantly.
 - Click **Reset** in the tray menu to restore the default `style.css` (along with `rcm.config.json` and `rcm.js`).
-
-> **Note:** Changes to `style.css` take effect after restarting RCM.
 
 ### What you can customize
 
@@ -207,7 +222,7 @@ Here are some example configurations from the community. Feel free to submit you
 
 | Menu                                                                                                                                       | Preview                                                                                                                      |
 | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| [rcm-tauri](https://github.com/ahaoboy/rcm-tauri) · [Sync URL](https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js)       | <img width="400" alt="default menu" src="https://github.com/user-attachments/assets/9840dfb6-d74b-417c-ab35-2e8401745791" /> |
-| [rcm-ahaoboy](https://github.com/ahaoboy/rcm-ahaoboy) · [Sync URL](https://github.com/ahaoboy/rcm-ahaoboy/releases/latest/download/rcm.js) | <img width="400" alt="rcm-ahaoboy" src="https://github.com/user-attachments/assets/0fac2734-38e3-4836-82a0-5cfb8684ef7d" />  |
+| [rcm-tauri](https://github.com/ahaoboy/rcm-tauri) · [Pull URL](https://github.com/ahaoboy/rcm-tauri/releases/latest/download/rcm.js)       | <img width="400" alt="default menu" src="https://github.com/user-attachments/assets/9840dfb6-d74b-417c-ab35-2e8401745791" /> |
+| [rcm-ahaoboy](https://github.com/ahaoboy/rcm-ahaoboy) · [Pull URL](https://github.com/ahaoboy/rcm-ahaoboy/releases/latest/download/rcm.js) | <img width="400" alt="rcm-ahaoboy" src="https://github.com/user-attachments/assets/0fac2734-38e3-4836-82a0-5cfb8684ef7d" />  |
 
 > **Want to share your setup?** Open a PR adding your `rcm.js` to this section!

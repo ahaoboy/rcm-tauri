@@ -55,6 +55,9 @@ pub struct ConfigPayload {
     pub dev: bool,
     pub icons: bool,
     pub theme: String,
+    pub js_url: Option<String>,
+    pub css_url: Option<String>,
+    pub config_url: Option<String>,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

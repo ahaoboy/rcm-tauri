@@ -44,6 +44,9 @@ export interface AppConfig {
   dev: boolean
   icons: boolean
   theme: string
+  js_url: string | null
+  css_url: string | null
+  config_url: string | null
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -123,7 +126,7 @@ export function pullConfig(): Promise<string> {
 }
 
 export function showError(message: string): Promise<void> {
-  return invoke("show_error", { message })
+  return invoke<void>("show_error", { message })
 }
 
 // ═══════════════════════════════════════════════════════════════════════

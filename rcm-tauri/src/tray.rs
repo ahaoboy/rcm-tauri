@@ -180,7 +180,7 @@ fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
         Ok(path) => log::info("Pull", &format!("{label} saved to {path}")),
         Err(e) => {
             log::error("Pull", &format!("{label} failed: {e}"));
-            crate::show_error_window(app, &format!("Pull {label} Failed"), &e);
+            let _ = crate::show_error_window(app, &format!("Pull {label} Failed"), &e);
         }
     }
 }

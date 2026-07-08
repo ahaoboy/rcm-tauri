@@ -27,6 +27,9 @@ fn get_config() -> ConfigPayload {
         dev: config::is_dev(),
         icons: config::is_icons(),
         theme: config::theme().as_str().into(),
+        js_url: config::remote_js_url(),
+        css_url: config::remote_css_url(),
+        config_url: config::remote_config_url(),
     }
 }
 
@@ -231,23 +234,34 @@ fn run_error(message: &str) {
 
 /// Show a small error window (non-blocking).
 #[tauri::command]
-fn show_error(app: tauri::AppHandle, message: String) {
-    show_error_window(&app, "RCM Error", &message);
+async fn show_error(app: tauri::AppHandle, message: String) -> Result<(), String> {
+    show_error_window(&app, "RCM Error", &message)
 }
 
-fn show_error_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>, title: &str, message: &str) {
+fn show_error_window<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    title: &str,
+    message: &str,
+) -> Result<(), String> {
+    static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let url = format!("index.html#error/{}", urlencoding(message));
-    let label = format!("rcm-error-{}", std::process::id());
-    if let Err(e) =
-        tauri::WebviewWindowBuilder::new(app, &label, tauri::WebviewUrl::App(url.into()))
-            .title(title)
-            .inner_size(440.0, 220.0)
-            .resizable(false)
-            .center()
-            .build()
-    {
-        log::error("ErrorWindow", &format!("failed to create: {e}"));
-    }
+    let label = format!("rcm-error-{n}");
+    tauri::WebviewWindowBuilder::new(app, &label, tauri::WebviewUrl::App(url.into()))
+        .title(title)
+        .inner_size(440.0, 220.0)
+        .resizable(false)
+        .center()
+        .decorations(true)
+        .transparent(false)
+        .always_on_top(false)
+        .skip_taskbar(false)
+        .build()
+        .map_err(|e| {
+            log::error("ErrorWindow", &format!("failed to create: {e}"));
+            format!("Failed to create error window: {e}")
+        })?;
+    Ok(())
 }
 
 fn urlencoding(s: &str) -> String {
