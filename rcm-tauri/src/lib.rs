@@ -15,7 +15,7 @@ use rcm_core::{config, log};
 use std::os::windows::process::CommandExt;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
-use tauri::{Listener, Manager};
+use tauri::{Emitter, Listener, Manager};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Tauri commands
@@ -125,6 +125,15 @@ fn open_in_editor(name: String) -> Result<(), String> {
         .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map_err(|e| format!("Open failed: {e}"))?;
+    Ok(())
+}
+
+/// Broadcast updated CSS to all windows.
+#[tauri::command]
+fn notify_style_updated(app: tauri::AppHandle, css: String) -> Result<(), String> {
+    app.emit("style-changed", css)
+        .map_err(|e| format!("Emit failed: {e}"))?;
+    log::info("Style", "style.css updated — broadcast to all windows");
     Ok(())
 }
 
@@ -352,6 +361,7 @@ fn run_app() {
             read_config_file,
             save_config_file,
             open_in_editor,
+            notify_style_updated,
             create_config_window,
         ])
         .run(tauri::generate_context!())

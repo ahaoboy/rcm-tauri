@@ -18,7 +18,7 @@ import { EditorView, keymap } from "@codemirror/view"
 import { basicSetup } from "codemirror"
 import React, { useEffect, useState, useRef, useCallback } from "react"
 
-import { readConfigFile, saveConfigFile, openInEditor } from "../api/menuEvents"
+import { readConfigFile, saveConfigFile, openInEditor, notifyStyleUpdated } from "../api/menuEvents"
 import { BodyReset } from "./BodyReset"
 
 const FILES = [
@@ -68,6 +68,10 @@ export const ConfigEditor: React.FC = () => {
       await saveConfigFile(active, content)
       setSaved(true)
       setError(null)
+      // Notify all windows if style.css was edited
+      if (active === "style.css") {
+        notifyStyleUpdated(content).catch(console.error)
+      }
     } catch (e) {
       setError(String(e))
     }

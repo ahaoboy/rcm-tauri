@@ -101,6 +101,10 @@ export function openInEditor(name: string): Promise<void> {
   return invoke("open_in_editor", { name })
 }
 
+export function notifyStyleUpdated(css: string): Promise<void> {
+  return invoke("notify_style_updated", { css })
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // Listen — Rust → Frontend
 // ═══════════════════════════════════════════════════════════════════════

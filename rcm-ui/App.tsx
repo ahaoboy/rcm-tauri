@@ -1,31 +1,16 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 
-import { getStyleCss } from "./api/menuEvents"
 import { ContextMenu } from "./components"
 import { useMenuWindow } from "./hooks/useMenuWindow"
 import { useTheme } from "./hooks/useTheme"
 
 function App() {
   const theme = useTheme()
-  const cssLoaded = useRef(false)
   const { menu, devMode, showIcons, hide, menuActive, pendingPos } = useMenuWindow({
     depth: 0,
     listenIcons: true,
     tag: "App:root",
   })
-
-  // Load dynamic CSS once
-  useEffect(() => {
-    if (cssLoaded.current) return
-    cssLoaded.current = true
-    getStyleCss()
-      .then((css) => {
-        const style = document.createElement("style")
-        style.textContent = css
-        document.head.appendChild(style)
-      })
-      .catch(console.error)
-  }, [])
 
   useEffect(() => {
     document.documentElement.classList.remove("rcm-light", "rcm-dark")
