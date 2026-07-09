@@ -129,13 +129,8 @@ where
 }
 
 fn open_explorer(dir: &Path) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-    std::process::Command::new("explorer")
+    crate::sys_cmd("explorer")
         .arg(dir)
-        .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("Failed to launch Explorer: {e}"))

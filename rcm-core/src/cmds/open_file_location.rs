@@ -3,10 +3,7 @@
 
 use super::{SystemCmdResult, powershell};
 use crate::types::CommandPayload;
-use std::os::windows::process::CommandExt;
 use std::path::Path;
-
-const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = match cmd.args.first() {
@@ -50,8 +47,7 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     // to highlight the file in its parent folder.
     let is_dir = Path::new(&target).is_dir();
 
-    let mut cmd = std::process::Command::new("explorer");
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    let mut cmd = crate::sys_cmd("explorer");
 
     if is_dir {
         cmd.arg(&target);

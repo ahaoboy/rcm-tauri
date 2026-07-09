@@ -29,7 +29,7 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
          (New-Object -ComObject Shell.Application).Namespace($f.DirectoryName).ParseName($f.Name).InvokeVerb('openas')"
     );
 
-    match std::process::Command::new("powershell")
+    match crate::sys_cmd("powershell")
         .args(["-NoProfile", "-Command", &script])
         .spawn()
     {

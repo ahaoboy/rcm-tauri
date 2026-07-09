@@ -1,5 +1,3 @@
-use std::process::Command;
-
 /// Check if another `rcm-tauri.exe` or `rcm.exe` process is already running.
 pub fn is_rcm_process_running() -> bool {
     let our_pid = std::process::id();
@@ -10,7 +8,7 @@ pub fn is_rcm_process_running() -> bool {
 
     for name in &[our_name.as_str(), "rcm.exe"] {
         let filter = format!("IMAGENAME eq {name}");
-        if let Ok(output) = Command::new("tasklist")
+        if let Ok(output) = rcm_core::sys_cmd("tasklist")
             .args(["/fo", "csv", "/nh", "/fi", &filter])
             .output()
         {

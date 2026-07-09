@@ -12,7 +12,6 @@ use crate::events::{AutoHideEpoch, ConfigPayload, MenuArc, submenu_indices, subm
 use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
-use std::os::windows::process::CommandExt;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Listener, Manager};
@@ -124,9 +123,8 @@ fn open_in_editor(name: String) -> Result<(), String> {
         return Err(format!("Invalid file: {name}"));
     }
     let path = rcm_core::exe_dir().join(&name);
-    std::process::Command::new("cmd")
+    rcm_core::sys_cmd("cmd")
         .args(["/c", "start", "", &path.to_string_lossy()])
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
         .spawn()
         .map_err(|e| format!("Open failed: {e}"))?;
     Ok(())
@@ -176,14 +174,17 @@ fn pull_js() -> Result<String, String> {
     Ok(path)
 }
 
-/// Pull latest style.css from configured remote URL.
+/// Pull latest style.css from configured remote URL and broadcast to all windows.
 #[tauri::command]
-fn pull_css() -> Result<String, String> {
+fn pull_css(app: tauri::AppHandle) -> Result<String, String> {
     let url = rcm_core::config::remote_css_url()
         .ok_or_else(|| "No remote URL configured for style.css".to_string())?;
     log::info("Pull", &format!("pulling style.css from {url}"));
     let path = rcm_core::menu::download_style(&url)?;
     log::info("Pull", &format!("style.css saved to {path}"));
+    // Broadcast updated CSS to all open menu windows
+    let css = std::fs::read_to_string(&path).unwrap_or_default();
+    let _ = app.emit("style-changed", css);
     Ok(path)
 }
 

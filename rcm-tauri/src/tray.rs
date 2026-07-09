@@ -177,7 +177,14 @@ fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
     };
 
     match result {
-        Ok(path) => log::info("Pull", &format!("{label} saved to {path}")),
+        Ok(path) => {
+            log::info("Pull", &format!("{label} saved to {path}"));
+            // Broadcast updated CSS to all open menu windows
+            if file == "css"
+                && let Ok(css) = std::fs::read_to_string(&path) {
+                    let _ = app.emit("style-changed", css);
+                }
+        }
         Err(e) => {
             log::error("Pull", &format!("{label} failed: {e}"));
             let _ = crate::show_error_window(app, &format!("Pull {label} Failed"), &e);

@@ -158,11 +158,8 @@ impl SystemCommand {
 /// Run a PowerShell scriptlet and return its stdout on success.
 #[allow(dead_code)]
 pub(crate) fn powershell(script: &str) -> Result<String, String> {
-    use std::os::windows::process::CommandExt;
-
-    let output = std::process::Command::new("powershell")
+    let output = crate::sys_cmd("powershell")
         .args(["-NoProfile", "-Command", script])
-        .creation_flags(0x08000000)
         .output()
         .map_err(|e| format!("failed to spawn powershell: {e}"))?;
 
@@ -182,17 +179,13 @@ pub(crate) fn powershell(script: &str) -> Result<String, String> {
 /// synchronous execution (these are quick operations).
 #[allow(dead_code)]
 pub(crate) fn build_sys_cmd(exe: &str, cmd: &CommandPayload) -> std::process::Command {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-    let mut c = std::process::Command::new(exe);
+    let mut c = crate::sys_cmd(exe);
     if !cmd.args.is_empty() {
         c.args(&cmd.args);
     }
     if !cmd.cwd.is_empty() {
         c.current_dir(&cmd.cwd);
     }
-    c.creation_flags(CREATE_NO_WINDOW);
     c
 }
 
