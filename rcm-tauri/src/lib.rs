@@ -300,6 +300,9 @@ fn run_app() {
         .manage(auto_hide_epoch.clone())
         .setup(move |app| {
             config::init();
+            if let Err(e) = rcm_com::enable() {
+                log::error("Startup", &format!("rcm_com::enable failed: {e}"));
+            }
             tray::setup_tray(app)?;
 
             // Create a hidden window to warm up WebView2

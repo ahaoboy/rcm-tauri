@@ -181,9 +181,10 @@ fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
             log::info("Pull", &format!("{label} saved to {path}"));
             // Broadcast updated CSS to all open menu windows
             if file == "css"
-                && let Ok(css) = std::fs::read_to_string(&path) {
-                    let _ = app.emit("style-changed", css);
-                }
+                && let Ok(css) = std::fs::read_to_string(&path)
+            {
+                let _ = app.emit("style-changed", css);
+            }
         }
         Err(e) => {
             log::error("Pull", &format!("{label} failed: {e}"));
@@ -377,7 +378,12 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
-            QUIT_ID => app.exit(0),
+            QUIT_ID => {
+                if let Err(e) = rcm_com::disable() {
+                    log::error("Shutdown", &format!("rcm_com::disable failed: {e}"));
+                }
+                app.exit(0);
+            }
             WIN11_STYLE_ID => {
                 handle_style_switch(MenuStyle::Windows11, &win11_clone, &classic_clone)
             }
