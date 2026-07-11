@@ -19,14 +19,11 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     crate::log::info("Rust::eject", &format!("ejecting drive '{path}'"));
 
-    // Escape single quotes for the PowerShell string literal.
-    let safe_path = path.replace('\'', "''");
-
     // Shell.Application → Namespace(17) = "This PC" → ParseName finds the
     // drive → InvokeVerb("Eject") fires the same handler as the Win11
     // right-click menu.
     let script = format!(
-        r#"$s=New-Object -ComObject Shell.Application;$s.Namespace(17).ParseName('{safe_path}').InvokeVerb('Eject')"#
+        r#"(New-Object -ComObject Shell.Application).Namespace(17).ParseName("{path}").InvokeVerb("Eject")"#
     );
 
     match crate::sys_cmd("powershell")
