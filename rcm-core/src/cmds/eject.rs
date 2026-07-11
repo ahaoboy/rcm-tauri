@@ -1,11 +1,10 @@
 //! `@eject` — Eject a removable drive.
+//!
+//! Uses PowerShell + Shell.Application COM to invoke the "Eject" shell verb,
+//! exactly replicating the original right-click → Eject behavior.
 
 use super::SystemCmdResult;
 use crate::types::CommandPayload;
-use windows::Win32::UI::Shell::SEE_MASK_INVOKEIDLIST;
-use windows::Win32::UI::Shell::{SHELLEXECUTEINFOW, ShellExecuteExW};
-use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
-use windows::core::PCWSTR;
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = match cmd.args.first() {
@@ -20,32 +19,46 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
 
     crate::log::info("Rust::eject", &format!("ejecting drive '{path}'"));
 
-    // Encode path and "eject" verb as UTF-16 null-terminated strings
-    let wide_path: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
-    let verb: Vec<u16> = "eject\0".encode_utf16().collect();
+    // Escape single quotes for the PowerShell string literal.
+    let safe_path = path.replace('\'', "''");
 
-    let mut sei = SHELLEXECUTEINFOW {
-        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-        lpVerb: PCWSTR::from_raw(verb.as_ptr()),
-        lpFile: PCWSTR::from_raw(wide_path.as_ptr()),
-        nShow: SW_SHOW.0,
-        fMask: SEE_MASK_INVOKEIDLIST,
-        ..Default::default()
-    };
+    // Shell.Application → Namespace(17) = "This PC" → ParseName finds the
+    // drive → InvokeVerb("Eject") fires the same handler as the Win11
+    // right-click menu.
+    let script = format!(
+        r#"$s=New-Object -ComObject Shell.Application;$s.Namespace(17).ParseName('{safe_path}').InvokeVerb('Eject')"#
+    );
 
-    match unsafe { ShellExecuteExW(&mut sei) } {
-        Ok(()) => {
-            crate::log::info("Rust::eject", "ShellExecuteExW eject OK");
+    match crate::sys_cmd("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            crate::log::info("Rust::eject", "powershell InvokeVerb Eject OK");
             SystemCmdResult {
                 success: true,
                 message: "Eject initiated".into(),
             }
         }
-        Err(e) => {
-            crate::log::error("Rust::eject", &format!("ShellExecuteExW failed: {e}"));
+        Ok(output) => {
+            let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let msg = if err.is_empty() {
+                "powershell exited non-zero".into()
+            } else {
+                err
+            };
+            crate::log::error("Rust::eject", &msg);
             SystemCmdResult {
                 success: false,
-                message: format!("ShellExecuteExW failed: {e}"),
+                message: msg,
+            }
+        }
+        Err(e) => {
+            let msg = format!("failed to spawn powershell: {e}");
+            crate::log::error("Rust::eject", &msg);
+            SystemCmdResult {
+                success: false,
+                message: msg,
             }
         }
     }

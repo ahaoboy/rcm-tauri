@@ -1,11 +1,30 @@
 //! `@format` — Open the Windows "Format" dialog for a drive.
+//!
+//! Uses PowerShell P/Invoke to call [`SHFormatDrive`](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shformatdrive)
+//! from `shell32.dll` — the exact same API that Explorer invokes when you
+//! click "Format…" in the drive context menu.
+//!
+//! # Parameters
+//!
+//! | Parameter | Value    | Meaning                      |
+//! |-----------|----------|------------------------------|
+//! | hwnd      | 0        | no parent window             |
+//! | drive     | 0=A,2=C… | drive index (A: = 0)        |
+//! | fmtID     | 0xFFFF   | SHFMT_ID_DEFAULT — all opts  |
+//! | options   | 0        | SHFMT_OPT_DEFAULT            |
 
 use super::SystemCmdResult;
 use crate::types::CommandPayload;
-use windows::Win32::UI::Shell::SEE_MASK_INVOKEIDLIST;
-use windows::Win32::UI::Shell::{SHELLEXECUTEINFOW, ShellExecuteExW};
-use windows::Win32::UI::WindowsAndMessaging::SW_SHOW;
-use windows::core::PCWSTR;
+
+/// Convert a drive path like `"C:\\"` or `"C:"` to `SHFormatDrive` drive index.
+/// A: = 0, B: = 1, C: = 2, …
+fn drive_index(path: &str) -> Option<u32> {
+    let letter = path.trim_start().chars().next()?;
+    if !letter.is_ascii_alphabetic() {
+        return None;
+    }
+    Some(letter.to_ascii_uppercase() as u32 - 'A' as u32)
+}
 
 pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     let path = match cmd.args.first() {
@@ -18,37 +37,58 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         }
     };
 
-    crate::log::info(
-        "Rust::format",
-        &format!("opening format dialog for '{path}'"),
-    );
-
-    // Encode path and "format" verb as UTF-16 null-terminated strings
-    let wide_path: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
-    let verb: Vec<u16> = "format\0".encode_utf16().collect();
-
-    let mut sei = SHELLEXECUTEINFOW {
-        cbSize: std::mem::size_of::<SHELLEXECUTEINFOW>() as u32,
-        lpVerb: PCWSTR::from_raw(verb.as_ptr()),
-        lpFile: PCWSTR::from_raw(wide_path.as_ptr()),
-        nShow: SW_SHOW.0,
-        fMask: SEE_MASK_INVOKEIDLIST,
-        ..Default::default()
+    let drive = match drive_index(path) {
+        Some(d) => d,
+        None => {
+            return SystemCmdResult {
+                success: false,
+                message: format!("Could not parse drive letter from '{path}'"),
+            };
+        }
     };
 
-    match unsafe { ShellExecuteExW(&mut sei) } {
-        Ok(()) => {
-            crate::log::info("Rust::format", "ShellExecuteExW format OK");
+    crate::log::info(
+        "Rust::format",
+        &format!("opening format dialog for '{path}' (drive index {drive})"),
+    );
+
+    // P/Invoke SHFormatDrive via powershell.exe Add-Type.
+    // fmtID = 0xFFFF (SHFMT_ID_DEFAULT)  → show all formatting options.
+    // options = 0 (SHFMT_OPT_DEFAULT)    → default behaviour.
+    let script = format!(
+        r#"$code='[DllImport("shell32.dll")]public static extern uint SHFormatDrive(IntPtr hwnd,uint drive,uint fmtID,uint options);';$t=Add-Type -MemberDefinition $code -Name 'Fmt' -Namespace 'Win32' -PassThru;$t::SHFormatDrive([IntPtr]::Zero,{drive},0xFFFF,0)|Out-Null"#
+    );
+
+    match crate::sys_cmd("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .output()
+    {
+        Ok(output) if output.status.success() => {
+            crate::log::info("Rust::format", "powershell SHFormatDrive OK");
             SystemCmdResult {
                 success: true,
                 message: "Format dialog opened".into(),
             }
         }
-        Err(e) => {
-            crate::log::error("Rust::format", &format!("ShellExecuteExW failed: {e}"));
+        Ok(output) => {
+            let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            let msg = if err.is_empty() {
+                "powershell exited non-zero".into()
+            } else {
+                err
+            };
+            crate::log::error("Rust::format", &msg);
             SystemCmdResult {
                 success: false,
-                message: format!("ShellExecuteExW failed: {e}"),
+                message: msg,
+            }
+        }
+        Err(e) => {
+            let msg = format!("failed to spawn powershell: {e}");
+            crate::log::error("Rust::format", &msg);
+            SystemCmdResult {
+                success: false,
+                message: msg,
             }
         }
     }
