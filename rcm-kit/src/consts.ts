@@ -65,6 +65,14 @@ export const GROUP_BY = "@group-by"
 /** Change the folder's sort-by setting (Name, Date, Type, Size, etc.). */
 export const SORT_BY = "@sort-by"
 
+// ── Disk operations ──────────────────────────────────────────────────
+
+/** Open the Windows "Format" dialog for a drive. */
+export const FORMAT = "@format"
+
+/** Eject a removable drive. */
+export const EJECT = "@eject"
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -86,6 +94,8 @@ export const ALL: ReadonlySet<string> = new Set([
   PASTE_FILES,
   GROUP_BY,
   SORT_BY,
+  FORMAT,
+  EJECT,
 ])
 
 export const TEXT_EXTS = [

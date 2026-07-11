@@ -94,6 +94,9 @@ addMessages("en", {
   "sort.by.type": "Type",
   "sort.by.size": "Size",
   "sort.by.date.created": "Date created",
+  "drive.tools": "Drive Tools",
+  format: "Format",
+  eject: "Eject",
 })
 
 // ── Built-in Chinese ────────────────────────────────────────────────
@@ -159,4 +162,7 @@ addMessages("zh", {
   "sort.by.type": "类型",
   "sort.by.size": "大小",
   "sort.by.date.created": "创建日期",
+  "drive.tools": "磁盘工具",
+  format: "格式化",
+  eject: "弹出",
 })

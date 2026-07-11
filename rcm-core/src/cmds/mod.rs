@@ -22,6 +22,8 @@ pub mod copy_base64;
 pub mod copy_name;
 pub mod copy_path;
 pub mod delete;
+pub mod eject;
+pub mod format;
 pub mod group_by;
 pub mod new_file;
 pub mod new_folder;
@@ -80,6 +82,10 @@ pub enum SystemCommand {
     GroupBy,
     /// Change Explorer sorting for the current directory (`@sort-by`).
     SortBy,
+    /// Open Windows "Format" dialog for a drive (`@format`).
+    Format,
+    /// Eject a removable drive (`@eject`).
+    Eject,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -108,6 +114,8 @@ impl FromStr for SystemCommand {
             "@paste-files" => Ok(Self::PasteFiles),
             "@group-by" => Ok(Self::GroupBy),
             "@sort-by" => Ok(Self::SortBy),
+            "@format" => Ok(Self::Format),
+            "@eject" => Ok(Self::Eject),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -147,6 +155,8 @@ impl SystemCommand {
             Self::PasteFiles => paste_files::run(cmd),
             Self::GroupBy => group_by::run(cmd),
             Self::SortBy => sort_by::run(cmd),
+            Self::Format => format::run(cmd),
+            Self::Eject => eject::run(cmd),
         }
     }
 }
@@ -234,6 +244,8 @@ mod tests {
         assert!(is_system_command("@zip"));
         assert!(is_system_command("@group-by"));
         assert!(is_system_command("@sort-by"));
+        assert!(is_system_command("@format"));
+        assert!(is_system_command("@eject"));
         assert!(!is_system_command("notepad"));
         assert!(!is_system_command(""));
     }
@@ -252,6 +264,14 @@ mod tests {
         assert_eq!(
             "@sort-by".parse::<SystemCommand>().unwrap(),
             SystemCommand::SortBy
+        );
+        assert_eq!(
+            "@format".parse::<SystemCommand>().unwrap(),
+            SystemCommand::Format
+        );
+        assert_eq!(
+            "@eject".parse::<SystemCommand>().unwrap(),
+            SystemCommand::Eject
         );
         assert!("@unknown".parse::<SystemCommand>().is_err());
     }
