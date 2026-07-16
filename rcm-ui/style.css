@@ -133,7 +133,6 @@ body {
   border-radius: var(--rcm-item-radius);
   background: transparent;
   color: var(--rcm-text);
-  cursor: pointer;
   font-size: var(--rcm-icon-size);
   transition:
     background-color var(--rcm-transition),
@@ -175,7 +174,6 @@ body {
   padding: 0 6px;
   margin: 0 2px;
   border-radius: var(--rcm-item-radius);
-  cursor: pointer;
   transition:
     background-color var(--rcm-transition),
     color var(--rcm-transition);
