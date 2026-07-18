@@ -126,7 +126,8 @@ fn default_filters() -> Vec<FilterRule> {
         FilterRule {
             class: r"^#32770$".into(),
             file: String::new(),
-            flags: None,
+// ComfyUI installer completion dialog uses flags=2050 (silent/static), whereas OBS file picker uses 132128 (visible/refreshing).
+            flags: Some(2050),
             reason: "Windows dialog (#32770)".into(),
         },
         // UWP system UI (taskbar jump lists, etc.)
