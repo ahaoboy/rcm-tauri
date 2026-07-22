@@ -25,11 +25,11 @@
   },
   "dependencies": {
     "esbuild": "0.28.1",
-    "type-fest": "5.4.4",
-    "typescript": "6.0.2"
+    "type-fest": "5.8.0",
+    "typescript": "7.0.2"
   },
   "devDependencies": {
     "rcm-kit": "workspace:*",
-    "vitest": "4.1.8"
+    "vitest": "4.1.10"
   }
 }
