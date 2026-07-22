@@ -28,9 +28,7 @@ function fileStem(path: string): string {
 
 /** Extract the bare .exe path from a registry command string.
  *  Handles quoted paths, trailing \\0, and extra arguments. */
-function exePath(command: string): string {
-  // Strip trailing null bytes (registry REG_SZ sometimes includes them)
-  let cmd = command.replace(/\0/g, "")
+function exePath(cmd: string): string {
   // If the command starts with a quote, extract the quoted part
   if (cmd.startsWith('"')) {
     const end = cmd.indexOf('"', 1)

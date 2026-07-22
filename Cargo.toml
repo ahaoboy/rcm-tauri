@@ -21,9 +21,9 @@ anyhow = "1"
 tokio = "1"
 regex = "1"
 ureq = "3"
-autorun = { version = "0.1", git = "https://github.com/ahaoboy/autorun", default-features = false, features = ["serde"] }
-# https://github.com/time-rs/time/issues/783
-time = "=0.3.47"
+autorun = { version = "0.1", git = "https://github.com/ahaoboy/autorun", default-features = false, features = [
+  "serde",
+] }
 is-admin = "0.1"
 
 # ── Windows APIs ──────────────────────────────────────────────────────

@@ -112,12 +112,12 @@ pub fn list_autorun_entries() -> Vec<autorun::StartupEntry> {
 /// Handles quoted paths, trailing NUL bytes, and extra arguments.
 fn exe_path(command: &str) -> &str {
     let cmd = command.trim_end_matches('\0');
-    if cmd.starts_with('"') {
+    if let Some(stripped) = cmd.strip_prefix('"') {
         // Quoted path: take everything until the closing quote
-        cmd[1..]
+        stripped
             .find('"')
-            .map(|i| &cmd[1..=i])
-            .unwrap_or(&cmd[1..])
+            .map(|i| &stripped[..i])
+            .unwrap_or(stripped)
     } else {
         // Unquoted: take the first space-delimited token
         cmd.split_whitespace().next().unwrap_or(cmd)
