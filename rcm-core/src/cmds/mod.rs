@@ -17,6 +17,7 @@
 use crate::types::CommandPayload;
 use std::str::FromStr;
 
+pub mod autorun;
 pub mod copy;
 pub mod copy_base64;
 pub mod copy_name;
@@ -96,6 +97,10 @@ pub enum SystemCommand {
     AddToQuickAccess,
     /// Remove a file/folder from Quick Access (`@remove-from-quick-access`).
     RemoveFromQuickAccess,
+    /// Add an .exe to Windows startup (`@add-to-autorun`).
+    AddToAutorun,
+    /// Remove an .exe from Windows startup (`@remove-from-autorun`).
+    RemoveFromAutorun,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -130,6 +135,8 @@ impl FromStr for SystemCommand {
             "@unpin-from-start" => Ok(Self::UnpinFromStart),
             "@add-to-quick-access" => Ok(Self::AddToQuickAccess),
             "@remove-from-quick-access" => Ok(Self::RemoveFromQuickAccess),
+            "@add-to-autorun" => Ok(Self::AddToAutorun),
+            "@remove-from-autorun" => Ok(Self::RemoveFromAutorun),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -175,6 +182,8 @@ impl SystemCommand {
             Self::UnpinFromStart => pin_to_start::run_unpin(cmd),
             Self::AddToQuickAccess => quick_access::run_add(cmd),
             Self::RemoveFromQuickAccess => quick_access::run_remove(cmd),
+            Self::AddToAutorun => autorun::run_add(cmd),
+            Self::RemoveFromAutorun => autorun::run_remove(cmd),
         }
     }
 }

@@ -16,6 +16,13 @@ export interface ClipboardInfo {
   has_files: boolean
 }
 
+/** A Windows startup / autorun entry (from autorun::StartupEntry). */
+export interface AutorunEntry {
+  name: string
+  command: string
+  scope: "CurrentUser" | "LocalMachine"
+}
+
 /** Props passed to match/action callbacks during menu evaluation */
 export interface InvokeProps {
   files: FileInfo[]
@@ -27,9 +34,11 @@ export interface InvokeProps {
   /** Snapshot of clipboard state at the time of the right-click. */
   clipboard?: ClipboardInfo
   /** File stems of items pinned to Start Menu (check with `file_stem` of selected .exe/.lnk). */
-  pinnedToStart: string[]
+  startMenu: string[]
   /** Paths currently in Quick Access (check with selected file paths). */
-  inQuickAccess: string[]
+  quickAccess: string[]
+  /** Startup / autorun entries (name → command pairs). */
+  autorun: AutorunEntry[]
 }
 
 /** Window visibility for spawned processes. */

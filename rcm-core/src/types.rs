@@ -34,11 +34,14 @@ pub struct InvokeProps {
     #[serde(default)]
     pub clipboard: ClipboardInfo,
     /// File stems pinned to Start Menu (checked against file_stem of selected .exe/.lnk).
-    #[serde(default, rename = "pinnedToStart")]
-    pub pinned_to_start: Vec<String>,
+    #[serde(default, rename = "startMenu")]
+    pub start_menu: Vec<String>,
     /// Paths currently in Quick Access (checked against selected file paths).
-    #[serde(default, rename = "inQuickAccess")]
-    pub in_quick_access: Vec<String>,
+    #[serde(default, rename = "quickAccess")]
+    pub quick_access: Vec<String>,
+    /// Startup / autorun entries (reuses autorun::StartupEntry).
+    #[serde(default, rename = "autorun")]
+    pub autorun: Vec<autorun::StartupEntry>,
 }
 
 /// Window visibility mode for spawned processes.

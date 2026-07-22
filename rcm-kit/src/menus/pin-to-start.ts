@@ -27,7 +27,7 @@ function fileStem(path: string): string {
 }
 
 function isPinned(props: InvokeProps): boolean {
-  return props.pinnedToStart.includes(fileStem(props.files[0].path))
+  return props.startMenu.includes(fileStem(props.files[0].path))
 }
 
 /**

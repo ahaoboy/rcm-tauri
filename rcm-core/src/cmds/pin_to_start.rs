@@ -223,11 +223,10 @@ pub fn list_pinned_to_start() -> Vec<String> {
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
                 let p = entry.path();
-                if p.extension().and_then(|e| e.to_str()) == Some("lnk") {
-                    if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
+                if p.extension().and_then(|e| e.to_str()) == Some("lnk")
+                    && let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
                         stems.push(stem.to_owned());
                     }
-                }
             }
         }
     }

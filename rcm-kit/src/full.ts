@@ -1,4 +1,5 @@
 import {
+  addToAutorun,
   addToQuickAccess,
   newMenu,
   open,
@@ -17,6 +18,7 @@ import {
   pinToStart,
   pinToTaskbar,
   properties,
+  removeFromAutorun,
   removeFromQuickAccess,
   rename,
   runAsAdmin,
@@ -63,6 +65,8 @@ export default new Menu(
         pinToTaskbar(),
         addToQuickAccess(),
         removeFromQuickAccess(),
+        addToAutorun(),
+        removeFromAutorun(),
         sendTo(),
       ],
     },

@@ -13,7 +13,7 @@ import type { MenuItem, InvokeProps } from "../types"
 
 function isInQA(props: InvokeProps): boolean {
   if (props.files.length === 0) return false
-  return props.inQuickAccess.includes(props.files[0].path)
+  return props.quickAccess.includes(props.files[0].path)
 }
 
 /**

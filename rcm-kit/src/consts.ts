@@ -87,6 +87,12 @@ export const ADD_TO_QUICK_ACCESS = "@add-to-quick-access"
 /** Remove a file/folder from Quick Access. */
 export const REMOVE_FROM_QUICK_ACCESS = "@remove-from-quick-access"
 
+/** Add an .exe to Windows startup (autorun). */
+export const ADD_TO_AUTORUN = "@add-to-autorun"
+
+/** Remove an .exe from Windows startup (autorun). */
+export const REMOVE_FROM_AUTORUN = "@remove-from-autorun"
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -114,6 +120,8 @@ export const ALL: ReadonlySet<string> = new Set([
   UNPIN_FROM_START,
   ADD_TO_QUICK_ACCESS,
   REMOVE_FROM_QUICK_ACCESS,
+  ADD_TO_AUTORUN,
+  REMOVE_FROM_AUTORUN,
 ])
 
 export const TEXT_EXTS = [
