@@ -1,4 +1,5 @@
 import {
+  addToQuickAccess,
   newMenu,
   open,
   print,
@@ -16,6 +17,7 @@ import {
   pinToStart,
   pinToTaskbar,
   properties,
+  removeFromQuickAccess,
   rename,
   runAsAdmin,
   selectAll,
@@ -25,6 +27,7 @@ import {
   ssh,
   terminal,
   trash,
+  unpinFromStart,
   unzip,
   vscode,
   zip,
@@ -54,7 +57,14 @@ export default new Menu(
     },
     {
       // Pin & send
-      items: [pinToStart(), pinToTaskbar(), sendTo()],
+      items: [
+        pinToStart(),
+        unpinFromStart(),
+        pinToTaskbar(),
+        addToQuickAccess(),
+        removeFromQuickAccess(),
+        sendTo(),
+      ],
     },
     {
       // Clipboard & file ops

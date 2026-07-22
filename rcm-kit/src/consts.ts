@@ -73,6 +73,20 @@ export const FORMAT = "@format"
 /** Eject a removable drive. */
 export const EJECT = "@eject"
 
+// ── Start Menu & Quick Access ──────────────────────────────────────
+
+/** Pin a file to the Start Menu. */
+export const PIN_TO_START = "@pin-to-start"
+
+/** Unpin a file from the Start Menu. */
+export const UNPIN_FROM_START = "@unpin-from-start"
+
+/** Add a file/folder to Quick Access. */
+export const ADD_TO_QUICK_ACCESS = "@add-to-quick-access"
+
+/** Remove a file/folder from Quick Access. */
+export const REMOVE_FROM_QUICK_ACCESS = "@remove-from-quick-access"
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -96,6 +110,10 @@ export const ALL: ReadonlySet<string> = new Set([
   SORT_BY,
   FORMAT,
   EJECT,
+  PIN_TO_START,
+  UNPIN_FROM_START,
+  ADD_TO_QUICK_ACCESS,
+  REMOVE_FROM_QUICK_ACCESS,
 ])
 
 export const TEXT_EXTS = [

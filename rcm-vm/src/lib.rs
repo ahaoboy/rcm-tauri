@@ -120,6 +120,10 @@ pub fn from_info(
         })
         .collect();
 
+    // Gather Start Menu / Quick Access state (once per right-click).
+    let pinned_to_start = rcm_core::cmds::pin_to_start::list_pinned_to_start();
+    let in_quick_access = rcm_core::cmds::quick_access::list_quick_access();
+
     let props = InvokeProps {
         files,
         cwd: info.dir.clone(),
@@ -127,6 +131,8 @@ pub fn from_info(
         admin: is_admin::is_admin(),
         lang: lang::system_lang(),
         clipboard: clipboard::detect(),
+        pinned_to_start,
+        in_quick_access,
     };
 
     invoke(&props)

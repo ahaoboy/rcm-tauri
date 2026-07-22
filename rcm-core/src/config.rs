@@ -130,6 +130,15 @@ fn default_filters() -> Vec<FilterRule> {
             flags: Some(2050),
             reason: "Windows dialog (#32770)".into(),
         },
+        // Explorer programmatic context menu (flags=16 = CMF_CANRENAME).
+        // Fired as a side effect when rcm executes shell verbs (e.g. pintohome,
+        // pin-to-start, etc.) — not a real user right-click.
+        FilterRule {
+            class: r"^CabinetWClass$".into(),
+            file: String::new(),
+            flags: Some(16),
+            reason: "Explorer programmatic menu (CabinetWClass, flags=16)".into(),
+        },
         // UWP system UI (taskbar jump lists, etc.)
         FilterRule {
             class: r"^Windows\.UI\.Core\.CoreWindow$".into(),

@@ -26,6 +26,10 @@ export interface InvokeProps {
   lang: string
   /** Snapshot of clipboard state at the time of the right-click. */
   clipboard?: ClipboardInfo
+  /** File stems of items pinned to Start Menu (check with `file_stem` of selected .exe/.lnk). */
+  pinnedToStart: string[]
+  /** Paths currently in Quick Access (check with selected file paths). */
+  inQuickAccess: string[]
 }
 
 /** Window visibility for spawned processes. */

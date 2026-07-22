@@ -30,7 +30,9 @@ pub mod new_folder;
 pub mod open_file_location;
 pub mod open_with;
 pub mod paste_files;
+pub mod pin_to_start;
 pub mod properties;
+pub mod quick_access;
 pub mod rename;
 pub mod shell_folder_view;
 pub mod sort_by;
@@ -86,6 +88,14 @@ pub enum SystemCommand {
     Format,
     /// Eject a removable drive (`@eject`).
     Eject,
+    /// Pin a file to the Start Menu (`@pin-to-start`).
+    PinToStart,
+    /// Unpin a file from the Start Menu (`@unpin-from-start`).
+    UnpinFromStart,
+    /// Add a file/folder to Quick Access (`@add-to-quick-access`).
+    AddToQuickAccess,
+    /// Remove a file/folder from Quick Access (`@remove-from-quick-access`).
+    RemoveFromQuickAccess,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -116,6 +126,10 @@ impl FromStr for SystemCommand {
             "@sort-by" => Ok(Self::SortBy),
             "@format" => Ok(Self::Format),
             "@eject" => Ok(Self::Eject),
+            "@pin-to-start" => Ok(Self::PinToStart),
+            "@unpin-from-start" => Ok(Self::UnpinFromStart),
+            "@add-to-quick-access" => Ok(Self::AddToQuickAccess),
+            "@remove-from-quick-access" => Ok(Self::RemoveFromQuickAccess),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -157,6 +171,10 @@ impl SystemCommand {
             Self::SortBy => sort_by::run(cmd),
             Self::Format => format::run(cmd),
             Self::Eject => eject::run(cmd),
+            Self::PinToStart => pin_to_start::run_pin(cmd),
+            Self::UnpinFromStart => pin_to_start::run_unpin(cmd),
+            Self::AddToQuickAccess => quick_access::run_add(cmd),
+            Self::RemoveFromQuickAccess => quick_access::run_remove(cmd),
         }
     }
 }
@@ -246,6 +264,10 @@ mod tests {
         assert!(is_system_command("@sort-by"));
         assert!(is_system_command("@format"));
         assert!(is_system_command("@eject"));
+        assert!(is_system_command("@pin-to-start"));
+        assert!(is_system_command("@unpin-from-start"));
+        assert!(is_system_command("@add-to-quick-access"));
+        assert!(is_system_command("@remove-from-quick-access"));
         assert!(!is_system_command("notepad"));
         assert!(!is_system_command(""));
     }
@@ -272,6 +294,22 @@ mod tests {
         assert_eq!(
             "@eject".parse::<SystemCommand>().unwrap(),
             SystemCommand::Eject
+        );
+        assert_eq!(
+            "@pin-to-start".parse::<SystemCommand>().unwrap(),
+            SystemCommand::PinToStart
+        );
+        assert_eq!(
+            "@unpin-from-start".parse::<SystemCommand>().unwrap(),
+            SystemCommand::UnpinFromStart
+        );
+        assert_eq!(
+            "@add-to-quick-access".parse::<SystemCommand>().unwrap(),
+            SystemCommand::AddToQuickAccess
+        );
+        assert_eq!(
+            "@remove-from-quick-access".parse::<SystemCommand>().unwrap(),
+            SystemCommand::RemoveFromQuickAccess
         );
         assert!("@unknown".parse::<SystemCommand>().is_err());
     }
