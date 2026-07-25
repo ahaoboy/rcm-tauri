@@ -139,6 +139,14 @@ fn default_filters() -> Vec<FilterRule> {
             flags: Some(16),
             reason: "Explorer programmatic menu (CabinetWClass, flags=16)".into(),
         },
+        // Quick Access loading fires a phony right-click with flags=0
+        // in both Explorer (CabinetWClass) and Chrome-style windows.
+        FilterRule {
+            class: String::new(),
+            file: String::new(),
+            flags: Some(0),
+            reason: "Quick Access / phony menu (flags=0)".into(),
+        },
         // UWP system UI (taskbar jump lists, etc.)
         FilterRule {
             class: r"^Windows\.UI\.Core\.CoreWindow$".into(),

@@ -25,6 +25,9 @@ autorun = { version = "0.1", git = "https://github.com/ahaoboy/autorun", default
   "serde",
 ] }
 is-admin = "0.1"
+quick-access = { version = "0.1", git = "https://github.com/ahaoboy/quick-access", default-features = false, features = [
+  "serde",
+] }
 
 # ── Windows APIs ──────────────────────────────────────────────────────
 # pin 0.61
