@@ -7,6 +7,24 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Language {
+    /// English.
+    En,
+    /// Simplified Chinese.
+    Zh,
+}
+
+impl Language {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Language::En => "en",
+            Language::Zh => "zh",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
@@ -56,6 +74,11 @@ struct ConfigFile {
     /// Remote URL for config JSON sync (empty = disabled)
     #[serde(default = "default_config_url")]
     config_url: String,
+    /// UI language.
+    /// - missing / `null` → use the system default language.
+    /// - `"en"` / `"zh"` → force that language.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    lang: Option<Language>,
 }
 
 fn default_js_url() -> String {
@@ -78,6 +101,7 @@ impl Default for ConfigFile {
             js_url: default_js_url(),
             css_url: default_css_url(),
             config_url: default_config_url(),
+            lang: None,
         }
     }
 }
@@ -245,6 +269,11 @@ pub fn theme() -> Theme {
     read_config().theme
 }
 
+/// Return the configured UI language, or `None` to use the system default.
+pub fn lang() -> Option<String> {
+    read_config().lang.map(|l| l.as_str().to_string())
+}
+
 /// Return the remote menu sync URL, or `None` if not configured.
 pub fn remote_js_url() -> Option<String> {
     url_or_none(&read_config().js_url)
@@ -288,6 +317,10 @@ pub fn set_remote_config_url(url: String) {
 
 pub fn set_theme(theme: Theme) {
     update_config(|cfg| cfg.theme = theme);
+}
+
+pub fn set_lang(lang: Option<Language>) {
+    update_config(|cfg| cfg.lang = lang);
 }
 
 /// Reset all config and menu files to embedded defaults.

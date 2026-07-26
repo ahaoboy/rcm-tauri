@@ -130,7 +130,7 @@ pub fn from_info(
         cwd: info.dir.clone(),
         env,
         admin: is_admin::is_admin(),
-        lang: lang::system_lang(),
+        lang: rcm_core::config::lang().unwrap_or_else(lang::system_lang),
         clipboard: clipboard::detect(),
         startmenu,
         quick_access,
