@@ -1,7 +1,7 @@
 //! `@open-file-location` — Open the containing folder in Explorer and
 //! select the file. For shortcut (.lnk) files, resolves the target first.
 
-use super::{SystemCmdResult, powershell};
+use super::SystemCmdResult;
 use crate::types::CommandPayload;
 use std::path::Path;
 
@@ -70,11 +70,9 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
     }
 }
 
-/// Resolve a Windows shortcut (.lnk) to its target path using WScript.Shell.
+/// Resolve a Windows shortcut (.lnk) to its target path using `lnk_com`.
 fn resolve_shortcut(lnk_path: &str) -> Result<String, String> {
-    let script = format!(
-        "$w=New-Object -ComObject WScript.Shell;$w.CreateShortcut('{}').TargetPath",
-        lnk_path.replace('\'', "''")
-    );
-    powershell(&script)
+    let link = lnk_com::resolve(Path::new(lnk_path)).map_err(|e| e.to_string())?;
+    link.link_target()
+        .ok_or_else(|| "shortcut has no target".into())
 }

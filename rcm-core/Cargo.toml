@@ -23,3 +23,4 @@ tokio = { workspace = true, features = ["process"] }
 ureq = { workspace = true }
 autorun = { workspace = true }
 quick-access = { workspace = true }
+lnk-com = { workspace = true }
