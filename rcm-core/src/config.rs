@@ -126,8 +126,15 @@ fn default_filters() -> Vec<FilterRule> {
         FilterRule {
             class: r"^#32770$".into(),
             file: String::new(),
-// ComfyUI installer completion dialog uses flags=2050 (silent/static), whereas OBS file picker uses 132128 (visible/refreshing).
+            // ComfyUI installer completion dialog uses flags=2050 (silent/static), whereas OBS file picker uses 132128 (visible/refreshing).
             flags: Some(2050),
+            reason: "Windows dialog (#32770)".into(),
+        },
+        FilterRule {
+            class: r"^#32770$".into(),
+            file: String::new(),
+            // Antigravity installer
+            flags: Some(2048),
             reason: "Windows dialog (#32770)".into(),
         },
         // Explorer programmatic context menu (flags=16 = CMF_CANRENAME).
