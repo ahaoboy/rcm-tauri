@@ -22,6 +22,7 @@ pub mod copy;
 pub mod copy_base64;
 pub mod copy_name;
 pub mod copy_path;
+pub mod copy_target;
 pub mod delete;
 pub mod eject;
 pub mod format;
@@ -71,6 +72,8 @@ pub enum SystemCommand {
     CopyName,
     /// Copy file content(s) as base64 to clipboard (`@copy-base64`).
     CopyBase64,
+    /// Resolve .lnk target path and copy to clipboard (`@copy-target`).
+    CopyTarget,
     /// Fast parallel permanent delete (`@delete`).
     Delete,
     /// Open file/folder properties dialog (`@properties`).
@@ -122,6 +125,7 @@ impl FromStr for SystemCommand {
             "@copy-path" => Ok(Self::CopyPath),
             "@copy-name" => Ok(Self::CopyName),
             "@copy-base64" => Ok(Self::CopyBase64),
+            "@copy-target" => Ok(Self::CopyTarget),
             "@delete" => Ok(Self::Delete),
             "@properties" => Ok(Self::Properties),
             "@copy" => Ok(Self::Copy),
@@ -169,6 +173,7 @@ impl SystemCommand {
             Self::CopyPath => copy_path::run(cmd),
             Self::CopyName => copy_name::run(cmd),
             Self::CopyBase64 => copy_base64::run(cmd),
+            Self::CopyTarget => copy_target::run(cmd),
             Self::Delete => delete::run(cmd),
             Self::Properties => properties::run(cmd),
             Self::Copy => copy::run(cmd),
