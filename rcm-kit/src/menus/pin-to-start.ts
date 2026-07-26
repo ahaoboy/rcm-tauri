@@ -27,7 +27,8 @@ function fileStem(path: string): string {
 }
 
 function isPinned(props: InvokeProps): boolean {
-  return props.startMenu.includes(fileStem(props.files[0].path))
+  const stem = fileStem(props.files[0].path)
+  return props.startmenu.some((lnk) => fileStem(lnk.path) === stem)
 }
 
 /**

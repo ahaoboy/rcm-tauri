@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use startmenu::Lnk;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,9 +34,9 @@ pub struct InvokeProps {
     /// Snapshot of clipboard state at the time of the right-click.
     #[serde(default)]
     pub clipboard: ClipboardInfo,
-    /// File stems pinned to Start Menu (checked against file_stem of selected .exe/.lnk).
-    #[serde(default, rename = "startMenu")]
-    pub start_menu: Vec<String>,
+    /// Start Menu items (Lnk objects with path + args).
+    #[serde(default, rename = "startmenu")]
+    pub startmenu: Vec<Lnk>,
     /// Paths currently in Quick Access (checked against selected file paths).
     #[serde(default, rename = "quickAccess")]
     pub quick_access: Vec<String>,

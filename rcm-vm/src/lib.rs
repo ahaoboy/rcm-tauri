@@ -121,7 +121,7 @@ pub fn from_info(
         .collect();
 
     // Gather Start Menu / Quick Access / Autorun state (once per right-click).
-    let start_menu = rcm_core::cmds::pin_to_start::list_pinned_to_start();
+    let startmenu = rcm_core::cmds::pin_to_start::list_pinned_to_start();
     let quick_access = rcm_core::cmds::quick_access::list_quick_access();
     let autorun = rcm_core::cmds::autorun::list_autorun_entries();
 
@@ -132,7 +132,7 @@ pub fn from_info(
         admin: is_admin::is_admin(),
         lang: lang::system_lang(),
         clipboard: clipboard::detect(),
-        start_menu,
+        startmenu,
         quick_access,
         autorun,
     };

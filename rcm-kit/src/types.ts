@@ -23,6 +23,14 @@ export interface AutorunEntry {
   scope: "CurrentUser" | "LocalMachine"
 }
 
+/** A Start Menu shortcut entry (from startmenu::Lnk). */
+export interface StartmenuEntry {
+  /** Full path to the .lnk file. */
+  path: string
+  /** Optional command-line arguments for the shortcut. */
+  args: string | null
+}
+
 /** Props passed to match/action callbacks during menu evaluation */
 export interface InvokeProps {
   files: FileInfo[]
@@ -33,8 +41,8 @@ export interface InvokeProps {
   lang: string
   /** Snapshot of clipboard state at the time of the right-click. */
   clipboard?: ClipboardInfo
-  /** File stems of items pinned to Start Menu (check with `file_stem` of selected .exe/.lnk). */
-  startMenu: string[]
+  /** Start Menu shortcuts (check lnk path stem against selected file). */
+  startmenu: StartmenuEntry[]
   /** Paths currently in Quick Access (check with selected file paths). */
   quickAccess: string[]
   /** Startup / autorun entries (name → command pairs). */

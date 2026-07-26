@@ -24,3 +24,4 @@ ureq = { workspace = true }
 autorun = { workspace = true }
 quick-access = { workspace = true }
 lnk-com = { workspace = true }
+startmenu = { workspace = true }
