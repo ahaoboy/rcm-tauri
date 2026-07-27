@@ -16,7 +16,7 @@ export interface ClipboardInfo {
   has_files: boolean
 }
 
-/** A Windows startup / autorun entry (from autorun::StartupEntry). */
+/** A Windows startup / autorun entry (from autorun::Entry). */
 export interface AutorunEntry {
   name: string
   command: string

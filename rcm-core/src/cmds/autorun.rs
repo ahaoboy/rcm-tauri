@@ -2,12 +2,14 @@
 //! file from the Windows startup (autorun) list.
 //!
 //! Uses the `autorun` crate to manipulate the registry Run keys
-//! (`HKCU\...\Run` and `HKLM\...\Run`). Only CurrentUser scope is
+//! (`HKCU\...\Run` and `HKLM\...\Run`). Only `User` scope is
 //! used for add/remove (no elevation required).
 //!
 //! The frontend sends the file stem as `name` (arg[0]) and the
 //! full path as `command` (arg[1]) for add; the full path alone for remove
 //! (backend resolves name by matching the command).
+
+use autorun::Entry;
 
 use super::SystemCmdResult;
 use crate::types::CommandPayload;
@@ -31,7 +33,7 @@ pub fn run_add(cmd: &CommandPayload) -> SystemCmdResult {
         &format!("adding '{name}' → '{command}' to startup"),
     );
 
-    match autorun::add(name, command, autorun::StartupScope::CurrentUser) {
+    match autorun::add(name, command, autorun::Scope::User) {
         Ok(()) => {
             crate::log::info("Rust::add_to_autorun", "add OK");
             SystemCmdResult {
@@ -40,10 +42,11 @@ pub fn run_add(cmd: &CommandPayload) -> SystemCmdResult {
             }
         }
         Err(e) => {
-            crate::log::error("Rust::add_to_autorun", &e);
+            let msg = e.to_string();
+            crate::log::error("Rust::add_to_autorun", &msg);
             SystemCmdResult {
                 success: false,
-                message: e,
+                message: msg,
             }
         }
     }
@@ -63,9 +66,9 @@ pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
         }
     };
 
-    // Find the entry name by matching the command path.
-    let name = match find_entry_name_by_command(path) {
-        Some(n) => n,
+    // Find the entry by matching the command path.
+    let entry = match find_entry_name_by_command(path) {
+        Some(e) => e,
         None => {
             return SystemCmdResult {
                 success: false,
@@ -76,10 +79,10 @@ pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
 
     crate::log::info(
         "Rust::remove_from_autorun",
-        &format!("removing '{name}' ({path}) from startup"),
+        &format!("removing '{}' ({path}) from startup", entry.name),
     );
 
-    match autorun::remove(&name, autorun::StartupScope::CurrentUser) {
+    match entry.remove() {
         Ok(()) => {
             crate::log::info("Rust::remove_from_autorun", "remove OK");
             SystemCmdResult {
@@ -88,10 +91,11 @@ pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
             }
         }
         Err(e) => {
-            crate::log::error("Rust::remove_from_autorun", &e);
+            let msg = e.to_string();
+            crate::log::error("Rust::remove_from_autorun", &msg);
             SystemCmdResult {
                 success: false,
-                message: e,
+                message: msg,
             }
         }
     }
@@ -101,9 +105,9 @@ pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
 ///
 /// The frontend uses this list to decide whether a given .exe is
 /// already in the startup list (matched by `command` = full path).
-pub fn list_autorun_entries() -> Vec<autorun::StartupEntry> {
-    autorun::list_all().unwrap_or_else(|e| {
-        crate::log::error("Rust::list_autorun", &e);
+pub fn list_autorun_entries() -> Vec<Entry> {
+    autorun::list().unwrap_or_else(|e| {
+        crate::log::error("Rust::list_autorun", &e.to_string());
         Vec::new()
     })
 }
@@ -125,10 +129,9 @@ fn exe_path(command: &str) -> &str {
 }
 
 /// Find the autorun entry name that contains the given command path.
-fn find_entry_name_by_command(target: &str) -> Option<String> {
-    autorun::list_all()
+fn find_entry_name_by_command(target: &str) -> Option<Entry> {
+    autorun::list()
         .ok()?
         .into_iter()
         .find(|e| exe_path(&e.command).eq_ignore_ascii_case(target))
-        .map(|e| e.name)
 }

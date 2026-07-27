@@ -40,9 +40,9 @@ pub struct InvokeProps {
     /// Paths currently in Quick Access (checked against selected file paths).
     #[serde(default, rename = "quickAccess")]
     pub quick_access: Vec<String>,
-    /// Startup / autorun entries (reuses autorun::StartupEntry).
+    /// Startup / autorun entries (reuses autorun::Entry).
     #[serde(default, rename = "autorun")]
-    pub autorun: Vec<autorun::StartupEntry>,
+    pub autorun: Vec<autorun::Entry>,
 }
 
 /// Window visibility mode for spawned processes.
