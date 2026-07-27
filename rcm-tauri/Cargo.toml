@@ -21,8 +21,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { workspace = true }
 
 [dependencies]
-rcm-core = { path = "../rcm-core", version = "0.1" }
-rcm-vm = { path = "../rcm-vm", version = "0.1" }
+rcm-core = { workspace = true }
+rcm-vm = { workspace = true }
 tauri = { workspace = true }
 tauri-plugin-opener = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
