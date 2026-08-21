@@ -12,9 +12,34 @@ use crate::events::{AutoHideEpoch, ConfigPayload, MenuArc, submenu_indices, subm
 use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
-use std::sync::atomic::AtomicU64;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Listener, Manager};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Menu-blocking state
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Last-known menu-blocking state, used as a fallback when a live query fails
+/// (e.g. Explorer briefly restarting). Initialised to `true` because we
+/// `rcm_com::enable()` on every startup.
+static BLOCKING_FALLBACK: AtomicBool = AtomicBool::new(true);
+
+/// Whether native context-menu blocking is currently enabled.
+///
+/// Queries the real state from the DLL via the control pipe. On success the
+/// value is cached in [`BLOCKING_FALLBACK`]; on failure (pipe unavailable,
+/// e.g. DLL not yet loaded or Explorer restarting) the last-known state is
+/// returned so the tray checkmark and monitor don't flip spuriously.
+pub fn is_blocking_enabled() -> bool {
+    match rcm_com::query() {
+        Ok(enabled) => {
+            BLOCKING_FALLBACK.store(enabled, Ordering::Relaxed);
+            enabled
+        }
+        Err(_) => BLOCKING_FALLBACK.load(Ordering::Relaxed),
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Tauri commands

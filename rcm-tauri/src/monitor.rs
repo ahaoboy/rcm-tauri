@@ -50,6 +50,24 @@ pub fn start_monitoring(app_handle: tauri::AppHandle, menu: MenuArc, epoch: Auto
 
             match &event.event {
                 rcm_com::Event::Menu { .. } => {
+                    // When blocking is disabled, the native system menu is
+                    // already showing. Do NOT open the custom menu, and hide
+                    // any that are open — otherwise system + custom menus
+                    // would appear at the same time.
+                    if !crate::is_blocking_enabled() {
+                        log::info(
+                            "Rust::monitor",
+                            "blocking disabled — suppressing custom menu (native menu shown)",
+                        );
+                        let mgr = MenuManager {
+                            menu: menu.clone(),
+                            app: app_handle.clone(),
+                            auto_hide_epoch: epoch.clone(),
+                        };
+                        mgr.hide_all();
+                        return;
+                    }
+
                     let menu_data = match rcm_vm::from_info(&event) {
                         Ok(m) => m,
                         Err(e) => {

@@ -20,6 +20,10 @@ pub const APPLY_ID: &str = "apply";
 pub const REGISTER_ID: &str = "register";
 /// Unregister the shell extension DLL (MenuItem).
 pub const UNREGISTER_ID: &str = "unregister";
+/// Enable menu blocking — hide the native context menu (CheckMenuItem).
+pub const ENABLE_ID: &str = "enable";
+/// Disable menu blocking — show the native context menu (CheckMenuItem).
+pub const DISABLE_ID: &str = "disable";
 /// Toggle dev mode — when on, the menu window stays open on focus loss (CheckMenuItem).
 pub const DEV_ID: &str = "dev";
 /// Toggle icon ribbon visibility (CheckMenuItem).
@@ -49,6 +53,8 @@ pub const WIN11_TEXT: &str = "Win11";
 pub const CLASSIC_TEXT: &str = "Classic";
 pub const REGISTER_TEXT: &str = "Register";
 pub const UNREGISTER_TEXT: &str = "Unregister";
+pub const ENABLE_TEXT: &str = "Enable";
+pub const DISABLE_TEXT: &str = "Disable";
 pub const DEV_TEXT: &str = "Dev";
 pub const ICONS_TEXT: &str = "Icons";
 pub const AUTOSTART_TEXT: &str = "Startup";
@@ -97,6 +103,33 @@ fn handle_register_toggle<R: tauri::Runtime>(register: bool, item: &CheckMenuIte
         let _ = rcm_com::cmd::unregister();
     }
     let _ = item.set_checked(register_status());
+}
+
+fn sync_blocking_checks<R: tauri::Runtime>(enable: &CheckMenuItem<R>, disable: &CheckMenuItem<R>) {
+    let enabled = crate::is_blocking_enabled();
+    let _ = enable.set_checked(enabled);
+    let _ = disable.set_checked(!enabled);
+}
+
+fn handle_blocking_toggle<R: tauri::Runtime>(
+    enable: bool,
+    enable_i: &CheckMenuItem<R>,
+    disable_i: &CheckMenuItem<R>,
+) {
+    let result = if enable {
+        rcm_com::enable()
+            .map(|_| "Menu blocking ENABLED — native context menu will be hidden.")
+    } else {
+        rcm_com::disable()
+            .map(|_| "Menu blocking DISABLED — native context menu will be shown.")
+    };
+    match result {
+        Ok(msg) => {
+            sync_blocking_checks(enable_i, disable_i);
+            log::info("Tray", msg);
+        }
+        Err(e) => log::error("Tray", &format!("toggle menu blocking failed: {e}")),
+    }
 }
 
 fn handle_icons_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
@@ -241,6 +274,22 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         None::<&str>,
     )?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
+    let enable_i = CheckMenuItem::with_id(
+        app,
+        ENABLE_ID,
+        ENABLE_TEXT,
+        true,
+        crate::is_blocking_enabled(),
+        None::<&str>,
+    )?;
+    let disable_i = CheckMenuItem::with_id(
+        app,
+        DISABLE_ID,
+        DISABLE_TEXT,
+        true,
+        !crate::is_blocking_enabled(),
+        None::<&str>,
+    )?;
     let theme_sys_i = CheckMenuItem::with_id(
         app,
         THEME_SYSTEM_ID,
@@ -297,6 +346,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let win11_clone = win11_i.clone();
     let classic_clone = classic_i.clone();
     let register_clone = register_i.clone();
+    let enable_clone = enable_i.clone();
+    let disable_clone = disable_i.clone();
     let dev_clone = dev_i.clone();
     let icons_clone = icons_i.clone();
     let autostart_clone = autostart_i.clone();
@@ -350,6 +401,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         &_sep_prefs,
         &register_i,
         &unregister_i,
+        &enable_i,
+        &disable_i,
     ];
 
     if is_debug {
@@ -392,6 +445,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             }
             REGISTER_ID => handle_register_toggle(true, &register_clone),
             UNREGISTER_ID => handle_register_toggle(false, &register_clone),
+            ENABLE_ID => handle_blocking_toggle(true, &enable_clone, &disable_clone),
+            DISABLE_ID => handle_blocking_toggle(false, &enable_clone, &disable_clone),
             ICONS_ID => handle_icons_toggle(app, &icons_clone),
             DEV_ID => handle_dev_toggle(app, &dev_clone),
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
