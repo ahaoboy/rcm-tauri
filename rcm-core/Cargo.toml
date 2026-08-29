@@ -16,6 +16,7 @@ base64 = { workspace = true }
 winreg = { workspace = true }
 windows = { workspace = true }
 regex = { workspace = true }
+cmdexpand = { workspace = true }
 rcm-com = { workspace = true }
 easy-archive = { workspace = true }
 anyhow = { workspace = true }

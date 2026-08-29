@@ -52,6 +52,7 @@ windows = { version = "0.61", features = [
 
 # ── Tray icon (cross-platform system tray) ─────────────────────────────
 tray-icon = "0.24"
+cmdexpand = "0.3"
 
 # ── Tauri ──────────────────────────────────────────────────────────────
 tauri = { version = "2", features = ["tray-icon"] }

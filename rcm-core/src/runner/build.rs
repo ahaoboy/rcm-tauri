@@ -1,15 +1,109 @@
 //! Build a [`tokio::process::Command`] from a [`CommandPayload`] descriptor.
 //!
 //! Handles path resolution, window visibility (Windows Terminal vs. hidden),
-//! and shell selection for interactive terminal sessions.
+//! shell selection for interactive terminal sessions, and re-reading the
+//! latest environment variables from the registry before each spawn.
 
 use crate::types::{CommandPayload, WindowMode};
+use std::collections::HashMap;
 use tokio::process::Command;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE;
+
+/// Path expansion helper — expand `%VAR%` references in a value (e.g.
+/// `%SystemRoot%`) using `cmdexpand` with a case-insensitive lookup map
+/// (keys uppercased). Unresolved variables expand to an empty string.
+fn expand_path(value: &str, upper: &HashMap<String, String>) -> String {
+    // cmdexpand's context closure must be 'static, so clone the map into it.
+    let ctx = upper.clone();
+    cmdexpand::Expander::new(value)
+        .add_context(&move |name: &str| ctx.get(&name.to_uppercase()).cloned())
+        .expand()
+        .unwrap_or_else(|_| value.to_string())
+}
+
+/// Read the latest system + user environment variables from the registry.
+///
+/// The current process may have been started long ago and caches an old
+/// snapshot of `PATH` etc. Reading fresh from the registry ensures newly added
+/// user/system variables are picked up when spawning children (e.g. VS Code
+/// sees variables the user added after this program started).
+///
+/// - System env: `HKLM\SYSTEM\...\Session Manager\Environment`
+/// - User env:   `HKCU\Environment`
+/// - User `PATH` is appended after the system `PATH`.
+/// - `%VAR%` references in values are expanded using the collected map.
+fn get_fresh_windows_envs() -> HashMap<String, String> {
+    use winreg::enums::*;
+    use winreg::RegKey;
+
+    let mut envs: HashMap<String, String> = HashMap::new();
+
+    // 1. System environment variables
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    if let Ok(sys_key) =
+        hklm.open_subkey("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment")
+    {
+        for item in sys_key.enum_values().flatten() {
+            if let Ok(val) = sys_key.get_value::<String, _>(&item.0) {
+                envs.insert(item.0.clone(), val);
+            }
+        }
+    }
+
+    // 2. User environment variables (override same-named system vars)
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    if let Ok(user_key) = hkcu.open_subkey("Environment") {
+        for item in user_key.enum_values().flatten() {
+            if let Ok(val) = user_key.get_value::<String, _>(&item.0) {
+                // Special case PATH: user PATH is appended after system PATH.
+                if item.0.eq_ignore_ascii_case("PATH") {
+                    let key = envs
+                        .keys()
+                        .find(|k| k.eq_ignore_ascii_case("PATH"))
+                        .cloned()
+                        .unwrap_or_else(|| "Path".to_string());
+                    if let Some(sys_path) = envs.get(&key) {
+                        envs.insert(key, format!("{};{}", sys_path, val));
+                    } else {
+                        envs.insert(key, val);
+                    }
+                    continue;
+                }
+                envs.insert(item.0, val);
+            }
+        }
+    }
+
+    // 3. Expand %VAR% references. Snapshot the map first (as an uppercased
+    //    index) so expansion can borrow it while we mutate `envs`.
+    let upper: HashMap<String, String> = envs
+        .iter()
+        .map(|(k, v)| (k.to_uppercase(), v.clone()))
+        .collect();
+    for v in envs.values_mut() {
+        if v.contains('%') {
+            *v = expand_path(v, &upper);
+        }
+    }
+
+    envs
+}
+
+/// Merge fresh registry environment variables into a command's environment.
+///
+/// The process's own env is kept as a base (so runtime-needed vars survive),
+/// then overridden/added with the freshest values from the registry.
+fn apply_fresh_env(command: &mut Command) {
+    let fresh = get_fresh_windows_envs();
+    if fresh.is_empty() {
+        return;
+    }
+    command.envs(fresh);
+}
 
 /// Build a ready-to-spawn [`Command`] from the frontend payload.
 ///
@@ -40,6 +134,7 @@ pub fn build_command(cmd: &CommandPayload) -> Command {
                 command.arg(&cmd.cwd);
             }
             command.args([&shell, "-NoExit", "-Command", &target]);
+            apply_fresh_env(&mut command);
             command
         }
         Minimized => {
@@ -69,6 +164,7 @@ fn build_raw(cmd: &CommandPayload, exe: &str) -> Command {
     if !cmd.cwd.is_empty() {
         command.current_dir(&cmd.cwd);
     }
+    apply_fresh_env(&mut command);
     command
 }
 
