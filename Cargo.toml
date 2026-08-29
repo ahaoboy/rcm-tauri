@@ -76,6 +76,6 @@ easy-archive = { version = "0.2", git = "https://github.com/ahaoboy/easy-archive
 
 # rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false, version = "0.12" }
 rquickjs = { default-features = false, version = "0.12" }
-llrt_modules = { git = "https://github.com/awslabs/llrt", version = "0.8.1-beta" }
+llrt_modules = { git = "https://github.com/awslabs/llrt", version = "0.9.0-beta" }
 rcm-core = { path = "./rcm-core", version = "0.1" }
 rcm-vm = { path = "./rcm-vm", version = "0.1" }
