@@ -14,13 +14,26 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 use windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE;
 
 /// Path expansion helper — expand `%VAR%` references in a value (e.g.
-/// `%SystemRoot%`) using `cmdexpand` with a case-insensitive lookup map
-/// (keys uppercased). Unresolved variables expand to an empty string.
+/// `%SystemRoot%`) using `cmdexpand`.
+///
+/// Lookup order for each `%VAR%`:
+///   1. The freshly-read registry map (uppercased keys).
+///   2. The current process environment (`std::env`), as a fallback.
+///
+/// Falling back to the process env prevents critical system variables that are
+/// *not* stored in the registry (e.g. `SystemDrive`, `USERNAME`, `TEMP`,
+/// `ComSpec` deps) from expanding to an empty string — which would otherwise
+/// corrupt `Path` and break launching shells (e.g. VS Code's terminal).
 fn expand_path(value: &str, upper: &HashMap<String, String>) -> String {
     // cmdexpand's context closure must be 'static, so clone the map into it.
     let ctx = upper.clone();
     cmdexpand::Expander::new(value)
-        .add_context(&move |name: &str| ctx.get(&name.to_uppercase()).cloned())
+        .add_context(&move |name: &str| {
+            ctx.get(&name.to_uppercase())
+                .cloned()
+                .or_else(|| std::env::var(name).ok())
+                .or_else(|| std::env::var(name.to_uppercase()).ok())
+        })
         .expand()
         .unwrap_or_else(|_| value.to_string())
 }
@@ -93,16 +106,31 @@ fn get_fresh_windows_envs() -> HashMap<String, String> {
     envs
 }
 
-/// Merge fresh registry environment variables into a command's environment.
+/// Add fresh registry environment variables to a command's environment,
+/// but only those the process does not already define.
 ///
-/// The process's own env is kept as a base (so runtime-needed vars survive),
-/// then overridden/added with the freshest values from the registry.
+/// The process's own env is left untouched (existing vars keep their values,
+/// so runtime/shell additions to e.g. `Path` are preserved). Only variables
+/// that are entirely absent from the process env are taken from the registry —
+/// this is how newly added user/system variables get picked up at spawn time
+/// without clobbering anything.
 fn apply_fresh_env(command: &mut Command) {
     let fresh = get_fresh_windows_envs();
     if fresh.is_empty() {
         return;
     }
-    command.envs(fresh);
+
+    // Compare case-insensitively (Windows env names are case-insensitive).
+    let existing: Vec<String> = std::env::vars()
+        .map(|(k, _)| k.to_uppercase())
+        .collect();
+
+    for (key, val) in fresh {
+        let upper = key.to_uppercase();
+        if !existing.contains(&upper) {
+            command.env(key, val);
+        }
+    }
 }
 
 /// Build a ready-to-spawn [`Command`] from the frontend payload.
