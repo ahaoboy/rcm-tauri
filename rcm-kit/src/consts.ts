@@ -96,6 +96,12 @@ export const ADD_TO_AUTORUN = "@add-to-autorun"
 /** Remove an .exe from Windows startup (autorun). */
 export const REMOVE_FROM_AUTORUN = "@remove-from-autorun"
 
+/** Add a desktop shortcut for the selected file/folder. */
+export const ADD_TO_DESKTOP = "@add-to-desktop"
+
+/** Remove the desktop shortcut(s) pointing to the selected file/folder. */
+export const REMOVE_FROM_DESKTOP = "@remove-from-desktop"
+
 // ── All command identifiers as a set (for validation) ────────────────
 
 /** Set of all recognized system command identifiers. */
@@ -126,6 +132,8 @@ export const ALL: ReadonlySet<string> = new Set([
   REMOVE_FROM_QUICK_ACCESS,
   ADD_TO_AUTORUN,
   REMOVE_FROM_AUTORUN,
+  ADD_TO_DESKTOP,
+  REMOVE_FROM_DESKTOP,
 ])
 
 export const TEXT_EXTS = [

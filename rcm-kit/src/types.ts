@@ -47,6 +47,8 @@ export interface InvokeProps {
   quickAccess: string[]
   /** Startup / autorun entries (name → command pairs). */
   autorun: AutorunEntry[]
+  /** Desktop `.lnk` shortcut paths (check stem against selected file). */
+  desktop: string[]
 }
 
 /** Window visibility for spawned processes. */

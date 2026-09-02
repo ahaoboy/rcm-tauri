@@ -43,6 +43,9 @@ pub struct InvokeProps {
     /// Startup / autorun entries (reuses autorun::Entry).
     #[serde(default, rename = "autorun")]
     pub autorun: Vec<autorun::Entry>,
+    /// `.lnk` shortcut paths currently on the desktop (both scopes).
+    #[serde(default)]
+    pub desktop: Vec<String>,
 }
 
 /// Window visibility mode for spawned processes.

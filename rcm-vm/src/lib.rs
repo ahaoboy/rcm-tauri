@@ -120,10 +120,11 @@ pub fn from_info(
         })
         .collect();
 
-    // Gather Start Menu / Quick Access / Autorun state (once per right-click).
+    // Gather Start Menu / Quick Access / Autorun / Desktop state (once per right-click).
     let startmenu = rcm_core::cmds::pin_to_start::list_pinned_to_start();
     let quick_access = rcm_core::cmds::quick_access::list_quick_access();
     let autorun = rcm_core::cmds::autorun::list_autorun_entries();
+    let desktop = rcm_core::cmds::desktop::list();
 
     let props = InvokeProps {
         files,
@@ -135,6 +136,7 @@ pub fn from_info(
         startmenu,
         quick_access,
         autorun,
+        desktop,
     };
 
     invoke(&props)

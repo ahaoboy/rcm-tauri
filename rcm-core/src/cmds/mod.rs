@@ -24,6 +24,7 @@ pub mod copy_name;
 pub mod copy_path;
 pub mod copy_target;
 pub mod delete;
+pub mod desktop;
 pub mod eject;
 pub mod format;
 pub mod group_by;
@@ -104,6 +105,10 @@ pub enum SystemCommand {
     AddToAutorun,
     /// Remove an .exe from Windows startup (`@remove-from-autorun`).
     RemoveFromAutorun,
+    /// Add a desktop shortcut for the file (`@add-to-desktop`).
+    AddToDesktop,
+    /// Remove the desktop shortcut(s) pointing to the file (`@remove-from-desktop`).
+    RemoveFromDesktop,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -141,6 +146,8 @@ impl FromStr for SystemCommand {
             "@remove-from-quick-access" => Ok(Self::RemoveFromQuickAccess),
             "@add-to-autorun" => Ok(Self::AddToAutorun),
             "@remove-from-autorun" => Ok(Self::RemoveFromAutorun),
+            "@add-to-desktop" => Ok(Self::AddToDesktop),
+            "@remove-from-desktop" => Ok(Self::RemoveFromDesktop),
             _ => Err(format!("unknown system command: {s}")),
         }
     }
@@ -189,6 +196,8 @@ impl SystemCommand {
             Self::RemoveFromQuickAccess => quick_access::run_remove(cmd),
             Self::AddToAutorun => autorun::run_add(cmd),
             Self::RemoveFromAutorun => autorun::run_remove(cmd),
+            Self::AddToDesktop => desktop::add(cmd),
+            Self::RemoveFromDesktop => desktop::remove(cmd),
         }
     }
 }

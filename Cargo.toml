@@ -62,9 +62,11 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 rcm-reg = { git = "https://github.com/ahaoboy/rcm-reg", version = "0.1" }
 lnk-com = { git = "https://github.com/ahaoboy/lnk-com", default-features = false, version = "0.1" }
+desktop-com = { git = "https://github.com/ahaoboy/desktop-com", default-features = false, version = "0.1" }
 startmenu = { git = "https://github.com/ahaoboy/startmenu", default-features = false, version = "0.1", features = [
   "serde",
 ] }
+upath = { git = "https://github.com/ahaoboy/upath", default-features = false, version = "0.1" }
 
 # ── Git dependencies ──────────────────────────────────────────────────
 rcm-com = { version = "0.1", git = "https://github.com/ahaoboy/rcm-com.git" }
