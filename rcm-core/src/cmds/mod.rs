@@ -243,27 +243,11 @@ pub(crate) fn build_sys_cmd(exe: &str, cmd: &CommandPayload) -> std::process::Co
 /// Return a unique path by appending ` (2)`, ` (3)`, … if the target
 /// already exists.
 pub(crate) fn unique_path(path: &std::path::Path) -> std::path::PathBuf {
-    if !path.exists() {
-        return path.to_path_buf();
+    if let Ok(p) = upath::upath(path) {
+        p
+    } else {
+        path.to_path_buf()
     }
-
-    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-    let parent = path.parent().unwrap_or(std::path::Path::new("."));
-
-    for n in 2..u32::MAX {
-        let name = if ext.is_empty() {
-            format!("{stem} ({n})")
-        } else {
-            format!("{stem} ({n}).{ext}")
-        };
-        let candidate = parent.join(&name);
-        if !candidate.exists() {
-            return candidate;
-        }
-    }
-
-    path.to_path_buf()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -331,7 +315,9 @@ mod tests {
             SystemCommand::AddToQuickAccess
         );
         assert_eq!(
-            "@remove-from-quick-access".parse::<SystemCommand>().unwrap(),
+            "@remove-from-quick-access"
+                .parse::<SystemCommand>()
+                .unwrap(),
             SystemCommand::RemoveFromQuickAccess
         );
         assert!("@unknown".parse::<SystemCommand>().is_err());
