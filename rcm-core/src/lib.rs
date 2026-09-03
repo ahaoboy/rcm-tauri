@@ -4,6 +4,7 @@ pub mod config;
 pub mod lang;
 pub mod log;
 pub mod menu;
+pub mod paths;
 pub mod registry;
 pub mod runner;
 pub mod types;

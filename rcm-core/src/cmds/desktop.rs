@@ -34,12 +34,17 @@ fn first_arg(cmd: &CommandPayload) -> Result<&str, SystemCmdResult> {
     }
 }
 
-/// Desktop `.lnk` paths (user + public) — for frontend add/remove matching.
-pub fn list() -> Vec<String> {
+/// Desktop entries (user + public) as [`crate::types::Entry`]s — for
+/// frontend add/remove matching.
+pub fn list() -> Vec<crate::types::Entry> {
     match desktop_com::list_shortcuts() {
         Ok(items) => items
             .into_iter()
-            .map(|it| it.path.to_string_lossy().into_owned())
+            .map(|it| crate::types::Entry {
+                path: it.path.to_string_lossy().into_owned(),
+                args: it.args.clone(),
+                target: it.target().ok().flatten(),
+            })
             .collect(),
         Err(e) => {
             crate::log::error(TAG, &format!("list failed: {e}"));

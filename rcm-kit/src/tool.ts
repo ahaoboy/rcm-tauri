@@ -6,6 +6,7 @@ import {
   AUDIO_EXTS,
   SUBTITLE_EXTS,
 } from "./consts"
+import type { Entry } from "./types"
 
 /**
  * Archive extensions supported by the Rust backend's `Fmt` enum.
@@ -76,3 +77,25 @@ export const isImage = (path: string) => hasExt(path, ...IMAGE_EXTS)
 export const isSubtitle = (path: string) => hasExt(path, ...SUBTITLE_EXTS)
 export const isMedia = (path: string) => isVideo(path) || isAudio(path)
 export const isPrintable = (path: string) => hasExt(path, ...PRINTABLE_EXTS)
+
+// ── Shortcut helpers (Start Menu / Desktop) ────────────────────────
+
+/** Extract the file stem (name without extension) from a path. */
+export function fileStem(path: string): string {
+  const name = basename(path)
+  const dot = name.lastIndexOf(".")
+  return dot > 0 ? name.slice(0, dot) : name
+}
+
+/**
+ * True when an entry list (`startmenu` / `desktop`) already has an entry
+ * for `path`. Matches by resolved `.lnk` target first, then by same stem.
+ */
+export function hasShortcut(list: Entry[], path: string): boolean {
+  const norm = path.toLowerCase()
+  const stem = fileStem(path)
+  return list.some(
+    (lnk) =>
+      (lnk.target !== null && lnk.target.toLowerCase() === norm) || fileStem(lnk.path) === stem,
+  )
+}

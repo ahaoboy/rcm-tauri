@@ -107,6 +107,9 @@ pub fn from_info(
 ) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
     let mut env = std::collections::HashMap::new();
     env.insert("OS".to_string(), "Windows".to_string());
+    // Common user folder locations (HOME, DESKTOP, DOCUMENTS, …) so menu JS
+    // can reference them via props.env.
+    env.extend(rcm_core::paths::common());
 
     let files: Vec<rcm_core::FileInfo> = info
         .files

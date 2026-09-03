@@ -6,8 +6,27 @@ export interface FileInfo {
   isDir: boolean
 }
 
-/** Environment variables / context */
-export type Env = Record<string, string>
+/** Well-known environment / context keys injected by the Rust backend. */
+export interface Env {
+  /** Running operating system — always "Windows". */
+  OS: string
+  /** User home directory (e.g. `C:\Users\you`). */
+  HOME: string
+  /** Desktop folder, follows OneDrive redirection. */
+  DESKTOP: string
+  /** Documents folder, follows OneDrive redirection. */
+  DOCUMENTS: string
+  /** Downloads folder. */
+  DOWNLOADS: string
+  /** Pictures folder. */
+  PICTURES: string
+  /** Music folder. */
+  MUSIC: string
+  /** Videos folder. */
+  VIDEOS: string
+  /** Arbitrary extra variables (future/unknown keys). */
+  [key: string]: string
+}
 
 /** Snapshot of clipboard state at right-click time. */
 export interface ClipboardInfo {
@@ -23,12 +42,15 @@ export interface AutorunEntry {
   scope: "CurrentUser" | "LocalMachine"
 }
 
-/** A Start Menu shortcut entry (from startmenu::Lnk). */
-export interface StartmenuEntry {
-  /** Full path to the .lnk file. */
+/** An entry found in the Start Menu or on the Desktop. May be a `.lnk`
+ * shortcut or a plain file. */
+export interface Entry {
+  /** Full path to the item (e.g. `a.lnk` for a shortcut, `a.exe` for a file). */
   path: string
-  /** Optional command-line arguments for the shortcut. */
+  /** Command-line arguments when the item is a `.lnk` that carries them. */
   args: string | null
+  /** Target the `.lnk` points to; `null` for plain files. */
+  target: string | null
 }
 
 /** Props passed to match/action callbacks during menu evaluation */
@@ -41,14 +63,14 @@ export interface InvokeProps {
   lang: string
   /** Snapshot of clipboard state at the time of the right-click. */
   clipboard?: ClipboardInfo
-  /** Start Menu shortcuts (check lnk path stem against selected file). */
-  startmenu: StartmenuEntry[]
+  /** Start Menu entries (check path/target against the selected file). */
+  startmenu: Entry[]
   /** Paths currently in Quick Access (check with selected file paths). */
   quickAccess: string[]
   /** Startup / autorun entries (name → command pairs). */
   autorun: AutorunEntry[]
-  /** Desktop `.lnk` shortcut paths (check stem against selected file). */
-  desktop: string[]
+  /** Desktop entries — same shape as `startmenu`. */
+  desktop: Entry[]
 }
 
 /** Window visibility for spawned processes. */

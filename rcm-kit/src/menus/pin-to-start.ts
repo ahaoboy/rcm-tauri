@@ -1,5 +1,6 @@
 import { PIN_TO_START, UNPIN_FROM_START } from "../consts"
 import { t } from "../i18n"
+import { hasShortcut } from "../tool"
 import type { MenuItem, InvokeProps } from "../types"
 
 /**
@@ -8,8 +9,8 @@ import type { MenuItem, InvokeProps } from "../types"
  * `%APPDATA%\Microsoft\Windows\Start Menu\Programs`.
  *
  * Only matches single `.exe` / `.lnk` file selections.
- * The Rust backend provides `pinnedToStart` (file-stem list) so the
- * frontend can check whether the current file is already pinned.
+ * The Rust backend provides `startmenu` (`Entry[]`) so the frontend
+ * can check whether the current file is already pinned.
  */
 
 /** True when the selected file is an .exe or .lnk (single selection). */
@@ -19,16 +20,8 @@ function isExeOrLnk(props: InvokeProps): boolean {
   return lower.endsWith(".exe") || lower.endsWith(".lnk")
 }
 
-/** Extract file stem from a Windows path (name without extension). */
-function fileStem(path: string): string {
-  const name = path.split(/[\\/]/).pop() ?? path
-  const dot = name.lastIndexOf(".")
-  return dot > 0 ? name.slice(0, dot) : name
-}
-
 function isPinned(props: InvokeProps): boolean {
-  const stem = fileStem(props.files[0].path)
-  return props.startmenu.some((lnk) => fileStem(lnk.path) === stem)
+  return hasShortcut(props.startmenu, props.files[0].path)
 }
 
 /**

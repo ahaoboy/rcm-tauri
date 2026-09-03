@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use startmenu::Lnk;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -7,6 +6,22 @@ pub struct FileInfo {
     pub path: String,
     #[serde(rename = "isDir")]
     pub is_dir: bool,
+}
+
+/// An entry found in the Start Menu or on the Desktop.
+///
+/// Shared shape for both `startmenu` and `desktop` props so the frontend can
+/// treat them identically. May be a `.lnk` shortcut or a plain file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Entry {
+    /// Full path to the item (e.g. `a.lnk` for a shortcut, `a.exe` for a file).
+    pub path: String,
+    /// Command-line arguments when the item is a `.lnk` that carries them.
+    #[serde(default)]
+    pub args: Option<String>,
+    /// Target the `.lnk` points to; `None` for plain files.
+    #[serde(default)]
+    pub target: Option<String>,
 }
 
 /// Snapshot of clipboard state at the time of the right-click.
@@ -34,18 +49,18 @@ pub struct InvokeProps {
     /// Snapshot of clipboard state at the time of the right-click.
     #[serde(default)]
     pub clipboard: ClipboardInfo,
-    /// Start Menu items (Lnk objects with path + args).
+    /// Start Menu entries (path/args/target).
     #[serde(default, rename = "startmenu")]
-    pub startmenu: Vec<Lnk>,
+    pub startmenu: Vec<Entry>,
     /// Paths currently in Quick Access (checked against selected file paths).
     #[serde(default, rename = "quickAccess")]
     pub quick_access: Vec<String>,
     /// Startup / autorun entries (reuses autorun::Entry).
     #[serde(default, rename = "autorun")]
     pub autorun: Vec<autorun::Entry>,
-    /// `.lnk` shortcut paths currently on the desktop (both scopes).
+    /// Desktop entries (same shape as `startmenu`).
     #[serde(default)]
-    pub desktop: Vec<String>,
+    pub desktop: Vec<Entry>,
 }
 
 /// Window visibility mode for spawned processes.

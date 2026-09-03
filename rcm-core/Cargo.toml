@@ -17,6 +17,7 @@ winreg = { workspace = true }
 windows = { workspace = true }
 regex = { workspace = true }
 cmdexpand = { workspace = true }
+dirs = { workspace = true }
 rcm-com = { workspace = true }
 easy-archive = { workspace = true }
 anyhow = { workspace = true }

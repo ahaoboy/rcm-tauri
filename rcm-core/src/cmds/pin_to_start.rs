@@ -105,9 +105,16 @@ pub fn is_pinned_to_start(path: &str) -> bool {
     startmenu::exists(Path::new(path)).ok().flatten().is_some()
 }
 
-/// List all items pinned to the Start Menu.
-///
-/// Returns `Lnk` objects from both User and Machine scopes.
-pub fn list_pinned_to_start() -> Vec<startmenu::Lnk> {
-    startmenu::list().unwrap_or_default()
+/// List all items pinned to the Start Menu as [`crate::types::Entry`]s
+/// (user + machine scopes, with resolved args and target).
+pub fn list_pinned_to_start() -> Vec<crate::types::Entry> {
+    startmenu::list()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|lnk| crate::types::Entry {
+            path: lnk.path.to_string_lossy().into_owned(),
+            args: lnk.args.clone(),
+            target: lnk.target().ok().flatten(),
+        })
+        .collect()
 }
