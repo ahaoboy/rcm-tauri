@@ -5,7 +5,6 @@ edition = "2024"
 license = "MIT"
 description = "rcm-tauri"
 repository = "https://github.com/ahaoboy/rcm-tauri"
-homepage = "https://github.com/ahaoboy/rcm-tauri"
 authors = ["ahaoboy"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

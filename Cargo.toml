@@ -17,7 +17,6 @@ trash = "5"
 clipboard-rs = "0.3"
 base64 = "0.23"
 winreg = "0.56"
-anyhow = "1"
 tokio = "1"
 regex = "1"
 ureq = "3"
@@ -51,9 +50,8 @@ windows = { version = "0.61", features = [
 ] }
 
 # ── Tray icon (cross-platform system tray) ─────────────────────────────
-tray-icon = "0.24"
 cmdexpand = "0.3"
-dirs = "6"
+dirs = "7"
 
 # ── Tauri ──────────────────────────────────────────────────────────────
 tauri = { version = "2", features = ["tray-icon"] }
