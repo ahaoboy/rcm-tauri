@@ -117,11 +117,9 @@ fn handle_blocking_toggle<R: tauri::Runtime>(
     disable_i: &CheckMenuItem<R>,
 ) {
     let result = if enable {
-        rcm_com::enable()
-            .map(|_| "Menu blocking ENABLED — native context menu will be hidden.")
+        rcm_com::enable().map(|_| "Menu blocking ENABLED — native context menu will be hidden.")
     } else {
-        rcm_com::disable()
-            .map(|_| "Menu blocking DISABLED — native context menu will be shown.")
+        rcm_com::disable().map(|_| "Menu blocking DISABLED — native context menu will be shown.")
     };
     match result {
         Ok(msg) => {
@@ -427,6 +425,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Build tray ──────────────────────────────────────────────────
 
     let _tray = TrayIconBuilder::new()
+        .tooltip("rcm-tauri")
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
         .show_menu_on_left_click(true)
