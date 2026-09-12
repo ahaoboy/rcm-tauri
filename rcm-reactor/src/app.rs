@@ -14,7 +14,8 @@ use rcm_core::{config, log};
 use crate::config_editor::ConfigEditor;
 use crate::error_window::{ErrorInput, ErrorWindow};
 use crate::events::{self, AppEvent, POLL_MS};
-use crate::menu_window::{MenuInput, MenuWindow, window_theme};
+use crate::menu_window::{MenuInput, MenuWindow};
+use crate::visuals;
 use crate::{menu_runtime, monitor, tray, win32};
 
 pub struct RcmApp {
@@ -154,7 +155,8 @@ impl Component for RcmApp {
         context.window_title(events::ROOT_TITLE);
         context.window_visuals(
             WindowVisuals::new()
-                .theme(window_theme())
+                .theme(visuals::window_theme())
+                .backdrop(visuals::WINDOW_BACKDROP)
                 .client_size(1.0, 1.0),
         );
         Border::new().content(TextBlock::new().text(""))

@@ -46,8 +46,13 @@ struct HostState {
     hidden: Vec<u32>,
     /// Windows passed to `close_window`.
     closed: Vec<u32>,
+    /// Windows passed to `focus_window`, in order.
+    focused: Vec<u32>,
     /// Whether `is_window_focused` should claim focus.
-    focused: bool,
+    focused_now: bool,
+    /// What [`MenuHost::row_offset`] should answer: a per-row height and a top
+    /// padding, or `None` to model a host that cannot estimate.
+    row_estimate: Option<(f64, f64)>,
 }
 
 /// A host that records everything the controller asks for.
@@ -64,7 +69,7 @@ impl MockHost {
         state.areas = vec![Rect::new(0, 0, 1920, 1080)];
         state.scale = 1.0;
         state.next_window = 1;
-        state.focused = true;
+        state.focused_now = true;
         drop(state);
         host
     }
@@ -95,8 +100,12 @@ impl MenuHost for MockHost {
         self.state.borrow_mut().closed.push(window);
     }
 
+    fn focus_window(&mut self, window: Self::Window) {
+        self.state.borrow_mut().focused.push(window);
+    }
+
     fn is_window_focused(&self, _window: Self::Window) -> bool {
-        self.state.borrow().focused
+        self.state.borrow().focused_now
     }
 
     fn work_areas(&self) -> Vec<Rect> {
@@ -105,6 +114,13 @@ impl MenuHost for MockHost {
 
     fn scale_factor(&self, _window: Self::Window) -> f64 {
         self.state.borrow().scale
+    }
+
+    /// Models a frontend whose rows are a fixed height: `padding + index * row`.
+    fn row_offset(&self, level: &rcm_core::ui::MenuLevel, index: usize) -> Option<f64> {
+        let (padding, row_height) = self.state.borrow().row_estimate?;
+        let rows = level.rows.iter().take(index).count() as f64;
+        Some(padding + rows * row_height)
     }
 }
 
@@ -327,6 +343,184 @@ fn hovering_a_disabled_parent_shows_nothing() {
 }
 
 #[test]
+fn adopting_a_new_window_at_a_depth_closes_the_old_one() {
+    // Reactor creates a window per menu, so re-showing a level hands back a new
+    // handle. The previous window must be closed: it is no longer in the
+    // registry, so `hide_all` could never reach it and it would stay visible.
+    let mut controller = MenuController::new(MockHost::new(), MenuMetrics::default());
+    let request = controller.show_root(menu(vec![leaf("a")]), Point::new(0, 0));
+    controller.adopt(request.depth, 1);
+
+    let state = Rc::clone(&controller.host().state);
+    assert_eq!(state.borrow().closed.len(), 0, "nothing closed yet");
+
+    // A second adoption at the same depth displaces the first.
+    assert!(controller.adopt(request.depth, 2));
+    assert_eq!(
+        state.borrow().closed.as_slice(),
+        &[1],
+        "the displaced window was closed"
+    );
+    assert_eq!(controller.placed_rect(0), None, "the level was reset");
+
+    // The new window is the one that gets placed.
+    controller.place(0, Measurement::exact(Size::new(80, 40)));
+    let placed = state.borrow().placed.last().copied().expect("placed");
+    assert_eq!(placed.0, 2, "the live window is the new one");
+}
+
+#[test]
+fn re_adopting_the_same_handle_closes_nothing() {
+    // A host that reuses one window per depth (Tauri's fixed labels) must not
+    // have its window closed out from under it.
+    let mut controller = MenuController::new(MockHost::new(), MenuMetrics::default());
+    let request = controller.show_root(menu(vec![leaf("a")]), Point::new(0, 0));
+
+    let state = Rc::clone(&controller.host().state);
+    assert!(controller.adopt(request.depth, 7));
+    assert!(controller.adopt(request.depth, 7));
+
+    assert!(
+        state.borrow().closed.is_empty(),
+        "the same handle is a re-render, not a replacement"
+    );
+}
+
+#[test]
+fn swooping_down_a_menu_leaves_no_orphan_windows() {
+    // Reproduces the reported leak: sweeping the pointer down the root opens a
+    // submenu for each parent row in turn. Every superseded submenu window must
+    // be closed, or the screen accumulates them.
+    let (mut controller, state) = showing(
+        menu(vec![
+            parent("p1", vec![leaf("p1a")]),
+            leaf("plain"),
+            parent("p2", vec![leaf("p2a")]),
+            parent("p3", vec![leaf("p3a")]),
+        ]),
+        Point::new(100, 100),
+    );
+    controller.place(0, Measurement::exact(Size::new(200, 200)));
+
+    // Row 0 is a parent: opens a submenu.
+    let HoverResult::Show(child) = hover_row(&mut controller, 0, vec![0, 0]) else {
+        panic!("row 0 should open a submenu");
+    };
+    controller.open(&child);
+    let first = controller
+        .state()
+        .window(1)
+        .expect("a submenu window is open at depth 1");
+
+    // Row 1 is a leaf: the submenu closes.
+    assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
+    assert!(
+        controller.state().window(1).is_none(),
+        "no window at depth 1"
+    );
+
+    // Row 2 is a parent again: a fresh submenu opens.
+    let HoverResult::Show(child) = hover_row(&mut controller, 0, vec![0, 2]) else {
+        panic!("row 2 should open a submenu");
+    };
+    controller.open(&child);
+    let second = controller
+        .state()
+        .window(1)
+        .expect("a submenu window is open at depth 1");
+    assert_ne!(second, first, "a different window was created");
+
+    // Exactly one window per level, and every superseded one was closed.
+    assert_eq!(state.borrow().closed.len(), 1, "the first submenu closed");
+    assert_eq!(
+        controller.state().depths(),
+        vec![0, 1],
+        "one window per open level, no strays"
+    );
+
+    // And `hide_all` reaches everything that is still on screen.
+    let closed_before = state.borrow().closed.len();
+    controller.hide_all();
+    assert_eq!(
+        state.borrow().closed.len(),
+        closed_before + 2,
+        "both the root and the live submenu were closed"
+    );
+    assert!(!controller.has_levels());
+}
+
+#[test]
+fn hide_all_reaches_every_window_it_ever_opened() {
+    let (mut controller, state) = showing_parent(Point::new(0, 0));
+
+    // Open and supersede a few submenus, as sweeping the pointer would.
+    for _ in 0..3 {
+        let HoverResult::Show(child) = hover_row(&mut controller, 0, vec![0, 0]) else {
+            panic!("expected a child level");
+        };
+        controller.open(&child);
+        controller.place(1, Measurement::exact(Size::new(200, 60)));
+        // Move onto the leaf, collapsing back to the root.
+        assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
+        controller.place(0, Measurement::exact(Size::new(200, 120)));
+    }
+
+    controller.hide_all();
+
+    // Two open windows (root + submenu) plus the closed ones; after `hide_all`
+    // nothing may remain registered.
+    assert!(!controller.has_levels());
+    assert!(controller.state().depths().is_empty());
+    assert!(
+        state.borrow().closed.len() >= 4,
+        "every superseded and open window was closed"
+    );
+}
+
+#[test]
+fn closing_a_submenu_hands_focus_back_to_its_parent() {
+    // Closing the focused window makes the OS choose a new foreground window,
+    // which is not guaranteed to be one of ours. Without handing focus back, the
+    // menu reports "focus left" and dismisses itself while the pointer is still
+    // on it — the reported symptom was the root vanishing near the end of a sweep.
+    let (mut controller, state) = showing_parent(Point::new(100, 100));
+
+    let parent_window = controller.state().window(0).expect("root window");
+
+    let HoverResult::Show(child) = hover_row(&mut controller, 0, vec![0, 0]) else {
+        panic!("expected a child level");
+    };
+    controller.open(&child);
+    controller.place(1, Measurement::exact(Size::new(200, 60)));
+    let submenu_window = controller.state().window(1).expect("submenu window");
+
+    // Moving onto a leaf closes the submenu.
+    assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
+
+    assert_eq!(
+        state.borrow().focused.as_slice(),
+        &[parent_window],
+        "the parent regained focus after the submenu closed"
+    );
+    assert_ne!(parent_window, submenu_window);
+    assert!(controller.has_levels(), "the root is still open");
+}
+
+#[test]
+fn closing_nothing_does_not_steal_focus() {
+    // Repeated hovers on leaves must not re-focus the parent every time.
+    let (mut controller, state) = showing_parent(Point::new(100, 100));
+
+    assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
+    assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
+
+    assert!(
+        state.borrow().focused.is_empty(),
+        "no window was closed, so focus was left alone"
+    );
+}
+
+#[test]
 fn hovering_a_parent_positions_the_child_from_the_parents_rect() {
     let (mut controller, _state) = showing_parent(Point::new(100, 100));
     let metrics = MenuMetrics::default();
@@ -350,9 +544,28 @@ fn hovering_a_parent_positions_the_child_from_the_parents_rect() {
 }
 
 #[test]
-fn hover_falls_back_to_row_metrics_when_the_row_was_not_measured() {
+fn hover_falls_back_to_the_hosts_row_estimate() {
+    let (mut controller, state) = showing_parent(Point::new(100, 100));
+    // The mock knows its rows: 4px of padding then 28px each.
+    state.borrow_mut().row_estimate = Some((4.0, 28.0));
+
+    let result = controller.hover(&HoverInfo {
+        depth: 0,
+        path: vec![0, 0],
+        index: 1,
+        item_y: None,
+    });
+
+    let HoverResult::Show(request) = result else {
+        panic!("expected a child level");
+    };
+    // The parent was placed unclamped at y = 100; row 1 sits 4 + 28px down.
+    assert_eq!(request.position.y, 100 + 4 + 28);
+}
+
+#[test]
+fn hover_without_a_row_estimate_aligns_with_the_parents_top() {
     let (mut controller, _state) = showing_parent(Point::new(100, 100));
-    let metrics = MenuMetrics::default();
 
     let result = controller.hover(&HoverInfo {
         depth: 0,
@@ -364,10 +577,8 @@ fn hover_falls_back_to_row_metrics_when_the_row_was_not_measured() {
     let HoverResult::Show(request) = result else {
         panic!("expected a child level");
     };
-    // The parent was placed unclamped at y = 100, and the first row sits below
-    // the popup padding.
-    let expected = 100 + metrics.padding.round() as i32;
-    assert_eq!(request.position.y, expected);
+    // No measurement and no estimate: the child lines up with the parent's top.
+    assert_eq!(request.position.y, 100);
 }
 
 #[test]
@@ -701,31 +912,8 @@ fn execute_closes_the_menu_but_dev_mode_does_not() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Estimator and menu lifecycle
+// Menu lifecycle
 // ═══════════════════════════════════════════════════════════════════════════
-
-#[test]
-fn estimated_size_scales_with_dpi() {
-    let (controller, _state) = showing(menu(vec![leaf("a")]), Point::new(0, 0));
-    let level = controller.level(0).expect("root level");
-
-    let at_1x = controller.estimated_size(level, 1.0);
-    let at_2x = controller.estimated_size(level, 2.0);
-
-    assert_eq!(at_2x.width, at_1x.width * 2);
-    assert_eq!(at_2x.height, at_1x.height * 2);
-}
-
-#[test]
-fn estimated_size_treats_a_zero_scale_as_one() {
-    let (controller, _state) = showing(menu(vec![leaf("a")]), Point::new(0, 0));
-    let level = controller.level(0).expect("root level");
-
-    assert_eq!(
-        controller.estimated_size(level, 0.0),
-        controller.estimated_size(level, 1.0)
-    );
-}
 
 #[test]
 fn show_root_replaces_the_previous_menu() {
@@ -742,7 +930,31 @@ fn show_root_replaces_the_previous_menu() {
     controller.open(&request);
 
     assert_eq!(controller.deepest(), 0, "the submenu was closed");
-    assert_eq!(state.borrow().closed.len(), 1);
+    assert_eq!(state.borrow().closed.len(), 2, "submenu + previous root");
+}
+
+#[test]
+fn show_root_closes_the_previous_root_window() {
+    // Reactor gives every menu its own window, so a new right-click must close
+    // the old *root* too. Closing only the deeper levels leaked one window per
+    // right-click, and the orphans stayed visible with a title bar.
+    let (mut controller, state) = showing(menu(vec![leaf("a")]), Point::new(0, 0));
+    assert_eq!(state.borrow().closed.len(), 0, "nothing closed yet");
+
+    let request = controller.show_root(menu(vec![leaf("b")]), Point::new(10, 10));
+
+    assert_eq!(
+        state.borrow().closed.len(),
+        1,
+        "the previous root window was closed"
+    );
+    assert_eq!(state.borrow().opened.len(), 1, "only the first was opened");
+
+    // The new menu is the only one open.
+    controller.adopt(request.depth, 99);
+    controller.place(0, Measurement::exact(Size::new(80, 40)));
+    assert_eq!(controller.deepest(), 0);
+    assert!(controller.has_levels());
 }
 
 #[test]

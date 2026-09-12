@@ -32,7 +32,7 @@ use std::sync::Arc;
 use crate::log;
 use crate::types::{CommandPayload, IndexPath, Menu};
 
-use super::geometry::{Point, Rect, Size};
+use super::geometry::{Point, Rect};
 use super::host::{Measurement, MenuHost, MenuWindowInput};
 use super::level::{FlattenOptions, MenuLevel};
 use super::metrics::MenuMetrics;
@@ -107,8 +107,10 @@ pub struct HoverInfo {
     /// Measured offset of the hovered row from the top of the level's content,
     /// in physical pixels.
     ///
-    /// `None` falls back to [`MenuLevel::row_offset`], which is exact only while
-    /// the frontend's row heights match [`MenuMetrics`].
+    /// Frontends should always send this — they are the only ones that know how
+    /// tall their rows are. When it is `None` the controller asks the host for an
+    /// estimate instead, and failing that aligns the submenu with the top of the
+    /// parent's content.
     pub item_y: Option<i32>,
 }
 
@@ -257,8 +259,11 @@ impl<H: MenuHost> MenuController<H> {
             ),
         );
 
-        // A new right-click always replaces what is on screen.
-        self.hide_deeper_than(0);
+        // A new right-click always replaces what is on screen — including a
+        // previous *root* window. Reactor gives each menu its own window, so
+        // closing only the deeper levels would leave the old root visible and
+        // leak one window per right-click.
+        self.hide_all();
 
         let menu = Arc::new(menu);
         let level = MenuLevel::flatten(&menu, &[], self.options);
@@ -373,35 +378,58 @@ impl<H: MenuHost> MenuController<H> {
 
     /// Parent content rectangle and the hovered row's offset from its top.
     ///
-    /// `item_y` is taken from the frontend when it measured the row. Otherwise
-    /// it is derived from [`MenuLevel::row_offset`], which is in DIPs, so it is
-    /// scaled by the parent window's DPI to match `rect`'s physical pixels.
+    /// The offset comes from the frontend's measurement when it has one; failing
+    /// that the host is asked for an estimate (in DIPs, so scaled by the parent
+    /// window's DPI to match `rect`'s physical pixels); failing that the child
+    /// lines up with the top of the parent's content.
     fn parent_geometry(&self, info: &HoverInfo) -> Option<(Rect, i32)> {
         let open = self.levels.get(&info.depth)?;
         let rect = open.rect?;
 
         let item_y = match info.item_y {
             Some(y) => y,
-            None => {
-                let scale = self
-                    .state
-                    .window(info.depth)
-                    .map(|window| self.host.scale_factor(window))
-                    .unwrap_or(1.0);
-                (open.request.level.row_offset(info.index, &self.metrics) * scale).round() as i32
-            }
+            None => self
+                .host
+                .row_offset(&open.request.level, info.index)
+                .map(|dip| {
+                    let scale = self
+                        .state
+                        .window(info.depth)
+                        .map(|window| self.host.scale_factor(window))
+                        .unwrap_or(1.0);
+                    (dip * scale).round() as i32
+                })
+                .unwrap_or(0),
         };
         Some((rect, item_y))
     }
 
     // ── Windows ─────────────────────────────────────────────────────────
 
+    /// Record `window` as the live window for `depth`, closing whatever it
+    /// replaces.
+    ///
+    /// Hosts that create a window per menu (Reactor) hand back a new handle each
+    /// time a level is shown, so the previous window for that depth is orphaned.
+    /// Closing it here is what keeps `hide_all` authoritative: a window left out
+    /// of the registry stays visible and makes the host report that focus left
+    /// the menu, which then dismisses the rest.
+    fn claim_window(&mut self, depth: usize, window: H::Window) {
+        if let Some(displaced) = self.state.register(depth, window) {
+            log::warn(
+                "Menu::claim_window",
+                &format!("depth {depth} replaced a live window — closing the old one"),
+            );
+            self.host.close_window(displaced);
+        }
+    }
+
     /// Open the window for `request` and remember it.
     ///
     /// No geometry is applied — see the [`MenuHost`] two-phase contract.
     pub fn open(&mut self, request: &MenuShowRequest) -> Option<H::Window> {
         let window = self.host.open_window(&request.window_input())?;
-        self.state.register(request.depth, window);
+        self.claim_window(request.depth, window);
         self.levels.insert(
             request.depth,
             OpenLevel {
@@ -426,7 +454,7 @@ impl<H: MenuHost> MenuController<H> {
             log::warn("Menu::adopt", &format!("level {depth} is not open"));
             return false;
         }
-        self.state.register(depth, window);
+        self.claim_window(depth, window);
         true
     }
 
@@ -460,24 +488,30 @@ impl<H: MenuHost> MenuController<H> {
         Some(rect)
     }
 
-    /// Estimated content size for a level, before any measurement is available.
-    pub fn estimated_size(&self, level: &MenuLevel, scale: f64) -> Size {
-        let scale = if scale > 0.0 { scale } else { 1.0 };
-        Size::new(
-            (self.metrics.fallback_width * scale).round() as i32,
-            (level.height(&self.metrics) * scale).round() as i32,
-        )
-    }
-
     /// Close every level deeper than `depth`.
+    ///
+    /// Focus is handed back to the level that remains. Closing the focused
+    /// window makes the OS choose a new foreground window, which is not
+    /// guaranteed to be one of ours — without this, the menu reports "focus left"
+    /// and dismisses itself while the pointer is still on it.
     pub fn hide_deeper_than(&mut self, depth: usize) {
         let windows = self.state.take_deeper_than(depth);
+        let closed_anything = !windows.is_empty();
         for window in windows {
             self.host.close_window(window);
         }
         let deeper: Vec<usize> = self.levels.keys().copied().filter(|d| *d > depth).collect();
         for d in deeper {
             self.levels.remove(&d);
+        }
+
+        if closed_anything && let Some(window) = self.state.window(depth) {
+            log::event(
+                "Menu::hide_deeper_than",
+                "focus",
+                &format!("depth {depth} — restored after closing deeper levels"),
+            );
+            self.host.focus_window(window);
         }
     }
 

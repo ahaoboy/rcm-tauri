@@ -16,8 +16,10 @@ mod events;
 mod exec;
 mod menu_runtime;
 mod menu_window;
+mod metrics;
 mod monitor;
 mod tray;
+mod visuals;
 mod win32;
 
 fn main() {

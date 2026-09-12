@@ -57,12 +57,27 @@ impl<W: Copy + Ord> MenuState<W> {
     // ── Window registry ─────────────────────────────────────────────────
 
     /// Record that `window` is now showing at `depth`, and reset the idle timer.
-    pub fn register(&mut self, depth: usize, window: W) {
-        self.windows.insert(depth, window);
+    ///
+    /// Returns the window this **displaced**, if the host issued a *different*
+    /// handle for the same depth. That distinction matters because hosts differ:
+    ///
+    /// - A host that reuses one window per depth (Tauri's fixed `main` /
+    ///   `submenu-N` labels) replaces nothing, and the same window is simply
+    ///   re-rendered.
+    /// - A host that creates a window per menu (Reactor) gets the previous
+    ///   handle back. The caller **must** close it, otherwise it stays on screen
+    ///   forever and is no longer reachable by `hide_all`.
+    #[must_use = "a displaced window is still visible until it is closed"]
+    pub fn register(&mut self, depth: usize, window: W) -> Option<W> {
+        let displaced = self
+            .windows
+            .insert(depth, window)
+            .filter(|previous| *previous != window);
         if depth >= self.deepest {
             self.deepest = depth;
         }
         self.touch();
+        displaced
     }
 
     /// Whether any menu window is open.
@@ -190,6 +205,17 @@ mod tests {
     /// Windows are just integers in tests (e.g. HWNDs).
     type W = i32;
 
+    /// Register a window, discarding any displaced handle.
+    ///
+    /// The controller is responsible for closing displaced windows; these tests
+    /// only care about the registry, so they use a distinct handle per depth.
+    fn register(state: &mut MenuState<W>, depth: usize, window: W) {
+        assert!(
+            state.register(depth, window).is_none(),
+            "test used a fresh handle per depth"
+        );
+    }
+
     #[test]
     fn starts_empty() {
         let state = MenuState::<W>::new();
@@ -202,9 +228,9 @@ mod tests {
     #[test]
     fn register_tracks_deepest_and_resets_idle() {
         let mut state = MenuState::<W>::new();
-        state.register(0, 10);
-        state.register(2, 20);
-        state.register(1, 30);
+        register(&mut state, 0, 10);
+        register(&mut state, 2, 20);
+        register(&mut state, 1, 30);
 
         assert_eq!(state.deepest(), 2);
         assert!(state.has_windows());
@@ -218,9 +244,9 @@ mod tests {
     #[test]
     fn take_deeper_than_removes_only_deeper_and_lowers_depth() {
         let mut state = MenuState::<W>::new();
-        state.register(0, 10);
-        state.register(1, 20);
-        state.register(2, 30);
+        register(&mut state, 0, 10);
+        register(&mut state, 1, 20);
+        register(&mut state, 2, 30);
 
         let closed = state.take_deeper_than(0);
         assert_eq!(closed.len(), 2);
@@ -233,8 +259,8 @@ mod tests {
     #[test]
     fn take_deeper_than_nothing_is_a_noop_apart_from_depth() {
         let mut state = MenuState::<W>::new();
-        state.register(0, 10);
-        state.register(1, 20);
+        register(&mut state, 0, 10);
+        register(&mut state, 1, 20);
 
         assert!(state.take_deeper_than(1).is_empty());
         assert_eq!(state.deepest(), 1);
@@ -243,8 +269,8 @@ mod tests {
     #[test]
     fn take_all_clears_everything() {
         let mut state = MenuState::<W>::new();
-        state.register(0, 10);
-        state.register(1, 20);
+        register(&mut state, 0, 10);
+        register(&mut state, 1, 20);
         state.note_foreground();
 
         let closed = state.take_all();
@@ -258,7 +284,7 @@ mod tests {
     #[test]
     fn interaction_clears_a_pending_focus_loss() {
         let mut state = MenuState::<W>::new();
-        state.register(0, 10);
+        register(&mut state, 0, 10);
         state.note_foreground();
         state.note_foreground_miss();
 
@@ -297,7 +323,7 @@ mod tests {
         let mut state = MenuState::<W>::new();
         assert!(!state.is_idle(0), "never interacted => never idle");
 
-        state.register(0, 10);
+        register(&mut state, 0, 10);
         assert!(!state.is_idle(60_000));
         assert!(state.is_idle(0), "idle for at least 0ms");
     }

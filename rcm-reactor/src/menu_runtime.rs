@@ -15,12 +15,11 @@
 use std::sync::{Mutex, OnceLock};
 
 use rcm_core::ui::{
-    HoverInfo, HoverResult, Measurement, MenuController, MenuHost, MenuShowRequest,
+    HoverInfo, HoverResult, Measurement, MenuController, MenuHost, MenuMetrics, MenuShowRequest,
     MenuWindowInput, Rect,
 };
 use rcm_core::{Menu, ui};
 
-use crate::events::METRICS;
 use crate::win32;
 
 /// Reactor identifies window levels by their raw `HWND`.
@@ -58,12 +57,10 @@ impl MenuHost for ReactorHost {
     }
 
     fn place_window(&mut self, window: Self::Window, _input: &MenuWindowInput, rect: Rect) {
-        // Reactor owns the window *size*: `view` publishes
-        // `WindowVisuals::client_size` in DIPs and the framework converts it with
-        // the real window DPI. `SetWindowPos` sizes the outer window, not the
-        // client area, so applying the size here would fight that conversion by
-        // the border width. Position only.
-        win32::configure_popup(as_raw(window), rect.x, rect.y, None);
+        // The size was applied by `prepare_popup` (and re-applied by Reactor when
+        // the content was measured), so this only positions and reveals. Setting
+        // a size here would fight Reactor's DIP→pixel conversion.
+        win32::place_popup(as_raw(window), rect.x, rect.y);
         win32::force_foreground(as_raw(window));
     }
 
@@ -72,7 +69,18 @@ impl MenuHost for ReactorHost {
     }
 
     fn close_window(&mut self, window: Self::Window) {
+        // Hide first, then ask the window to close. `WM_CLOSE` is the only
+        // handle we have on a Reactor window's lifetime, and it goes through
+        // the framework's own message handling — if that is refused or delayed,
+        // a window that was only asked to close would stay visible and the
+        // screen would accumulate menus. Hiding guarantees it is gone from view
+        // immediately; the close then releases it.
+        win32::hide(as_raw(window));
         win32::post_close(as_raw(window));
+    }
+
+    fn focus_window(&mut self, window: Self::Window) {
+        win32::force_foreground(as_raw(window));
     }
 
     fn is_window_focused(&self, window: Self::Window) -> bool {
@@ -95,7 +103,12 @@ fn as_raw(window: RawWindow) -> *mut core::ffi::c_void {
 
 fn controller() -> &'static Mutex<MenuController<ReactorHost>> {
     static CONTROLLER: OnceLock<Mutex<MenuController<ReactorHost>>> = OnceLock::new();
-    CONTROLLER.get_or_init(|| Mutex::new(MenuController::new(ReactorHost::new(), METRICS)))
+    CONTROLLER.get_or_init(|| {
+        Mutex::new(MenuController::new(
+            ReactorHost::new(),
+            MenuMetrics::DEFAULT,
+        ))
+    })
 }
 
 /// Run `f` against the global controller.
@@ -114,6 +127,15 @@ pub fn show_root(menu: Menu, at: ui::Point) -> Option<MenuShowRequest> {
         c.set_dev_mode(rcm_core::config::is_dev());
         c.show_root(menu, at)
     })
+}
+
+/// Turn a freshly created window into a hidden, borderless popup of `size`.
+///
+/// Called from within `run_window`, i.e. the earliest moment the handle exists.
+/// Reactor reveals a window the instant it is created, so anything deferred to
+/// the next publication is a visible flash of a misplaced, titled window.
+pub fn prepare_popup(window: RawWindow, size: ui::Size) {
+    win32::prepare_popup(as_raw(window), size.width, size.height);
 }
 
 /// Register a window the component created.

@@ -5,7 +5,7 @@
 
 use windows_reactor::*;
 
-use crate::menu_window::window_theme;
+use crate::visuals;
 
 #[derive(Clone)]
 pub struct ErrorInput {
@@ -50,7 +50,8 @@ impl Component for ErrorWindow {
         context.window_title(&self.input.title);
         context.window_visuals(
             WindowVisuals::new()
-                .theme(window_theme())
+                .theme(visuals::window_theme())
+                .backdrop(visuals::WINDOW_BACKDROP)
                 .client_size(460.0, 240.0),
         );
 

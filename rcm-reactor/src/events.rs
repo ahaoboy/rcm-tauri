@@ -6,7 +6,7 @@
 //! root [`crate::app::RcmApp`] component drains on a timer.
 
 use rcm_core::Menu;
-use rcm_core::ui::{MenuMetrics, Point};
+use rcm_core::ui::Point;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -28,13 +28,6 @@ pub const MENU_TITLE: &str = "rcm-menu";
 /// A translucent neutral grey reads as a highlight on both light and dark menu
 /// backgrounds — WinUI's `CardStroke` is invisible on dark surfaces.
 pub const MENU_HOVER_ARGB: (u8, u8, u8, u8) = (0x30, 0x80, 0x80, 0x80);
-
-/// Menus rendered with Reactor.
-///
-/// Layout geometry (`submenu_gap`, `edge_gap`, auto-hide, depth limit) comes
-/// from [`rcm_core::ui`] and is shared with the Tauri build; only the row
-/// presentation metrics are Reactor-specific.
-pub const METRICS: MenuMetrics = MenuMetrics::for_reactor();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Events

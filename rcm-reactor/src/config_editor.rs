@@ -12,7 +12,7 @@ use windows_reactor::*;
 use rcm_core::files::{DEFAULT_FILE, VALID_FILES};
 use rcm_core::log;
 
-use crate::menu_window::window_theme;
+use crate::visuals;
 
 pub struct ConfigEditor {
     file: String,
@@ -86,7 +86,8 @@ impl Component for ConfigEditor {
         context.window_title("RCM Config Editor");
         context.window_visuals(
             WindowVisuals::new()
-                .theme(window_theme())
+                .theme(visuals::window_theme())
+                .backdrop(visuals::WINDOW_BACKDROP)
                 .client_size(860.0, 620.0),
         );
 

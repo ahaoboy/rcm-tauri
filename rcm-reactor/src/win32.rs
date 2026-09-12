@@ -14,8 +14,8 @@ use windows::Win32::Graphics::Gdi::{
 use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
 use windows::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, GWL_EXSTYLE, GWL_STYLE, GetForegroundWindow, GetWindowLongPtrW,
-    GetWindowThreadProcessId, HWND_TOPMOST, PostMessageW, SET_WINDOW_POS_FLAGS, SW_HIDE,
-    SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOSIZE, SWP_SHOWWINDOW, SetForegroundWindow,
+    GetWindowThreadProcessId, HWND_TOPMOST, PostMessageW, SW_HIDE, SWP_FRAMECHANGED,
+    SWP_HIDEWINDOW, SWP_NOACTIVATE, SWP_NOSIZE, SWP_SHOWWINDOW, SetForegroundWindow,
     SetWindowLongPtrW, SetWindowPos, ShowWindow, WM_CLOSE, WS_CAPTION, WS_EX_APPWINDOW,
     WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP, WS_SYSMENU, WS_THICKFRAME,
 };
@@ -125,20 +125,24 @@ fn default_work_area() -> WorkArea {
     }
 }
 
-/// Make a Reactor window behave like a native popup menu.
+/// Turn a freshly created window into a borderless, hidden popup.
 ///
-/// - removes the caption / resize chrome,
+/// Call this **as early as possible** — ideally the moment the handle is known.
+/// Reactor shows a window as soon as it exists, at the OS default position and
+/// with normal chrome, so every millisecond before this runs is a visible flash
+/// of a misplaced window with a title bar.
+///
+/// - removes the caption / resize chrome and makes it a popup,
 /// - marks it as a tool window (no taskbar / Alt-Tab entry),
-/// - pins it above other windows,
-/// - moves it to the requested physical-pixel position,
-/// - optionally resizes it to the requested physical-pixel size,
-/// - and activates it so keyboard focus and "click outside" work.
+/// - hides it,
+/// - and sets it to `w`×`h` **plus pins it above other windows**.
 ///
-/// Passing `size: None` leaves the window's size to Reactor, which is the
-/// correct owner of it: `WindowVisuals::client_size` is expressed in DIPs and
-/// converted with the real window DPI. Before the content has been measured we
-/// therefore only move the popup and let Reactor size it.
-pub fn configure_popup(raw: *mut core::ffi::c_void, x: i32, y: i32, size: Option<(i32, i32)>) {
+/// The size must be applied *here*, together with the style change. Making the
+/// window a `WS_POPUP` increases its client area by the border it just lost, so
+/// a window left at its pre-chrome outer size would show the content with a
+/// gap along the right and bottom edges. Setting the size in the same
+/// `SetWindowPos` call keeps outer == client == the size the content needs.
+pub fn prepare_popup(raw: *mut core::ffi::c_void, w: i32, h: i32) {
     unsafe {
         let handle = hwnd(raw);
 
@@ -150,22 +154,40 @@ pub fn configure_popup(raw: *mut core::ffi::c_void, x: i32, y: i32, size: Option
         let ex_style = (ex_style & !WS_EX_APPWINDOW.0) | WS_EX_TOOLWINDOW.0 | WS_EX_TOPMOST.0;
         SetWindowLongPtrW(handle, GWL_EXSTYLE, ex_style as isize);
 
-        let (w, h, size_flags) = match size {
-            Some((w, h)) => (w, h, SET_WINDOW_POS_FLAGS(0)),
-            None => (0, 0, SWP_NOSIZE),
-        };
         let _ = SetWindowPos(
             handle,
             Some(HWND_TOPMOST),
-            x,
-            y,
-            w,
-            h,
-            SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE | size_flags,
+            OFF_SCREEN_X,
+            OFF_SCREEN_Y,
+            w.max(1),
+            h.max(1),
+            SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_HIDEWINDOW,
         );
-        force_foreground(raw);
     }
 }
+
+/// Move a prepared popup to `(x, y)` and reveal it.
+///
+/// The size is deliberately not touched: [`prepare_popup`] already made the
+/// window exactly as large as its content, and the framework re-applies the size
+/// when the content is measured.
+pub fn place_popup(raw: *mut core::ffi::c_void, x: i32, y: i32) {
+    unsafe {
+        let _ = SetWindowPos(
+            hwnd(raw),
+            Some(HWND_TOPMOST),
+            x,
+            y,
+            0,
+            0,
+            SWP_SHOWWINDOW | SWP_NOACTIVATE | SWP_NOSIZE,
+        );
+    }
+}
+
+/// Off-screen parking position for a popup that is not shown yet.
+pub const OFF_SCREEN_X: i32 = -32000;
+pub const OFF_SCREEN_Y: i32 = -32000;
 
 /// Force a popup to become the foreground (active) window.
 ///

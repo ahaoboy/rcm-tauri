@@ -208,40 +208,6 @@ impl MenuLevel {
         path.len().saturating_sub(1)
     }
 
-    /// Total height of the level, including popup padding.
-    pub fn height(&self, metrics: &crate::ui::MenuMetrics) -> f64 {
-        metrics.padding * 2.0 + self.ribbon_offset(metrics) + self.rows_height(metrics)
-    }
-
-    /// Summed height of every row (no padding, no ribbon).
-    pub fn rows_height(&self, metrics: &crate::ui::MenuMetrics) -> f64 {
-        self.rows
-            .iter()
-            .map(|row| metrics.row_kind_height(row.is_separator()))
-            .sum()
-    }
-
-    /// Height taken by the ribbon plus its separator (0 when hidden).
-    fn ribbon_offset(&self, metrics: &crate::ui::MenuMetrics) -> f64 {
-        if self.ribbon_visible {
-            metrics.ribbon_height + metrics.separator_height
-        } else {
-            0.0
-        }
-    }
-
-    /// Y offset of row `index` from the top of the popup.
-    ///
-    /// This is what a frontend reports as `item_y` when hovering so the
-    /// controller can align the submenu with the hovered row.
-    pub fn row_offset(&self, index: usize, metrics: &crate::ui::MenuMetrics) -> f64 {
-        let mut offset = metrics.padding + self.ribbon_offset(metrics);
-        for row in self.rows.iter().take(index) {
-            offset += metrics.row_kind_height(row.is_separator());
-        }
-        offset
-    }
-
     /// Whether this level has nothing to show.
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty() && self.ribbon.is_empty()
@@ -257,7 +223,6 @@ impl MenuLevel {
 mod tests {
     use super::*;
     use crate::types::Menu;
-    use crate::ui::MenuMetrics;
 
     fn item(key: &str) -> Item {
         Item {
@@ -352,41 +317,6 @@ mod tests {
             !MenuLevel::flatten(&plain, &[], FlattenOptions::new(true)).icons,
             "icons on but no row has an icon => no dead gutter"
         );
-    }
-
-    #[test]
-    fn height_and_offsets_follow_metrics() {
-        let menu = menu_with_groups(vec![vec![item("a"), item("b")], vec![item("c")]]);
-        let level = MenuLevel::flatten(&menu, &[], FlattenOptions::new(false));
-        let m = MenuMetrics::default();
-
-        // Rows are: [a, b, SEP, c] — 3 items and 1 separator, plus padding.
-        assert_eq!(level.rows.len(), 4);
-        let expected = m.padding * 2.0 + m.row_height * 3.0 + m.separator_height;
-        assert!((level.height(&m) - expected).abs() < f64::EPSILON);
-
-        // First row sits just below the top padding.
-        assert!((level.row_offset(0, &m) - m.padding).abs() < f64::EPSILON);
-        // Second row is one row lower.
-        assert!((level.row_offset(1, &m) - (m.padding + m.row_height)).abs() < f64::EPSILON);
-        // Third row is the separator, right after two rows.
-        let expected_sep = m.padding + m.row_height * 2.0;
-        assert!((level.row_offset(2, &m) - expected_sep).abs() < f64::EPSILON);
-        // Fourth row is past the separator.
-        let expected_last = expected_sep + m.separator_height;
-        assert!((level.row_offset(3, &m) - expected_last).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn ribbon_shifts_rows_down() {
-        let mut menu = menu_with_groups(vec![vec![item("a")]]);
-        menu.icon_items = vec![item("ribbon")];
-        let level = MenuLevel::flatten(&menu, &[], FlattenOptions::new(true));
-        let m = MenuMetrics::default();
-
-        assert!(level.ribbon_visible);
-        let expected = m.padding + m.ribbon_height + m.separator_height;
-        assert!((level.row_offset(0, &m) - expected).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -34,6 +34,14 @@ use crate::menu_host::TauriHost;
 /// focus query can tell "focus moved between our windows" from "focus left".
 const IDLE_POLL_MS: u64 = 80;
 
+/// Number of submenu webviews created up-front and then reused.
+///
+/// Creating a webview is expensive, so a small pool is prepared at startup and
+/// depth `d` (1-based) reuses `submenu-{d-1}`. Anything deeper is created on
+/// demand. Must be at least `MenuMetrics::max_submenu_depth` to avoid a stall on
+/// the first deep nesting.
+const PRE_CREATED_WINDOWS: usize = 3;
+
 /// The process-wide controller.
 ///
 /// Tauri has a single `AppHandle`, so one controller serves the whole process —
@@ -44,7 +52,7 @@ static CONTROLLER: OnceLock<Mutex<MenuController<TauriHost>>> = OnceLock::new();
 pub fn init(app: tauri::AppHandle) {
     let _ = CONTROLLER.set(Mutex::new(MenuController::new(
         TauriHost::new(app),
-        MenuMetrics::for_tauri(),
+        MenuMetrics::DEFAULT,
     )));
 }
 
@@ -85,12 +93,12 @@ impl MenuManager {
 
     /// Ensure the pool of reusable submenu windows exists.
     ///
-    /// The pool is fixed at [`rcm_core::ui::PRE_CREATED_WINDOWS`] because those
-    /// are exactly the labels that can be interned, and every menu depth is
-    /// capped at that count anyway.
+    /// The pool is fixed at [`PRE_CREATED_WINDOWS`] because those are exactly the
+    /// labels that can be interned, and every menu depth is capped at that count
+    /// anyway.
     pub fn pre_create_submenus(&self) {
         let mut host = self.host();
-        for depth in 1..=rcm_core::ui::PRE_CREATED_WINDOWS {
+        for depth in 1..=PRE_CREATED_WINDOWS {
             host.ensure_labeled(label_for_depth(depth));
         }
     }

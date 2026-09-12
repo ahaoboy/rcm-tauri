@@ -17,12 +17,13 @@ use std::sync::Arc;
 
 use windows_reactor::*;
 
+use rcm_core::log;
 use rcm_core::types::{CommandPayload, Item, Menu};
-use rcm_core::ui::{HoverInfo, HoverResult, Measurement, MenuMetrics, MenuRow, MenuShowRequest};
-use rcm_core::{config, log};
+use rcm_core::ui::{HoverInfo, HoverResult, Measurement, MenuLevel, MenuRow, MenuShowRequest};
 
 use crate::events::{MENU_HOVER_ARGB, MENU_TITLE};
-use crate::{exec, menu_runtime};
+use crate::metrics::{MENU_STYLE, MenuStyle, level_height, row_offset};
+use crate::{exec, menu_runtime, visuals, win32};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Input
@@ -55,20 +56,26 @@ impl PartialEq for MenuInput {
 
 pub struct MenuWindow {
     input: MenuInput,
-    metrics: MenuMetrics,
+    /// How this window draws its rows. Owned here, not by `rcm_core`.
+    style: MenuStyle,
     hovered: Option<usize>,
     /// Content size in DIPs once the renderer has reported it.
     measured: Option<(f64, f64, f64)>,
     attach_timer: Option<ComponentTimer>,
     /// Measures the rendered menu so the controller can clamp against it.
     measurer: ElementRef<Grid>,
+    /// Native handle, learned once from `run_window` and reused thereafter.
+    hwnd: isize,
+    /// Whether the controller has been told about this window.
+    attached: bool,
 }
 
 #[derive(Clone)]
 pub enum Message {
-    /// Register the window with the controller and place it at the estimated
-    /// size so it is usable immediately.
+    /// Ask Reactor for the native handle (the only thing `run_window` is for).
     Attach,
+    /// The native handle arrived: register the window and place it.
+    Attached { raw: isize },
     /// The renderer reported the laid-out content size (DIPs) and DPI scale.
     Measured(f64, f64, f64),
     /// Pointer entered row `usize`.
@@ -81,21 +88,11 @@ pub enum Message {
     Execute(CommandPayload),
     /// Close every menu popup.
     CloseAll,
-    /// Does nothing; `run_window` requires a message to be returned.
-    NoOp,
-}
-
-pub(crate) fn window_theme() -> WindowTheme {
-    match config::theme() {
-        config::Theme::System => WindowTheme::System,
-        config::Theme::Light => WindowTheme::Light,
-        config::Theme::Dark => WindowTheme::Dark,
-    }
 }
 
 impl MenuWindow {
     /// The level this window renders.
-    fn level(&self) -> &rcm_core::ui::MenuLevel {
+    fn level(&self) -> &MenuLevel {
         &self.input.request.level
     }
 
@@ -116,8 +113,8 @@ impl MenuWindow {
         match self.measured {
             Some((w, h, _)) if w > 0.0 && h > 0.0 => (w, h),
             _ => (
-                self.metrics.fallback_width,
-                self.level().height(&self.metrics),
+                self.style.fallback_width,
+                level_height(self.level(), &self.style),
             ),
         }
     }
@@ -163,7 +160,19 @@ impl MenuWindow {
 
     /// Physical-pixel offset of row `index` from the top of the content.
     fn item_offset(&self, index: usize) -> i32 {
-        (self.level().row_offset(index, &self.metrics) * self.scale()).round() as i32
+        (row_offset(self.level(), index, &self.style) * self.scale()).round() as i32
+    }
+
+    /// Ask the controller to position this window, and log the outcome.
+    ///
+    /// `reason` identifies which event triggered the placement, so a missing or
+    /// stale placement is visible in the log.
+    fn place(&self, reason: &str) {
+        let depth = self.input.depth();
+        match menu_runtime::place(depth, self.measurement()) {
+            Some(rect) => log::event("Rust::menu", "placed", &format!("{reason} rect={rect}")),
+            None => log::warn("Rust::menu", &format!("{reason} — placement refused")),
+        }
     }
 
     /// Run a command and apply the shared close-after-execute policy.
@@ -180,11 +189,13 @@ impl Component for MenuWindow {
     fn create(input: &Self::Input, context: &ComponentContext<Self>) -> Self {
         let mut window = Self {
             input: input.clone(),
-            metrics: crate::events::METRICS,
+            style: MENU_STYLE,
             hovered: None,
             measured: None,
             attach_timer: None,
             measurer: ElementRef::new(),
+            hwnd: 0,
+            attached: false,
         };
         // The timer keeps itself alive until it fires; dropping it cancels it.
         window.attach_timer = context
@@ -196,21 +207,44 @@ impl Component for MenuWindow {
     fn update(&mut self, message: Message, context: &ComponentContext<Self>) {
         match message {
             Message::Attach => {
-                let depth = self.input.depth();
-                // A measurement may already have arrived (it fires on the first
-                // layout, which can beat this timer). `measurement()` prefers it,
-                // so this places with the real size when present and the estimate
-                // otherwise.
-                let measurement = self.measurement();
-                let scale = self.scale();
+                // `run_window` is used for exactly one thing: learning the
+                // native handle. Reactor accepts at most one pending window
+                // operation at a time, so issuing a second one for placement
+                // could be silently discarded — that is what left windows
+                // unconfigured (title bar visible, stuck at the origin). Once
+                // the handle is known, everything else is a plain call.
+                //
+                // The window is prepared *inside* this closure, because Reactor
+                // shows a window as soon as it exists: stripping the chrome and
+                // hiding it any later leaves a brief flash of a normal window at
+                // the OS default position.
+                let size = self.measurement().window;
                 let _ = context.run_window(move |handle| {
                     let raw = handle.as_raw() as isize;
-                    if menu_runtime::adopt(depth, raw, scale) {
-                        menu_runtime::place(depth, measurement);
-                    }
-                    Message::NoOp
+                    menu_runtime::prepare_popup(raw, size);
+                    Message::Attached { raw }
                 });
                 self.attach_timer = None;
+            }
+            Message::Attached { raw } => {
+                self.hwnd = raw;
+                let depth = self.input.depth();
+
+                if !menu_runtime::adopt(depth, raw, self.scale()) {
+                    // The level was dismissed while this window was being
+                    // created. Close it: Reactor shows windows as soon as they
+                    // exist, so an unregistered one would linger on screen with
+                    // a normal title bar, at the OS default position.
+                    log::warn(
+                        "Rust::menu",
+                        &format!("depth={depth} adopt rejected — closing orphan window"),
+                    );
+                    win32::post_close(raw as *mut core::ffi::c_void);
+                    return;
+                }
+
+                self.attached = true;
+                self.place(&format!("depth={} attached", self.input.depth()));
             }
             Message::Measured(width, height, scale) => {
                 // Only the first measurement is used. Applying it changes the
@@ -232,14 +266,12 @@ impl Component for MenuWindow {
                 );
                 self.measured = Some((width, height, scale));
 
-                // `view` now publishes the measured `client_size`, so the window
-                // resizes on commit; the controller re-clamps with the new size.
-                let depth = self.input.depth();
-                let measurement = self.measurement();
-                let _ = context.run_window(move |_| {
-                    menu_runtime::place(depth, measurement);
-                    Message::NoOp
-                });
+                // `view` publishes the measured `client_size`, so the window
+                // resizes on this commit; re-clamp with the real size. If the
+                // handle has not arrived yet, `Attached` will place instead.
+                if self.attached {
+                    self.place(&format!("depth={} measured", self.input.depth()));
+                }
             }
             Message::Hover(index) => {
                 if self.hovered == Some(index) {
@@ -280,7 +312,6 @@ impl Component for MenuWindow {
             Message::CloseAll => {
                 menu_runtime::hide_all();
             }
-            Message::NoOp => {}
         }
     }
 
@@ -317,7 +348,8 @@ impl Component for MenuWindow {
         context.window_title(MENU_TITLE);
         context.window_visuals(
             WindowVisuals::new()
-                .theme(window_theme())
+                .theme(visuals::window_theme())
+                .backdrop(visuals::WINDOW_BACKDROP)
                 .client_size(dip_w, dip_h),
         );
 
@@ -352,7 +384,7 @@ impl Component for MenuWindow {
             ));
             children.push(KeyedView::new(
                 "ribbon-sep",
-                separator_view(self.metrics.separator_height),
+                separator_view(self.style.separator_height),
             ));
         }
 
@@ -361,7 +393,7 @@ impl Component for MenuWindow {
             match row {
                 MenuRow::Separator => children.push(KeyedView::new(
                     format!("sep-{index}"),
-                    separator_view(self.metrics.separator_height),
+                    separator_view(self.style.separator_height),
                 )),
                 MenuRow::Item { item, .. } => {
                     let key = if item.key.is_empty() {
@@ -381,16 +413,16 @@ impl Component for MenuWindow {
             .element_ref(&self.measurer)
             .horizontal_alignment(HorizontalAlignment::Left)
             .vertical_alignment(VerticalAlignment::Top)
-            .min_width(self.metrics.min_width)
-            .max_width(self.metrics.max_width)
+            .min_width(self.style.min_width)
+            .max_width(self.style.max_width)
             .keyed_children([KeyedView::new(
                 "body",
                 Border::new()
                     .background(ThemeBrush::CardBackground)
                     .border_brush(ThemeBrush::CardStroke)
                     .border_thickness(1.0)
-                    .corner_radius(self.metrics.corner_radius)
-                    .padding(self.metrics.padding)
+                    .corner_radius(self.style.corner_radius)
+                    .padding(self.style.padding)
                     .is_tab_stop(true)
                     .allow_focus_on_interaction(true)
                     .on_preview_key_down(context.routed_callback(|event: KeyEventInfo| {
@@ -434,7 +466,7 @@ impl MenuWindow {
         let grid = if self.level().icons {
             Grid::new()
                 .columns([
-                    GridLength::Pixel(self.metrics.icon_width),
+                    GridLength::Pixel(self.style.icon_width),
                     GridLength::Auto,
                     GridLength::Star(1.0),
                     GridLength::Auto,
@@ -465,12 +497,12 @@ impl MenuWindow {
             Brush::Solid(Color::transparent())
         };
 
-        let (pad_left, pad_right) = self.metrics.row_padding;
+        let (pad_left, pad_right) = self.style.row_padding;
         let mut row = Border::new()
             .background(background)
-            .corner_radius(self.metrics.row_corner_radius)
+            .corner_radius(self.style.row_corner_radius)
             .padding(Thickness::new(pad_left, 0.0, pad_right, 0.0))
-            .height(self.metrics.row_height);
+            .height(self.style.row_height);
 
         if item.disable {
             row = row.opacity(0.45);
@@ -493,7 +525,7 @@ impl MenuWindow {
     /// stretching the menu past `max_width` (which would also make the popup
     /// wider than the region the position clamp assumes).
     fn label_view(&self, label: String) -> TextBlock {
-        let m = &self.metrics;
+        let m = &self.style;
         let reserve = m.icon_width + m.padding * 2.0 + 40.0;
         TextBlock::new()
             .text(label)

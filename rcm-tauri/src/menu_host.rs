@@ -22,11 +22,17 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 use crate::events::{OFF_SCREEN, ROOT_LABEL, label_for_depth, menu_show_payload};
 
+/// Upper bound on the number of interned `submenu-N` labels.
+///
+/// Label-addressed frontends need `&'static str` identities, so the pool is
+/// fixed and spelled out below; this is the array size it can index into.
+const MAX_SUBMENU_LABELS: usize = 8;
+
 /// Interned `submenu-N` labels.
 ///
 /// Label-addressed frontends need `&'static str` identities, so the pool is
 /// fixed and small.
-const SUBMENU_LABELS: [&str; rcm_core::ui::MAX_PRE_CREATED_SUBMENUS] = [
+const SUBMENU_LABELS: [&str; MAX_SUBMENU_LABELS] = [
     "submenu-0",
     "submenu-1",
     "submenu-2",
@@ -148,6 +154,13 @@ impl MenuHost for TauriHost {
     /// Tauri windows are reused, so closing means hiding and parking off-screen.
     fn close_window(&mut self, window: Self::Window) {
         self.hide_window(window);
+    }
+
+    fn focus_window(&mut self, window: Self::Window) {
+        if let Some(win) = self.window(window) {
+            let _ = win.set_always_on_top(true);
+            let _ = win.set_focus();
+        }
     }
 
     fn is_window_focused(&self, window: Self::Window) -> bool {

@@ -4,7 +4,7 @@
 //! laid out, independent of the UI toolkit used to draw it:
 //!
 //! - [`geometry`] — screen-space points, sizes and rectangles in physical pixels.
-//! - [`metrics`] — the tunable row/padding/gap dimensions.
+//! - [`metrics`] — the few layout numbers every frontend must agree on.
 //! - [`level`] — flattens an [`rcm_core::Menu`] subtree into renderable rows.
 //! - [`position`] — the clamp/flip position algorithm shared by every frontend.
 //! - [`state`] — open-window registry, deepest depth, auto-hide and blur debounce.
@@ -18,8 +18,10 @@
 //! `rcm-ui/utils/layout.ts`. The algorithms here are direct ports of those, so
 //! the Reactor build and the Tauri build place menus identically.
 //!
-//! Only *presentation* metrics (row heights, padding, colours) differ per
-//! toolkit; see [`MenuMetrics`].
+//! Nothing here describes how a menu *looks*. A level's window size reaches the
+//! controller as a [`Measurement`] from the host, and the rows reach it as a
+//! [`MenuLevel`] — both without any notion of row heights or padding. Each
+//! frontend owns its own presentation values.
 
 pub mod blocking;
 pub mod controller;
@@ -38,6 +40,6 @@ pub use controller::{HoverInfo, HoverResult, MenuController, MenuShowRequest};
 pub use geometry::{Point, Rect, Size};
 pub use host::{Measurement, MenuHost, MenuWindowInput};
 pub use level::{FlattenOptions, MenuLevel, MenuRow};
-pub use metrics::{MAX_PRE_CREATED_SUBMENUS, MenuMetrics, PRE_CREATED_WINDOWS};
+pub use metrics::MenuMetrics;
 pub use position::{PositionInfo, choose_monitor_for_point, compute_window_position};
 pub use state::MenuState;

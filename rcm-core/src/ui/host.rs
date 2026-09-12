@@ -27,6 +27,7 @@
 //! | Hover, blur, auto-hide policy | `rcm_core::ui` |
 //! | Drawing the level | frontend |
 //! | Measuring the drawn content | frontend |
+//! | How tall a row is | frontend |
 //! | Moving/resizing/focusing a native window | frontend |
 //!
 //! No method may block on the UI thread.
@@ -157,6 +158,19 @@ pub trait MenuHost {
     /// Destroy `window`.
     fn close_window(&mut self, window: Self::Window);
 
+    /// Give `window` the focus back, without moving or resizing it.
+    ///
+    /// Needed because closing the currently focused window makes the OS pick a
+    /// new foreground window, which may not be one of ours. When a submenu closes
+    /// the level it returned to must regain focus, otherwise the menu looks like
+    /// it lost focus and dismisses itself — the symptom is the menu vanishing
+    /// while the pointer is still on it.
+    ///
+    /// A host that cannot focus a window may leave this as a no-op, but then
+    /// [`Self::is_window_focused`] must not report a focus loss caused by one of
+    /// our own windows closing.
+    fn focus_window(&mut self, window: Self::Window);
+
     /// Whether `window` currently holds focus.
     ///
     /// Used for the click-away dismiss. Defaults to `true` so a host that cannot
@@ -171,5 +185,20 @@ pub trait MenuHost {
     /// Physical pixels per DIP for `window`.
     fn scale_factor(&self, _window: Self::Window) -> f64 {
         1.0
+    }
+
+    /// Where row `index` of `level` sits below the top of the level's content,
+    /// in DIPs.
+    ///
+    /// Only needed as a fallback for a hover that arrives without a measured
+    /// offset. The default returns `None`, and the controller then aligns a
+    /// submenu with the *top* of its parent's content instead of the hovered
+    /// row — visually correct, just less precise, and it only lasts until the
+    /// frontend reports its first measurement.
+    ///
+    /// A host that renders rows at fixed heights should answer properly, because
+    /// only it knows how tall its rows are.
+    fn row_offset(&self, _level: &MenuLevel, _index: usize) -> Option<f64> {
+        None
     }
 }
