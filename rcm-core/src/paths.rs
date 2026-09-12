@@ -15,13 +15,34 @@ struct Folder {
 }
 
 const FOLDERS: &[Folder] = &[
-    Folder { key: "HOME", get: dirs::home_dir },
-    Folder { key: "DESKTOP", get: dirs::desktop_dir },
-    Folder { key: "DOCUMENTS", get: dirs::document_dir },
-    Folder { key: "DOWNLOADS", get: dirs::download_dir },
-    Folder { key: "PICTURES", get: dirs::picture_dir },
-    Folder { key: "MUSIC", get: dirs::audio_dir },
-    Folder { key: "VIDEOS", get: dirs::video_dir },
+    Folder {
+        key: "HOME",
+        get: dirs::home_dir,
+    },
+    Folder {
+        key: "DESKTOP",
+        get: dirs::desktop_dir,
+    },
+    Folder {
+        key: "DOCUMENTS",
+        get: dirs::document_dir,
+    },
+    Folder {
+        key: "DOWNLOADS",
+        get: dirs::download_dir,
+    },
+    Folder {
+        key: "PICTURES",
+        get: dirs::picture_dir,
+    },
+    Folder {
+        key: "MUSIC",
+        get: dirs::audio_dir,
+    },
+    Folder {
+        key: "VIDEOS",
+        get: dirs::video_dir,
+    },
 ];
 
 /// Build the map of common user locations for `props.env`.
@@ -37,4 +58,3 @@ pub fn common() -> HashMap<String, String> {
     }
     out
 }
-

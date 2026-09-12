@@ -1,5 +1,5 @@
 [workspace]
-members = ["rcm-tauri", "rcm-core", "rcm-vm"]
+members = ["rcm-tauri", "rcm-core", "rcm-vm", "rcm-reactor"]
 resolver = "2"
 
 [profile.release]
@@ -80,3 +80,10 @@ rquickjs = { default-features = false, version = "0.12" }
 llrt_modules = { git = "https://github.com/awslabs/llrt", version = "0.9.0-beta" }
 rcm-core = { path = "./rcm-core", version = "0.1" }
 rcm-vm = { path = "./rcm-vm", version = "0.1" }
+
+# ── Declarative Windows UI (WinUI 3) ───────────────────────────────────
+windows-reactor = { path = "../windows-rs/crates/libs/reactor" }
+# windows-reactor = "0.100"
+
+# ── System tray (cross-platform) ───────────────────────────────────────
+tray-icon = "0.25"

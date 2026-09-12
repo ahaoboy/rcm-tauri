@@ -1,114 +1,51 @@
-use rcm_core::registry;
+//! System-tray integration.
+//!
+//! Builds the native tray menu and keeps its checkmarks in sync. All *system*
+//! behaviour lives in [`rcm_core::actions`], shared with the Reactor build, so
+//! this module is only the Tauri presentation: which item to tick, and which
+//! event to emit to the frontend.
+
+use rcm_core::actions::{self, ids, text};
 use rcm_core::{config, log};
 use rcm_reg::MenuStyle;
-use std::time::Duration;
 use tauri::{
     App, Emitter,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::TrayIconBuilder,
 };
 
-// ── Menu item IDs ────────────────────────────────────────────────────────
-
-/// Switch to Windows 11 compact context menu style (CheckMenuItem).
-pub const WIN11_STYLE_ID: &str = "style_win11";
-/// Switch to classic Windows 10 context menu style (CheckMenuItem).
-pub const CLASSIC_STYLE_ID: &str = "style_classic";
-/// Restart Windows Explorer to apply registry changes (MenuItem).
-pub const APPLY_ID: &str = "apply";
-/// Register the shell extension DLL (MenuItem).
-pub const REGISTER_ID: &str = "register";
-/// Unregister the shell extension DLL (MenuItem).
-pub const UNREGISTER_ID: &str = "unregister";
-/// Enable menu blocking — hide the native context menu (CheckMenuItem).
-pub const ENABLE_ID: &str = "enable";
-/// Disable menu blocking — show the native context menu (CheckMenuItem).
-pub const DISABLE_ID: &str = "disable";
-/// Toggle dev mode — when on, the menu window stays open on focus loss (CheckMenuItem).
-pub const DEV_ID: &str = "dev";
-/// Toggle icon ribbon visibility (CheckMenuItem).
-pub const ICONS_ID: &str = "icons";
-/// Menu theme: system / light / dark (CheckMenuItem).
-pub const THEME_SYSTEM_ID: &str = "theme_system";
-pub const THEME_LIGHT_ID: &str = "theme_light";
-pub const THEME_DARK_ID: &str = "theme_dark";
-/// Toggle autostart — when on, the app launches at Windows startup (CheckMenuItem).
-pub const AUTOSTART_ID: &str = "autostart";
-/// Reset all config and menu files to embedded defaults (MenuItem).
-pub const RESET_ID: &str = "reset";
-/// Exit the application (MenuItem).
-pub const QUIT_ID: &str = "quit";
-/// Open the config editor window (MenuItem).
-pub const CONFIG_ID: &str = "config";
-/// Download the latest files from configured remote URLs (Pull submenu).
-pub const PULL_ID: &str = "pull";
-pub const PULL_JS_ID: &str = "pull_js";
-pub const PULL_CSS_ID: &str = "pull_css";
-pub const PULL_CONFIG_ID: &str = "pull_config";
-
-// ── Label constants ──────────────────────────────────────────────────────
-
-pub const QUIT_TEXT: &str = "Quit";
-pub const WIN11_TEXT: &str = "Win11";
-pub const CLASSIC_TEXT: &str = "Classic";
-pub const REGISTER_TEXT: &str = "Register";
-pub const UNREGISTER_TEXT: &str = "Unregister";
-pub const ENABLE_TEXT: &str = "Enable";
-pub const DISABLE_TEXT: &str = "Disable";
-pub const DEV_TEXT: &str = "Dev";
-pub const ICONS_TEXT: &str = "Icons";
-pub const AUTOSTART_TEXT: &str = "Startup";
-pub const RESET_TEXT: &str = "Reset";
-pub const APPLY_TEXT: &str = "Apply";
-pub const PULL_TEXT: &str = "Pull";
-pub const PULL_JS_TEXT: &str = "JS";
-pub const PULL_CSS_TEXT: &str = "CSS";
-pub const PULL_CONFIG_TEXT: &str = "Config";
-pub const CONFIG_TEXT: &str = "Config";
-pub const THEME_SYSTEM_TEXT: &str = "System";
-pub const THEME_LIGHT_TEXT: &str = "Light";
-pub const THEME_DARK_TEXT: &str = "Dark";
-
-fn is_win11() -> bool {
-    MenuStyle::current() == MenuStyle::Windows11
-}
-
-fn register_status() -> bool {
-    rcm_com::cmd::status()
-        .map(|s| s.is_valid())
-        .unwrap_or(false)
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Checkmark helpers
+// ═══════════════════════════════════════════════════════════════════════════
 
 fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &CheckMenuItem<R>) {
-    let win11_active = is_win11();
+    let win11_active = actions::is_win11();
     let _ = win11.set_checked(win11_active);
     let _ = classic.set_checked(!win11_active);
 }
+
+fn sync_blocking_checks<R: tauri::Runtime>(enable: &CheckMenuItem<R>, disable: &CheckMenuItem<R>) {
+    let enabled = rcm_core::ui::is_blocking_enabled();
+    let _ = enable.set_checked(enabled);
+    let _ = disable.set_checked(!enabled);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Event handlers
+// ═══════════════════════════════════════════════════════════════════════════
 
 fn handle_style_switch<R: tauri::Runtime>(
     style: MenuStyle,
     win11: &CheckMenuItem<R>,
     classic: &CheckMenuItem<R>,
 ) {
-    if let Err(e) = style.set() {
-        log::error("Tray", &format!("set {style:?} style failed: {e}"));
+    if actions::set_style(style).is_ok() {
+        sync_style_checks(win11, classic);
     }
-    sync_style_checks(win11, classic);
 }
 
 fn handle_register_toggle<R: tauri::Runtime>(register: bool, item: &CheckMenuItem<R>) {
-    if register {
-        let _ = rcm_com::cmd::register();
-    } else {
-        let _ = rcm_com::cmd::unregister();
-    }
-    let _ = item.set_checked(register_status());
-}
-
-fn sync_blocking_checks<R: tauri::Runtime>(enable: &CheckMenuItem<R>, disable: &CheckMenuItem<R>) {
-    let enabled = crate::is_blocking_enabled();
-    let _ = enable.set_checked(enabled);
-    let _ = disable.set_checked(!enabled);
+    let _ = item.set_checked(actions::set_registered(register));
 }
 
 fn handle_blocking_toggle<R: tauri::Runtime>(
@@ -116,143 +53,78 @@ fn handle_blocking_toggle<R: tauri::Runtime>(
     enable_i: &CheckMenuItem<R>,
     disable_i: &CheckMenuItem<R>,
 ) {
-    let result = if enable {
-        rcm_com::enable().map(|_| "Menu blocking ENABLED — native context menu will be hidden.")
-    } else {
-        rcm_com::disable().map(|_| "Menu blocking DISABLED — native context menu will be shown.")
-    };
-    match result {
-        Ok(msg) => {
-            sync_blocking_checks(enable_i, disable_i);
-            log::info("Tray", msg);
-        }
-        Err(e) => log::error("Tray", &format!("toggle menu blocking failed: {e}")),
+    if actions::set_blocking(enable).is_ok() {
+        sync_blocking_checks(enable_i, disable_i);
     }
 }
 
 fn handle_icons_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
-    let val = !config::is_icons();
-    config::set_icons(val);
-    let _ = item.set_checked(val);
-    let _ = app.emit("icons-changed", val);
+    let value = actions::toggle_icons();
+    let _ = item.set_checked(value);
+    let _ = app.emit("icons-changed", value);
 }
 
 fn handle_dev_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
-    let val = !config::is_dev();
-    config::set_dev(val);
-    let _ = item.set_checked(val);
-    let _ = app.emit("dev-mode", val);
+    let value = actions::toggle_dev();
+    let _ = item.set_checked(value);
+    let _ = app.emit("dev-mode", value);
 }
 
 fn handle_autostart_toggle<R: tauri::Runtime>(item: &CheckMenuItem<R>) {
-    let (ok, enabled) = if registry::is_autostart_enabled() {
-        (registry::disable_autostart().is_ok(), false)
-    } else {
-        (registry::enable_autostart().is_ok(), true)
-    };
-    if ok {
-        let _ = item.set_checked(enabled);
-        log::info(
-            "Tray",
-            if enabled {
-                "autostart enabled"
-            } else {
-                "autostart disabled"
-            },
-        );
-    } else {
-        log::error(
-            "Tray",
-            if enabled {
-                "enable autostart failed"
-            } else {
-                "disable autostart failed"
-            },
-        );
-    }
-}
-
-fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
-    let (label, result) = match file {
-        "js" => (
-            "rcm.js",
-            rcm_core::config::remote_js_url()
-                .ok_or_else(|| "No remote URL configured for rcm.js".to_string())
-                .and_then(|url| {
-                    log::info("Pull", &format!("pulling rcm.js from {url}"));
-                    rcm_core::menu::download_menu(&url)
-                }),
-        ),
-        "css" => (
-            "style.css",
-            rcm_core::config::remote_css_url()
-                .ok_or_else(|| "No remote URL configured for style.css".to_string())
-                .and_then(|url| {
-                    log::info("Pull", &format!("pulling style.css from {url}"));
-                    rcm_core::menu::download_style(&url)
-                }),
-        ),
-        "config" => (
-            "rcm.config.json",
-            rcm_core::config::remote_config_url()
-                .ok_or_else(|| "No remote URL configured for rcm.config.json".to_string())
-                .and_then(|url| {
-                    log::info("Pull", &format!("pulling rcm.config.json from {url}"));
-                    rcm_core::menu::download_config(&url)
-                }),
-        ),
-        _ => {
-            log::error("Pull", &format!("unknown file: {file}"));
-            return;
-        }
-    };
-
-    match result {
-        Ok(path) => {
-            log::info("Pull", &format!("{label} saved to {path}"));
-            // Broadcast updated CSS to all open menu windows
-            if file == "css"
-                && let Ok(css) = std::fs::read_to_string(&path)
-            {
-                let _ = app.emit("style-changed", css);
-            }
-        }
-        Err(e) => {
-            log::error("Pull", &format!("{label} failed: {e}"));
-            let _ = crate::show_error_window(app, &format!("Pull {label} Failed"), &e);
-        }
-    }
-}
-
-fn handle_apply() {
-    if let Err(e) = rcm_reg::restart_explorer(Duration::from_secs(3)) {
-        log::error("Tray", &format!("restart Explorer failed: {e}"));
+    if let Ok(value) = actions::toggle_autostart() {
+        let _ = item.set_checked(value);
     }
 }
 
 fn handle_theme<R: tauri::Runtime>(
-    theme: rcm_core::config::Theme,
+    theme: config::Theme,
     app: &tauri::AppHandle<R>,
     sys: &CheckMenuItem<R>,
     light: &CheckMenuItem<R>,
     dark: &CheckMenuItem<R>,
 ) {
-    config::set_theme(theme);
-    let _ = sys.set_checked(theme == rcm_core::config::Theme::System);
-    let _ = light.set_checked(theme == rcm_core::config::Theme::Light);
-    let _ = dark.set_checked(theme == rcm_core::config::Theme::Dark);
+    let theme = actions::set_theme(theme);
+    let _ = sys.set_checked(theme == config::Theme::System);
+    let _ = light.set_checked(theme == config::Theme::Light);
+    let _ = dark.set_checked(theme == config::Theme::Dark);
     let _ = app.emit("theme-changed", theme.as_str());
 }
 
+fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
+    let Some(file) = actions::PullFile::parse(file) else {
+        log::error("Tray", &format!("unknown pull target: {file}"));
+        return;
+    };
+
+    match actions::pull(file) {
+        Ok(outcome) => {
+            // The frontend styles itself from CSS, so broadcast the new sheet.
+            if let Some(css) = outcome.style_css() {
+                let _ = app.emit("style-changed", css);
+            }
+        }
+        Err(e) => {
+            let _ = crate::show_error_window(app, &format!("Pull {} Failed", file.file_name()), &e);
+        }
+    }
+}
+
+fn handle_apply() {
+    let _ = actions::apply();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Tray setup
+// ═══════════════════════════════════════════════════════════════════════════
+
 pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Create menu items ────────────────────────────────────────────
-
     let win11_i = CheckMenuItem::with_id(
         app,
         WIN11_STYLE_ID,
         WIN11_TEXT,
         true,
-        is_win11(),
+        actions::is_win11(),
         None::<&str>,
     )?;
     let classic_i = CheckMenuItem::with_id(
@@ -260,7 +132,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         CLASSIC_STYLE_ID,
         CLASSIC_TEXT,
         true,
-        !is_win11(),
+        !actions::is_win11(),
         None::<&str>,
     )?;
     let register_i = CheckMenuItem::with_id(
@@ -268,32 +140,23 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         REGISTER_ID,
         REGISTER_TEXT,
         true,
-        register_status(),
+        actions::register_status(),
         None::<&str>,
     )?;
     let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
-    let enable_i = CheckMenuItem::with_id(
-        app,
-        ENABLE_ID,
-        ENABLE_TEXT,
-        true,
-        crate::is_blocking_enabled(),
-        None::<&str>,
-    )?;
-    let disable_i = CheckMenuItem::with_id(
-        app,
-        DISABLE_ID,
-        DISABLE_TEXT,
-        true,
-        !crate::is_blocking_enabled(),
-        None::<&str>,
-    )?;
+
+    let blocking = rcm_core::ui::is_blocking_enabled();
+    let enable_i =
+        CheckMenuItem::with_id(app, ENABLE_ID, ENABLE_TEXT, true, blocking, None::<&str>)?;
+    let disable_i =
+        CheckMenuItem::with_id(app, DISABLE_ID, DISABLE_TEXT, true, !blocking, None::<&str>)?;
+
     let theme_sys_i = CheckMenuItem::with_id(
         app,
         THEME_SYSTEM_ID,
         THEME_SYSTEM_TEXT,
         true,
-        config::theme() == rcm_core::config::Theme::System,
+        config::theme() == config::Theme::System,
         None::<&str>,
     )?;
     let theme_light_i = CheckMenuItem::with_id(
@@ -301,7 +164,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         THEME_LIGHT_ID,
         THEME_LIGHT_TEXT,
         true,
-        config::theme() == rcm_core::config::Theme::Light,
+        config::theme() == config::Theme::Light,
         None::<&str>,
     )?;
     let theme_dark_i = CheckMenuItem::with_id(
@@ -309,7 +172,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         THEME_DARK_ID,
         THEME_DARK_TEXT,
         true,
-        config::theme() == rcm_core::config::Theme::Dark,
+        config::theme() == config::Theme::Dark,
         None::<&str>,
     )?;
     let icons_i = CheckMenuItem::with_id(
@@ -327,7 +190,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         AUTOSTART_ID,
         AUTOSTART_TEXT,
         true,
-        registry::is_autostart_enabled(),
+        rcm_core::registry::is_autostart_enabled(),
         None::<&str>,
     )?;
     let pull_js_i = MenuItem::with_id(app, PULL_JS_ID, PULL_JS_TEXT, true, None::<&str>)?;
@@ -339,8 +202,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
 
-    // ── Clones for event handler ─────────────────────────────────────
-
+    // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
     let classic_clone = classic_i.clone();
     let register_clone = register_i.clone();
@@ -353,7 +215,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let theme_light_clone = theme_light_i.clone();
     let theme_dark_clone = theme_dark_i.clone();
 
-    // ── Build menu (3 groups) ────────────────────────────────────────
+    // ── Build the menu (3 groups) ────────────────────────────────────
     //
     //   ✓ Win11 / Classic          ← Style
     //   ─────────
@@ -361,29 +223,21 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Icons  (debug)
     //   ✓ Dev    (debug)
     //   ✓ Auto Start
+    //   Theme ▸
     //   ─────────
-    //   Pull ▾                       ← Pull submenu (conditional)
-    //     ─────
-    //     Pull JS / Pull CSS / Pull Config
-    //     Reset / Apply / Quit
+    //   Pull ▸                       ← only when a remote URL is configured
+    //     Config / Reset / Apply / Quit
 
     let is_debug = cfg!(debug_assertions);
-    let has_remote = rcm_core::config::remote_js_url().is_some()
-        || rcm_core::config::remote_css_url().is_some()
-        || rcm_core::config::remote_config_url().is_some();
+    let separator_prefs = PredefinedMenuItem::separator(app)?;
+    let separator_system = PredefinedMenuItem::separator(app)?;
 
-    let _sep_prefs = PredefinedMenuItem::separator(app)?;
-    let _sep_sys = PredefinedMenuItem::separator(app)?;
-
-    // Theme submenu
     let theme_menu = Submenu::with_items(
         app,
-        "Theme",
+        text::THEME,
         true,
         &[&theme_sys_i, &theme_light_i, &theme_dark_i],
     )?;
-
-    // Pull submenu
     let pull_menu = Submenu::with_items(
         app,
         PULL_TEXT,
@@ -391,12 +245,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         &[&pull_js_i, &pull_css_i, &pull_config_i],
     )?;
 
-    // Group 1: Style
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
         &win11_i,
         &classic_i,
-        // Group 2: Preferences
-        &_sep_prefs,
+        &separator_prefs,
         &register_i,
         &unregister_i,
         &enable_i,
@@ -410,9 +262,8 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     items.push(&autostart_i);
     items.push(&theme_menu);
 
-    // Group 3: System
-    items.push(&_sep_sys);
-    if has_remote {
+    items.push(&separator_system);
+    if actions::has_remote() {
         items.push(&pull_menu);
     }
     items.push(&config_i);
@@ -422,7 +273,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
     let menu = Menu::with_items(app, &items)?;
 
-    // ── Build tray ──────────────────────────────────────────────────
+    // ── Build the tray ───────────────────────────────────────────────
 
     let _tray = TrayIconBuilder::new()
         .tooltip("rcm-tauri")
@@ -431,9 +282,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
             QUIT_ID => {
-                if let Err(e) = rcm_com::disable() {
-                    log::error("Shutdown", &format!("rcm_com::disable failed: {e}"));
-                }
+                let _ = actions::shutdown();
                 app.exit(0);
             }
             WIN11_STYLE_ID => {
@@ -450,21 +299,21 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             DEV_ID => handle_dev_toggle(app, &dev_clone),
             AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
             THEME_SYSTEM_ID => handle_theme(
-                rcm_core::config::Theme::System,
+                config::Theme::System,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
                 &theme_dark_clone,
             ),
             THEME_LIGHT_ID => handle_theme(
-                rcm_core::config::Theme::Light,
+                config::Theme::Light,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
                 &theme_dark_clone,
             ),
             THEME_DARK_ID => handle_theme(
-                rcm_core::config::Theme::Dark,
+                config::Theme::Dark,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
@@ -480,10 +329,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                     let _ = crate::create_config_window(app_handle).await;
                 });
             }
-            RESET_ID => {
-                config::reset();
-                crate::write_style_defaults();
-            }
+            RESET_ID => actions::reset(),
             _ => {}
         })
         .build(app)?;

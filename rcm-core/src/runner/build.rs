@@ -50,8 +50,8 @@ fn expand_path(value: &str, upper: &HashMap<String, String>) -> String {
 /// - User `PATH` is appended after the system `PATH`.
 /// - `%VAR%` references in values are expanded using the collected map.
 fn get_fresh_windows_envs() -> HashMap<String, String> {
-    use winreg::enums::*;
     use winreg::RegKey;
+    use winreg::enums::*;
 
     let mut envs: HashMap<String, String> = HashMap::new();
 
@@ -121,9 +121,7 @@ fn apply_fresh_env(command: &mut Command) {
     }
 
     // Compare case-insensitively (Windows env names are case-insensitive).
-    let existing: Vec<String> = std::env::vars()
-        .map(|(k, _)| k.to_uppercase())
-        .collect();
+    let existing: Vec<String> = std::env::vars().map(|(k, _)| k.to_uppercase()).collect();
 
     for (key, val) in fresh {
         let upper = key.to_uppercase();

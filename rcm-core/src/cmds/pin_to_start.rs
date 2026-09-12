@@ -67,10 +67,7 @@ pub fn run_unpin(cmd: &CommandPayload) -> SystemCmdResult {
         }
     };
 
-    crate::log::info(
-        "Rust::unpin_from_start",
-        &format!("unpinning '{path}'"),
-    );
+    crate::log::info("Rust::unpin_from_start", &format!("unpinning '{path}'"));
 
     match startmenu::remove(Path::new(path)) {
         Ok(removed) if removed.is_empty() => {
@@ -86,7 +83,11 @@ pub fn run_unpin(cmd: &CommandPayload) -> SystemCmdResult {
                 success: true,
                 message: format!(
                     "Unpinned from Start: {}",
-                    removed.iter().map(|p| p.display().to_string()).collect::<Vec<_>>().join(", ")
+                    removed
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
                 ),
             }
         }

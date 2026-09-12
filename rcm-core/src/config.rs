@@ -265,6 +265,26 @@ pub fn filters() -> Vec<FilterRule> {
     read_config().filters.unwrap_or_else(default_filters)
 }
 
+/// Why a context-menu event should be ignored, or `None` to handle it.
+///
+/// Returns a human-readable reason so the caller can log it. Both frontends'
+/// event monitors call this so the filtering behaviour cannot diverge.
+pub fn ignore_reason(event: &rcm_com::ContextMenuInfo) -> Option<String> {
+    for rule in filters() {
+        if rule.matches(event) {
+            return Some(if rule.reason.is_empty() {
+                format!(
+                    "class_re={:?} file_eq={:?} flags_eq={:?}",
+                    rule.class, rule.file, rule.flags
+                )
+            } else {
+                format!("{} (hwnd={})", rule.reason, event.hwnd)
+            });
+        }
+    }
+    None
+}
+
 pub fn theme() -> Theme {
     read_config().theme
 }

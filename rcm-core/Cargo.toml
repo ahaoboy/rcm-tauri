@@ -19,6 +19,7 @@ regex = { workspace = true }
 cmdexpand = { workspace = true }
 dirs = { workspace = true }
 rcm-com = { workspace = true }
+rcm-reg = { workspace = true }
 easy-archive = { workspace = true }
 tokio = { workspace = true, features = ["process"] }
 ureq = { workspace = true }

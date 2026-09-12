@@ -2,12 +2,11 @@
  * SubmenuApp — renders a single level of submenu items in its own window.
  *
  * Windows are pre-created by Rust, labeled `submenu-0` … `submenu-3`.
- * Each window receives `menu-show` events from Rust with the full menu
- * data and an index path telling it which submenu to render.
+ * Each window receives `menu-show` events from Rust with the full menu data and
+ * an index path telling it which submenu to render.
  *
- * All hover/click coordination happens through Rust via events.
- * Positioning is handled by the frontend: ContextMenu measures the DOM
- * and computes the final window position.
+ * Positioning is owned by Rust: this component measures the rendered level and
+ * reports the size, and Rust clamps/flips, resizes, moves and reveals the window.
  */
 
 import { useEffect } from "react"
@@ -23,7 +22,7 @@ export function SubmenuApp() {
   const myLevel = parseInt(window.location.hash.replace("#submenu-", ""), 10) || 0
   const depth = myLevel + 1
 
-  const { menu, indexPath, menuActive, pendingPos } = useMenuWindow({
+  const { menu, indexPath, menuActive } = useMenuWindow({
     depth,
     tag: `App:submenu-${myLevel}`,
   })
@@ -44,7 +43,6 @@ export function SubmenuApp() {
       menu={menu}
       showIcons={false}
       menuActiveRef={menuActive}
-      pendingPosRef={pendingPos}
     />
   )
 }

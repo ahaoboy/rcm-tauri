@@ -1,21 +1,28 @@
 /**
- * useMenuWindow — unified hook for menu window event handling.
+ * useMenuWindow — unified Tauri event handling for a menu window.
  *
- * Encapsulates ALL Tauri event listening and emission for a menu window
- * (root or submenu). Components no longer import `@tauri-apps/api/event`
- * directly — everything goes through this hook and the `api/menuEvents`
- * module.
+ * Encapsulates ALL event listening and emission for one menu level (root or
+ * submenu). Components never import `@tauri-apps/api/event` directly; everything
+ * goes through here and `api/menuEvents`.
+ *
+ * ## What this hook does *not* do
+ *
+ * It never computes a window position and never moves or sizes the window. Rust
+ * owns both: the placement algorithm lives in `rcm_core::ui` and is applied by
+ * the Rust-side `TauriHost`. The frontend's only geometric responsibility is
+ * measuring what it drew and reporting that back — see `ContextMenu` +
+ * `utils/measure`.
  *
  * Responsibilities:
- *   - Fetch initial config (dev mode, icons)
- *   - Listen for `menu-show` (filtered by depth), store pending position
- *   - Listen for `menu-hide-all`, `dev-mode`, `icons-changed`
- *   - Emit `menu-blur` on focus loss (when menu is active)
- *   - Prevent window close → hide instead
- *   - Position window off-screen on mount (prevent startup flicker)
+ *   - fetch initial config (dev mode, icons)
+ *   - listen for `menu-show` (filtered by depth)
+ *   - listen for `menu-hide-all`, `dev-mode`, `icons-changed`
+ *   - emit `menu-blur` on focus loss (when the menu is active)
+ *   - prevent window close → hide instead
  *
- * Layout positioning is handled by the frontend: ContextMenu measures the
- * DOM, computes the final position via `utils/layout`, and shows the window.
+ * The one exception is parking the window off-screen on mount: Rust reveals the
+ * window after measurement, and a stale frame must not be visible in the
+ * meantime.
  */
 
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window"
@@ -31,7 +38,6 @@ import {
 } from "../api/menuEvents"
 import { feLog } from "../feLog"
 import type { MenuData, IndexPath } from "../types/menu"
-import type { PendingPos } from "../utils/layout"
 
 const OFF_SCREEN = new PhysicalPosition(-9999, -9999)
 
@@ -44,8 +50,6 @@ export interface MenuWindowState {
   hide: () => Promise<void>
   /** Whether the menu is currently shown (armed for blur detection). */
   menuActive: React.RefObject<boolean>
-  /** Ideal position from `menu-show` — consumed by ContextMenu after measuring. */
-  pendingPos: React.RefObject<PendingPos | null>
 }
 
 export interface UseMenuWindowOptions {
@@ -65,13 +69,13 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
   const [showIcons, setShowIcons] = useState(false)
   const devMode = useRef(false)
   const menuActive = useRef(false)
-  const pendingPos = useRef<PendingPos | null>(null)
 
   useEffect(() => {
     const win = getCurrentWindow()
     const cleanups: (() => void)[] = []
 
-    // Start off-screen to prevent startup flicker
+    // Park off-screen so a stale frame is never visible while the next level
+    // renders. Rust reveals the window once it has been measured.
     win.setPosition(OFF_SCREEN).catch(() => {})
 
     const setup = async () => {
@@ -117,9 +121,9 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
       })
       cleanups.push(unlistenFocus)
 
-      // ── Rust → Frontend: show menu at this depth ─────────────
+      // ── Rust → Frontend: render this level ───────────────────
       const unlistenShow = await onMenuShow((payload) => {
-        const { menu: menuData, path, x, y, parentRootX } = payload
+        const { menu: menuData, path } = payload
 
         // Depth filter: path.length-1 = event depth (0 for root)
         const eventDepth = path.length === 0 ? 0 : path.length - 1
@@ -128,16 +132,16 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
           return
         }
 
-        feLog.eventRecv("menu-show", `pos=(${x.toFixed(0)},${y.toFixed(0)}) path=[${path}]`)
+        feLog.eventRecv("menu-show", `path=[${path}]`)
 
-        // Store position for ContextMenu to consume after measuring
-        pendingPos.current = { x, y, parentRootX }
+        // No position is involved. `ContextMenu` measures after render and
+        // reports the size; Rust then positions and reveals the window.
         setMenu(menuData)
         setIndexPath(path)
       })
       cleanups.push(unlistenShow)
 
-      // ── Rust → Frontend: hide all ──────────────────────────────
+      // ── Rust → Frontend: hide all ─────────────────────────────
       const unlistenHide = await onMenuHideAll(() => {
         feLog.eventRecv("menu-hide-all", tag)
         if (devMode.current) {
@@ -160,7 +164,6 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
   const hide = useCallback(async () => {
     if (devMode.current) return
     menuActive.current = false
-    pendingPos.current = null
     const win = getCurrentWindow()
     await win.hide()
     await win.setPosition(OFF_SCREEN)
@@ -168,5 +171,5 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
     setIndexPath([])
   }, [])
 
-  return { menu, indexPath, devMode, showIcons, hide, menuActive, pendingPos }
+  return { menu, indexPath, devMode, showIcons, hide, menuActive }
 }

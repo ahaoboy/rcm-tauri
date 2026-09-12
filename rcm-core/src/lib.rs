@@ -1,13 +1,18 @@
+pub mod actions;
 pub mod clipboard;
 pub mod cmds;
 pub mod config;
+pub mod files;
 pub mod lang;
 pub mod log;
 pub mod menu;
 pub mod paths;
+pub mod process;
 pub mod registry;
 pub mod runner;
+pub mod style;
 pub mod types;
+pub mod ui;
 pub use types::{CommandPayload, FileInfo, IndexPath, InvokeProps, Item, Menu, NavigateResult};
 
 /// Windows process creation flag: suppress console window.

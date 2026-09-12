@@ -1,9 +1,9 @@
-import { getCurrentWindow } from "@tauri-apps/api/window"
 import React, { useCallback, useRef } from "react"
 
-import { emitMenuExecute, emitMenuHover, emitMenuHoverOut } from "../api/menuEvents"
+import { emitMenuExecute, emitMenuHover } from "../api/menuEvents"
 import { feLog } from "../feLog"
 import type { MenuItem, IndexPath } from "../types/menu"
+import { offsetWithinRoot } from "../utils/measure"
 
 interface MenuItemRowProps {
   item: MenuItem
@@ -15,39 +15,35 @@ interface MenuItemRowProps {
 }
 
 /**
- * MenuItemRow — single row in the menu.
- * Sends hover/click events to Rust for centralized window management.
+ * MenuItemRow — a single row in the menu.
  *
- * On hover, measures the .rcm-root and item geometry and reports to Rust.
- * Rust uses this to compute the ideal submenu position.
+ * Hover and click are forwarded to Rust, which decides what to show and where.
+ * The only geometry reported is this row's offset from the top of `.rcm-root`,
+ * which Rust uses to align a submenu with the hovered row.
  */
-export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, depth, indexPath, showIcons }) => {
+export const MenuItemRow: React.FC<MenuItemRowProps> = ({
+  item,
+  depth,
+  indexPath,
+  showIcons,
+}) => {
   const rowRef = useRef<HTMLDivElement>(null)
   const hasChildren = item.items && item.items.length > 0
 
-  const handleMouseEnter = useCallback(async () => {
-    if (!rowRef.current) return
+  /**
+   * Row index within its level.
+   *
+   * `indexPath` is `[selector, firstIndex, ...deeper]`, so the row index is the
+   * last element for a level rendered directly from its parent.
+   */
+  const rowIndex = indexPath[indexPath.length - 1] ?? 0
 
+  const handleMouseEnter = useCallback(async () => {
     const rowEl = rowRef.current
+    if (!rowEl) return
+
     const rootEl = rowEl.closest<HTMLElement>(".rcm-root")
     if (!rootEl) return
-
-    const dpi = window.devicePixelRatio || 1
-
-    // Parent .rcm-root absolute screen position and size (physical px)
-    const win = getCurrentWindow()
-    const winPos = await win.outerPosition() // physical px
-    const rootRect = rootEl.getBoundingClientRect() // CSS px (positions only)
-    const rowRect = rowEl.getBoundingClientRect() // CSS px (positions only)
-
-    // .rcm-root screen position = window outer position + root's viewport offset * dpi
-    const rootX = winPos.x + rootRect.left * dpi
-    const rootY = winPos.y + rootRect.top * dpi
-
-    // Use offsetWidth/offsetHeight for sizes — not affected by CSS transforms
-    // (unlike getBoundingClientRect which would shrink during rcm-fade-in).
-    // Hovered item Y offset from .rcm-root top (physical px)
-    const itemY = (rowRect.top - rootRect.top) * dpi
 
     feLog.eventSend(
       "menu-hover",
@@ -57,18 +53,10 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, depth, indexPath
     await emitMenuHover({
       depth,
       path: indexPath,
-      rootX,
-      rootY,
-      rootW: rootEl.offsetWidth * dpi,
-      rootH: rootEl.offsetHeight * dpi,
-      itemY,
-      itemH: rowEl.offsetHeight * dpi,
+      index: rowIndex,
+      itemY: offsetWithinRoot(rowEl, rootEl),
     })
-  }, [depth, indexPath, item.label, hasChildren])
-
-  const handleMouseLeave = useCallback(async () => {
-    await emitMenuHoverOut(depth)
-  }, [depth])
+  }, [depth, indexPath, rowIndex, item.label, hasChildren])
 
   const handleClick = useCallback(
     async (e: React.MouseEvent) => {
@@ -100,7 +88,6 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, depth, indexPath
       tabIndex={item.disable ? -1 : 0}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
     >
       {showIcons !== false && item.icon && <span className="rcm-item-icon">{item.icon}</span>}
       <span className="rcm-item-label">{item.label || item.key}</span>

@@ -1,0 +1,28 @@
+[package]
+name = "rcm-reactor"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "rcm-reactor — RCM reimplementation built with windows-reactor + tray-icon"
+authors = ["ahaoboy"]
+
+[[bin]]
+name = "rcm-reactor"
+path = "src/main.rs"
+
+[dependencies]
+# ── RCM shared crates (same functionality as the Tauri backend) ────────
+rcm-core = { workspace = true }
+rcm-vm = { workspace = true }
+rcm-com = { workspace = true }
+rcm-reg = { workspace = true }
+
+windows-reactor = { workspace = true }
+tray-icon = { workspace = true }
+windows = { workspace = true }
+
+# ── Utilities ──────────────────────────────────────────────────────────
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+which = { workspace = true }

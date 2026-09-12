@@ -6,7 +6,7 @@ import { useTheme } from "./hooks/useTheme"
 
 function App() {
   const theme = useTheme()
-  const { menu, devMode, showIcons, hide, menuActive, pendingPos } = useMenuWindow({
+  const { menu, devMode, showIcons, hide, menuActive } = useMenuWindow({
     depth: 0,
     listenIcons: true,
     tag: "App:root",
@@ -49,7 +49,6 @@ function App() {
       menu={menu}
       showIcons={showIcons}
       menuActiveRef={menuActive}
-      pendingPosRef={pendingPos}
     />
   )
 }

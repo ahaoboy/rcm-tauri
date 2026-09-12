@@ -1,260 +1,223 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Menu manager — central hub for menu window lifecycle.
-// Handles show/hide/hover/execute/blur for the multi-window menu.
+// Menu manager — the Tauri frontend's bridge to the shared menu controller.
 //
-// Layout flow (frontend-driven):
-//   1. Rust emits `menu-show` with ideal .rcm-root position (+ parent root X
-//      for submenu flip).
-//   2. Frontend renders content, measures DOM, resizes window, computes the
-//      final position (clamp, flip, edge cases), and shows the window.
-//   3. Rust does NOT participate in positioning — it only computes the ideal
-//      position for submenus (parent root right edge + gap).
+// All layout decisions live in `rcm_core::ui::MenuController`. This module only:
+//   - owns the process-wide controller for the Tauri app handle,
+//   - forwards frontend events (hover / measured / execute / blur) into it,
+//   - applies the resulting window geometry through `TauriHost`.
+//
+// Flow for one level:
+//   1. `show_root` / `handle_hover` → controller builds a `MenuShowRequest`
+//   2. `controller.open(&request)`  → TauriHost emits `menu-show`, no geometry
+//   3. frontend renders + measures  → emits `menu-measured`
+//   4. `handle_measured`            → controller clamps/flips, TauriHost applies
+//
+// The frontend never computes a position; Rust never asks it for one.
 // ═══════════════════════════════════════════════════════════════════════════
 
-use crate::events::{
-    AUTO_HIDE_MS, DEEPEST_DEPTH, MAX_SUBMENU_DEPTH, OFF_SCREEN, SUBMENU_GAP, submenu_window_depths,
-};
-use crate::events::{
-    AutoHideEpoch, MenuArc, MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload,
-    MenuHoverPayload, MenuShowPayload,
-};
-use crate::events::{root_label, submenu_label, window_label};
+use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 use rcm_core::runner::execute;
+use rcm_core::ui::{HoverInfo, HoverResult, Measurement, MenuController, MenuMetrics, Point};
 use rcm_core::{config, log};
-use std::sync::atomic::Ordering;
-use tauri::window::Color;
-use tauri::{Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Emitter, Manager};
 
+use crate::events::{MenuExecutePayload, MenuHoverPayload, MenuMeasuredPayload, label_for_depth};
+use crate::menu_host::TauriHost;
+
+/// How often the auto-hide / click-away watchdog runs.
+const IDLE_POLL_MS: u64 = 500;
+
+/// The process-wide controller.
+///
+/// Tauri has a single `AppHandle`, so one controller serves the whole process —
+/// which is also what makes the shared `MenuState` bookkeeping meaningful.
+static CONTROLLER: OnceLock<Mutex<MenuController<TauriHost>>> = OnceLock::new();
+
+/// Install the controller. Called once from Tauri's `setup`.
+pub fn init(app: tauri::AppHandle) {
+    let _ = CONTROLLER.set(Mutex::new(MenuController::new(
+        TauriHost::new(app),
+        MenuMetrics::for_tauri(),
+    )));
+}
+
+/// Run `f` against the controller, if it has been installed.
+fn with<R>(f: impl FnOnce(&mut MenuController<TauriHost>) -> R) -> Option<R> {
+    CONTROLLER.get()?.lock().ok().map(|mut guard| f(&mut guard))
+}
+
+/// Sync the controller's cached config-derived settings.
+fn refresh_settings(c: &mut MenuController<TauriHost>) {
+    c.set_icons_enabled(config::is_icons());
+    c.set_dev_mode(config::is_dev());
+}
+
+/// The manager handed around by the Tauri commands and listeners.
+#[derive(Clone)]
 pub struct MenuManager {
-    pub menu: MenuArc,
-    pub app: tauri::AppHandle,
-    pub auto_hide_epoch: AutoHideEpoch,
+    app: tauri::AppHandle,
 }
 
 impl MenuManager {
-    /// Reset the global auto-hide timer. Call on every user interaction
-    /// (show, hover, click). After AUTO_HIDE_MS of inactivity, all menus
-    /// are hidden simultaneously.
-    pub fn reset_auto_hide(&self) {
-        let epoch = self
-            .auto_hide_epoch
-            .fetch_add(1, Ordering::SeqCst)
-            .wrapping_add(1);
-        let epoch_ref = self.auto_hide_epoch.clone();
-        let app = self.app.clone();
-        let menu = self.menu.clone();
+    pub fn new(app: tauri::AppHandle) -> Self {
+        Self { app }
+    }
 
-        tauri::async_runtime::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(AUTO_HIDE_MS)).await;
-            if epoch_ref.load(Ordering::SeqCst) == epoch {
-                log::info("Rust::auto_hide", "timeout — hiding all menus");
-                let mgr = MenuManager {
-                    menu,
-                    app,
-                    auto_hide_epoch: epoch_ref,
-                };
-                mgr.hide_all();
+    /// A [`TauriHost`] over this manager's app handle.
+    fn host(&self) -> TauriHost {
+        TauriHost::new(self.app.clone())
+    }
+
+    /// Ensure a submenu window with an explicit label exists.
+    ///
+    /// Used by the `create_window` command, which the frontend calls to lazily
+    /// initialise a level beyond the pre-created pool.
+    pub fn ensure_window_labeled(&self, label: &str) {
+        self.host().ensure_labeled(label);
+    }
+
+    /// Ensure the pool of reusable submenu windows exists.
+    ///
+    /// The pool is fixed at [`rcm_core::ui::PRE_CREATED_WINDOWS`] because those
+    /// are exactly the labels that can be interned, and every menu depth is
+    /// capped at that count anyway.
+    pub fn pre_create_submenus(&self) {
+        let mut host = self.host();
+        for depth in 1..=rcm_core::ui::PRE_CREATED_WINDOWS {
+            host.ensure_labeled(label_for_depth(depth));
+        }
+    }
+
+    // ── Show ────────────────────────────────────────────────────────────
+
+    /// Show the root menu at `at` (the cursor, in physical pixels).
+    pub fn show_root(&self, menu: rcm_core::Menu, at: Point) {
+        // Pre-create the windows this menu could need, so opening one never has
+        // to build a webview on the critical path.
+        self.pre_create_submenus();
+
+        let _ = with(|c| {
+            refresh_settings(c);
+            let request = c.show_root(menu, at);
+            log::info(
+                "Rust::show_root",
+                &format!("at=({}, {}) path={:?}", at.x, at.y, request.path),
+            );
+            c.open(&request);
+        });
+    }
+
+    /// Handle the pointer entering a menu item.
+    ///
+    /// The controller decides whether this opens a submenu and where it goes.
+    pub fn handle_hover(&self, payload: &MenuHoverPayload) {
+        let info: HoverInfo = payload.to_info();
+        let _ = with(|c| match c.hover(&info) {
+            HoverResult::Show(request) => {
+                c.open(&request);
+            }
+            HoverResult::Leaf | HoverResult::Ignored => {}
+        });
+    }
+
+    /// Handle a measurement reported by the frontend.
+    ///
+    /// This is where the final position is computed *and applied*, using the
+    /// same clamp/flip algorithm the Reactor build runs.
+    pub fn handle_measured(&self, payload: &MenuMeasuredPayload) {
+        let measurement: Measurement = payload.to_measurement();
+        if !measurement.is_valid() {
+            log::warn("Rust::menu", "ignoring invalid measurement");
+            return;
+        }
+
+        let _ = with(|c| {
+            if let Some(rect) = c.place(payload.depth, measurement) {
+                log::event(
+                    "Rust::menu",
+                    "placed",
+                    &format!("depth={} rect={rect}", payload.depth),
+                );
             }
         });
     }
 
-    /// Show the root menu at the cursor position.
-    /// Emits `menu-show` — the frontend measures and positions the window.
-    pub fn show_root(&self, menu: rcm_core::Menu, x: f64, y: f64) {
-        self.hide_all_submenus();
+    // ── Interaction ─────────────────────────────────────────────────────
 
-        log::info(
-            "Rust::show_root",
-            &format!(
-                "pos=({x:.0},{y:.0}) groups={} icons={} max_depth={}",
-                menu.groups.len(),
-                menu.icon_items.len(),
-                menu.max_depth()
-            ),
-        );
-
-        *self.menu.lock().unwrap() = Some(menu.clone());
-        DEEPEST_DEPTH.store(0, Ordering::SeqCst);
-
-        // Pre-create submenu windows if needed
-        let max_depth = menu.max_depth().min(MAX_SUBMENU_DEPTH);
-        for d in 0..max_depth {
-            let label = submenu_label(d);
-            if self.app.get_webview_window(&label).is_none() {
-                self.create_submenu_window(&label);
-            }
-        }
-
-        let _ = self.app.emit(
-            "menu-show",
-            MenuShowPayload {
-                menu,
-                path: vec![],
-                x,
-                y,
-                parent_root_x: None,
-            },
-        );
-        self.reset_auto_hide();
-    }
-
-    /// Handle hover on a menu item: compute the ideal submenu position
-    /// and emit `menu-show`. The frontend measures and positions the window.
-    pub fn handle_hover(&self, payload: MenuHoverPayload) {
-        self.reset_auto_hide();
-
-        log::event(
-            "RECV",
-            "menu-hover",
-            &format!("depth={} path={:?}", payload.depth, payload.path),
-        );
-
-        let (menu, item) = {
-            let guard = self.menu.lock().unwrap();
-            let menu = match guard.as_ref() {
-                Some(m) => m.clone(),
-                None => {
-                    log::warn("Rust::handle_hover", "no menu data");
-                    return;
-                }
-            };
-            let item = match menu.get_item(&payload.path) {
-                Some(i) => i.clone(),
-                None => {
-                    log::warn("Rust::handle_hover", "item not found");
-                    return;
-                }
-            };
-            (menu, item)
-        };
-
-        // Leaf or disabled: just hide deeper submenus
-        if item.disable || !item.has_children() {
-            self.hide_deeper_than(payload.depth);
-            return;
-        }
-
-        let child_depth = payload.depth + 1;
-        if child_depth > MAX_SUBMENU_DEPTH {
-            return;
-        }
-
-        // Ideal position for the submenu's .rcm-root:
-        //   X = parent root right edge + gap
-        //   Y = parent root top + hovered item offset
-        let ideal_x = payload.root_x + payload.root_w + SUBMENU_GAP;
-        let ideal_y = payload.root_y + payload.item_y;
-
-        self.hide_deeper_than(child_depth);
-        DEEPEST_DEPTH.store(child_depth, Ordering::SeqCst);
-
-        let _ = self.app.emit(
-            "menu-show",
-            MenuShowPayload {
-                menu,
-                path: payload.path,
-                x: ideal_x,
-                y: ideal_y,
-                parent_root_x: Some(payload.root_x),
-            },
-        );
-    }
-
-    /// Hide all submenu windows (depth > 0), keeping the root window.
-    pub fn hide_all_submenus(&self) {
-        self.hide_deeper_than(0);
-    }
-
-    /// Handle hover-out (no-op: sibling hover handles hiding).
-    pub fn handle_hover_out(&self, _payload: MenuHoverOutPayload) {}
-
-    /// Handle execute: run the command and close all menus.
+    /// Handle execute: run the command and close all menus (unless in dev mode).
     pub fn handle_execute(&self, payload: MenuExecutePayload) {
-        self.reset_auto_hide();
-
         let cmd = payload.command;
+
+        let close = with(|c| {
+            refresh_settings(c);
+            c.close_after_execute(&cmd)
+        })
+        .unwrap_or(true);
+
         tauri::async_runtime::spawn(async move {
-            let result = execute(&cmd).await;
-            if !result.success {
-                log::error("Rust::handle_execute", &format!("FAILED: {:?}", result));
-            }
+            execute(&cmd).await;
         });
 
-        if !config::is_dev() {
+        if close {
             self.hide_all();
         }
     }
 
-    /// Handle blur from the deepest menu window — hide all.
-    pub fn handle_blur(&self, payload: MenuBlurPayload) {
-        if payload.depth == DEEPEST_DEPTH.load(Ordering::SeqCst) {
-            self.hide_all();
-        }
+    /// Handle blur from a menu window — only the deepest one dismisses.
+    pub fn handle_blur(&self, depth: usize) {
+        let _ = with(|c| c.blur(depth));
     }
 
-    /// Hide all menu windows.
+    /// Whether any menu level is currently open.
+    pub fn has_open_levels(&self) -> bool {
+        with(|c| c.has_levels()).unwrap_or(false)
+    }
+
+    /// Whether any open menu window currently holds focus.
+    fn foreground_is_ours(&self) -> bool {
+        let depths = with(|c| c.state().depths()).unwrap_or_default();
+        depths.into_iter().any(|depth| {
+            self.app
+                .get_webview_window(label_for_depth(depth))
+                .and_then(|w| w.is_focused().ok())
+                .unwrap_or(false)
+        })
+    }
+
+    /// Drive the click-away dismiss and the auto-hide timeout.
+    pub fn handle_idle(&self) {
+        if !self.has_open_levels() {
+            return;
+        }
+        let ours = self.foreground_is_ours();
+        let _ = with(|c| c.handle_idle(ours));
+    }
+
+    // ── Hide ────────────────────────────────────────────────────────────
+
+    /// Close every menu window.
     pub fn hide_all(&self) {
-        DEEPEST_DEPTH.store(0, Ordering::SeqCst);
-
-        if let Some(win) = self.app.get_webview_window(root_label()) {
-            hide_window(&win);
-        }
-        for d in 0..MAX_SUBMENU_DEPTH {
-            if let Some(win) = self.app.get_webview_window(&submenu_label(d)) {
-                hide_window(&win);
-            }
-        }
+        let _ = with(|c| c.hide_all());
         let _ = self.app.emit("menu-hide-all", true);
     }
 
-    /// Hide all submenu windows strictly deeper than `depth`.
+    /// Close every level deeper than `depth`.
     pub fn hide_deeper_than(&self, depth: usize) {
-        for d in submenu_window_depths().filter(|d| *d > depth) {
-            if let Some(win) = self.app.get_webview_window(&window_label(d)) {
-                hide_window(&win);
+        let _ = with(|c| c.hide_deeper_than(depth));
+    }
+
+    /// Start the watchdog that dismisses the menu on click-away or inactivity.
+    ///
+    /// Spawned once at startup; the manager is `Clone` and cheap to move in.
+    pub fn start_idle_watchdog(&self) {
+        let manager = self.clone();
+        tauri::async_runtime::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(IDLE_POLL_MS)).await;
+                manager.handle_idle();
             }
-        }
-        DEEPEST_DEPTH.store(depth, Ordering::SeqCst);
+        });
     }
-
-    /// Create a transparent submenu window.
-    pub fn create_submenu_window(&self, label: &str) {
-        if self.app.get_webview_window(label).is_some() {
-            return;
-        }
-
-        let url = format!("index.html#{label}");
-        let builder = WebviewWindowBuilder::new(&self.app, label, WebviewUrl::App(url.into()))
-            .title("rcm-submenu")
-            .decorations(false)
-            .background_color(Color(0, 0, 0, 0))
-            .position(0., 0.)
-            .inner_size(1., 1.)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .fullscreen(false)
-            .visible(false)
-            .closable(false)
-            .resizable(false)
-            .minimizable(false)
-            .maximizable(false)
-            .focused(false)
-            .shadow(false);
-
-        #[cfg(not(target_os = "macos"))]
-        let builder = builder.transparent(true);
-
-        if let Err(err) = builder.build() {
-            log::error(
-                "Rust::create_submenu_window",
-                &format!("failed to create '{label}': {err}"),
-            );
-        }
-    }
-}
-
-fn hide_window(win: &WebviewWindow) {
-    let _ = win.hide();
-    let _ = win.set_position(OFF_SCREEN);
 }

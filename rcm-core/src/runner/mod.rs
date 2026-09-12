@@ -111,3 +111,16 @@ fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
         },
     }
 }
+
+/// Execute a command and log any failure, keyed by `tag`.
+///
+/// A menu command's outcome is not shown to the user — the menu window is
+/// already gone — so the result is only ever logged. Both frontends spawn this
+/// on their own runtime and ignore the return value.
+pub async fn execute_logged(cmd: &CommandPayload, tag: &str) -> ExecResult {
+    let result = execute(cmd).await;
+    if !result.success {
+        crate::log::error(tag, &format!("command '{}' FAILED: {result:?}", cmd.cmd));
+    }
+    result
+}

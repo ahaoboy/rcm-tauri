@@ -6,9 +6,13 @@
  * directly. Instead, use the functions provided here.
  *
  * Event flow:
- *   Rust  → FE:  menu-show, menu-hide-all, dev-mode, icons-changed
- *   FE    → Rust: menu-hover, menu-hover-out, menu-execute, menu-blur,
- *                 menu-close-all, log-event
+ *   Rust  → FE:  menu-show (what to render), menu-hide-all, dev-mode,
+ *                icons-changed, theme-changed, style-changed
+ *   FE    → Rust: menu-hover (which row), menu-measured (how big it drew),
+ *                 menu-execute, menu-blur, menu-close-all, log-event
+ *
+ * Rust never sends a position and the frontend never computes one. The only
+ * geometry crossing the boundary is a measurement.
  */
 
 import { invoke } from "@tauri-apps/api/core"
@@ -16,28 +20,34 @@ import { emit } from "@tauri-apps/api/event"
 import type { UnlistenFn } from "@tauri-apps/api/event"
 
 import type { MenuData, IndexPath, CommandPayload } from "../types/menu"
+import type { Measurement } from "../utils/measure"
 
 // ═══════════════════════════════════════════════════════════════════════
 // Types — payloads sent from frontend to Rust
 // ═══════════════════════════════════════════════════════════════════════
 
+/**
+ * The pointer entered a menu row.
+ *
+ * Only identifies the row: Rust already knows the level's rectangle and its own
+ * row metrics, so no window geometry is needed.
+ */
 export interface MenuHoverData {
   depth: number
   path: IndexPath
-  rootX: number
-  rootY: number
-  rootW: number
-  rootH: number
-  itemY: number
-  itemH: number
+  /** Row index within the level. */
+  index: number
+  /** Measured offset of the row from the content top, in physical px. */
+  itemY?: number
 }
 
+/** How large the frontend drew a level, in physical pixels. */
+export type MenuMeasuredData = Measurement & { depth: number }
+
+/** Render this level. Carries no geometry. */
 export interface MenuShowEvent {
   menu: MenuData
   path: IndexPath
-  x: number
-  y: number
-  parentRootX?: number
 }
 
 export interface AppConfig {
@@ -57,8 +67,14 @@ export function emitMenuHover(data: MenuHoverData): Promise<void> {
   return emit("menu-hover", data)
 }
 
-export function emitMenuHoverOut(depth: number): Promise<void> {
-  return emit("menu-hover-out", { depth })
+/**
+ * Report the size of a rendered level.
+ *
+ * This is what drives placement: Rust clamps/flips using these numbers and then
+ * resizes, moves and reveals the window.
+ */
+export function emitMenuMeasured(data: MenuMeasuredData): Promise<void> {
+  return emit("menu-measured", data)
 }
 
 export function emitMenuExecute(path: IndexPath, command: CommandPayload): Promise<void> {
