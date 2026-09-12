@@ -37,10 +37,7 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         }
     };
 
-    crate::log::info(
-        "Rust::copy_target",
-        &format!("'{path}' → '{target}'"),
-    );
+    crate::log::info("Rust::copy_target", &format!("'{path}' → '{target}'"));
 
     let ctx = match ClipboardContext::new() {
         Ok(c) => c,

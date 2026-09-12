@@ -12,7 +12,15 @@ use rquickjs::{
     loader::{BuiltinLoader, BuiltinResolver, ModuleLoader},
 };
 
-const LIB_MODULE: &str = include_str!("../../rcm-kit/dist/index.js");
+/// The `rcm-kit` runtime, bundled into the binary.
+///
+/// This path must stay inside the crate: cargo only ships files under the crate
+/// directory, so a path like `../../rcm-kit/dist/index.js` resolves when building
+/// from a checkout of this repo but fails for anyone consuming the crate.
+///
+/// The file is generated from `rcm-kit` by `pnpm build:rcm`; CI verifies it has
+/// not gone stale.
+const LIB_MODULE: &str = include_str!("../assets/index.js");
 const LIB_NAME: &str = "rcm-kit";
 const MENU_NAME: &str = "rcm-menu";
 fn print(s: String) {

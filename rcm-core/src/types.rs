@@ -112,11 +112,6 @@ impl Item {
     pub fn has_children(&self) -> bool {
         !self.items.is_empty()
     }
-
-    /// Whether this item is a leaf action (has a command to execute).
-    pub fn is_action(&self) -> bool {
-        self.command.is_some()
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,59 +136,41 @@ pub enum NavigateResult<'a> {
 }
 
 impl Menu {
+    /// Resolve `path` to the item it points at.
+    ///
+    /// `path[0] == -1` selects the icon ribbon; any other value indexes
+    /// `groups`. The remaining elements walk into nested items.
+    fn resolve(&self, path: &IndexPath) -> Option<&Item> {
+        let (first, rest) = (*path.first()?, &path[1..]);
+        let mut current = if first == -1 {
+            self.icon_items.get(*rest.first()? as usize)?
+        } else {
+            let group = self.groups.get(first as usize)?;
+            group.items.get(*rest.first()? as usize)?
+        };
+        for &idx in &rest[1..] {
+            current = current.items.get(idx as usize)?;
+        }
+        Some(current)
+    }
+
     /// Navigate the menu tree following `path` and return what to display.
     pub fn navigate(&self, path: &IndexPath) -> Option<NavigateResult<'_>> {
         if path.is_empty() {
             return Some(NavigateResult::Root);
         }
-
-        let (first, rest) = (path[0], &path[1..]);
-
-        let item = if first == -1 {
-            // icon ribbon
-            let idx = rest.first().copied()? as usize;
-            self.icon_items.get(idx)?
-        } else {
-            let group_idx = first as usize;
-            let item_idx = rest.first().copied()? as usize;
-            self.groups.get(group_idx)?.items.get(item_idx)?
-        };
-
-        // Walk deeper into nested items
-        let mut current = item;
-        for &idx in &rest[1..] {
-            current = current.items.get(idx as usize)?;
-        }
-
-        if current.items.is_empty() {
-            None // leaf — no submenu to show
-        } else {
-            Some(NavigateResult::Submenu(&current.items))
-        }
+        let item = self.resolve(path)?;
+        // A leaf has no submenu to show.
+        (!item.items.is_empty()).then_some(NavigateResult::Submenu(&item.items))
     }
 
     /// Get a reference to the item at `path`.
     pub fn get_item(&self, path: &IndexPath) -> Option<&Item> {
+        // The root is a whole level, not a single item.
         if path.is_empty() {
-            return None; // root has no single item
+            return None;
         }
-
-        let (first, rest) = (path[0], &path[1..]);
-
-        let first_item = if first == -1 {
-            let idx = rest.first().copied()? as usize;
-            self.icon_items.get(idx)?
-        } else {
-            let group_idx = first as usize;
-            let item_idx = rest.first().copied()? as usize;
-            self.groups.get(group_idx)?.items.get(item_idx)?
-        };
-
-        let mut current = first_item;
-        for &idx in &rest[1..] {
-            current = current.items.get(idx as usize)?;
-        }
-        Some(current)
+        self.resolve(path)
     }
 
     /// Compute the maximum nesting depth of the menu.

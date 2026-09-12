@@ -4,42 +4,15 @@
 
 pub mod events;
 pub mod layout;
+pub mod menu_host;
 pub mod monitor;
-pub mod pipe;
 pub mod tray;
 
-use crate::events::{AutoHideEpoch, ConfigPayload, MenuArc, submenu_indices, submenu_label};
-use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverOutPayload, MenuHoverPayload};
+use crate::events::ConfigPayload;
+use crate::events::{MenuExecutePayload, MenuHoverPayload, MenuMeasuredPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Listener, Manager};
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Menu-blocking state
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Last-known menu-blocking state, used as a fallback when a live query fails
-/// (e.g. Explorer briefly restarting). Initialised to `true` because we
-/// `rcm_com::enable()` on every startup.
-static BLOCKING_FALLBACK: AtomicBool = AtomicBool::new(true);
-
-/// Whether native context-menu blocking is currently enabled.
-///
-/// Queries the real state from the DLL via the control pipe. On success the
-/// value is cached in [`BLOCKING_FALLBACK`]; on failure (pipe unavailable,
-/// e.g. DLL not yet loaded or Explorer restarting) the last-known state is
-/// returned so the tray checkmark and monitor don't flip spuriously.
-pub fn is_blocking_enabled() -> bool {
-    match rcm_com::query() {
-        Ok(enabled) => {
-            BLOCKING_FALLBACK.store(enabled, Ordering::Relaxed);
-            enabled
-        }
-        Err(_) => BLOCKING_FALLBACK.load(Ordering::Relaxed),
-    }
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Tauri commands
@@ -57,102 +30,30 @@ fn get_config() -> ConfigPayload {
     }
 }
 
-/// Create a submenu window (called from frontend for lazy init).
-#[tauri::command]
-async fn create_window(app: tauri::AppHandle, label: String) {
-    let mgr = MenuManager {
-        menu: Arc::new(Mutex::new(None)),
-        app,
-        auto_hide_epoch: Arc::new(AtomicU64::new(0)),
-    };
-    mgr.create_submenu_window(&label);
-}
-
-const DEFAULT_STYLE: &str = include_str!("../../rcm-ui/style.css");
-
-/// Write the embedded default style CSS file next to the exe.
-pub fn write_style_defaults() {
-    let path = rcm_core::exe_dir().join("style.css");
-    if let Err(e) = std::fs::write(&path, DEFAULT_STYLE) {
-        eprintln!("write_style_defaults: write {} failed: {e}", path.display());
-    } else {
-        println!("write_style_defaults: wrote {}", path.display());
-    }
-}
-
 /// Return CSS content for the frontend.
 /// Cached after the first load — all windows share the same CSS.
 #[tauri::command]
 fn get_style_css() -> String {
-    static LOADED: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-    LOADED
-        .get_or_init(|| {
-            let file_path = rcm_core::exe_dir().join("style.css");
-            if file_path.exists() {
-                match std::fs::read_to_string(&file_path) {
-                    Ok(css) => {
-                        log::info("Style", "loaded style.css from disk");
-                        return css;
-                    }
-                    Err(e) => log::error(
-                        "Style",
-                        &format!("read {} failed: {e}", file_path.display()),
-                    ),
-                }
-            }
-            if let Err(e) = std::fs::write(&file_path, DEFAULT_STYLE) {
-                log::error(
-                    "Style",
-                    &format!("write {} failed: {e}", file_path.display()),
-                );
-            } else {
-                log::info("Style", "wrote default style.css");
-            }
-            DEFAULT_STYLE.to_string()
-        })
-        .clone()
+    rcm_core::style::load_style_css()
 }
-
 // ── Config editor commands ───────────────────────────────────────────────
-
-const VALID_FILES: &[&str] = &["rcm.js", "style.css", "rcm.config.json"];
-
-fn is_valid_config_file(name: &str) -> bool {
-    VALID_FILES.contains(&name)
-}
 
 /// Read a config file from the exe directory.
 #[tauri::command]
 fn read_config_file(name: String) -> Result<String, String> {
-    if !is_valid_config_file(&name) {
-        return Err(format!("Invalid file: {name}"));
-    }
-    let path = rcm_core::exe_dir().join(&name);
-    std::fs::read_to_string(&path).map_err(|e| format!("Read failed: {e}"))
+    rcm_core::files::read_config_file(&name)
 }
 
 /// Save content to a config file in the exe directory.
 #[tauri::command]
 fn save_config_file(name: String, content: String) -> Result<(), String> {
-    if !is_valid_config_file(&name) {
-        return Err(format!("Invalid file: {name}"));
-    }
-    let path = rcm_core::exe_dir().join(&name);
-    std::fs::write(&path, &content).map_err(|e| format!("Save failed: {e}"))
+    rcm_core::files::save_config_file(&name, &content)
 }
 
 /// Open a config file with the system default program.
 #[tauri::command]
 fn open_in_editor(name: String) -> Result<(), String> {
-    if !is_valid_config_file(&name) {
-        return Err(format!("Invalid file: {name}"));
-    }
-    let path = rcm_core::exe_dir().join(&name);
-    rcm_core::sys_cmd("cmd")
-        .args(["/c", "start", "", &path.to_string_lossy()])
-        .spawn()
-        .map_err(|e| format!("Open failed: {e}"))?;
-    Ok(())
+    rcm_core::files::open_config_file(&name)
 }
 
 /// Broadcast updated CSS to all windows.
@@ -168,12 +69,10 @@ fn notify_style_updated(app: tauri::AppHandle, css: String) -> Result<(), String
 #[tauri::command]
 async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
     let label = "config-editor";
-    if app.get_webview_window(label).is_some() {
-        // Already open — focus it
-        if let Some(win) = app.get_webview_window(label) {
-            let _ = win.show();
-            let _ = win.set_focus();
-        }
+    // Already open — bring the existing window forward instead of making a second one.
+    if let Some(win) = app.get_webview_window(label) {
+        let _ = win.show();
+        let _ = win.set_focus();
         return Ok(());
     }
 
@@ -231,7 +130,7 @@ fn pull_config() -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Step 1: check if another RCM process is already running
-    if pipe::is_rcm_process_running() {
+    if rcm_core::process::is_rcm_process_running() {
         eprintln!("rcm-tauri: another instance is already running");
         run_error(
             "Another instance of RCM is already running.\n\nPlease close it before starting a new one.",
@@ -309,9 +208,6 @@ fn urlencoding(s: &str) -> String {
 }
 
 fn run_app() {
-    let menu: MenuArc = Arc::new(Mutex::new(None));
-    let auto_hide_epoch: AutoHideEpoch = Arc::new(AtomicU64::new(0));
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -321,8 +217,6 @@ fn run_app() {
                 args
             );
         }))
-        .manage(menu.clone())
-        .manage(auto_hide_epoch.clone())
         .setup(move |app| {
             config::init();
             if let Err(e) = rcm_com::enable() {
@@ -346,22 +240,16 @@ fn run_app() {
                 let _ = w.close();
             });
 
-            let epoch = auto_hide_epoch.clone();
+            // Install the shared menu controller and pre-create the pool of
+            // reusable submenu windows, so opening one never has to build a
+            // webview on the critical path.
+            let manager = MenuManager::new(app.app_handle().clone());
+            layout::init(app.app_handle().clone());
+            manager.pre_create_submenus();
+            manager.start_idle_watchdog();
 
-            // Pre-create submenu windows
-            for d in submenu_indices() {
-                let label = submenu_label(d);
-                let mgr = MenuManager {
-                    menu: menu.clone(),
-                    app: app.app_handle().clone(),
-                    auto_hide_epoch: epoch.clone(),
-                };
-                mgr.create_submenu_window(&label);
-            }
-
-            // Register event listeners for frontend → backend communication
+            // Register event listeners for frontend → backend communication.
             let app_handle = app.app_handle().clone();
-            let menu_clone = menu.clone();
 
             // ── Frontend log bridge ─────────────────────────────────
             app_handle.listen("log-event", move |event| {
@@ -372,88 +260,49 @@ fn run_app() {
                 }
             });
 
-            // Listen for hover events
-            let ah1 = app_handle.clone();
-            let m1 = menu_clone.clone();
-            let e1 = epoch.clone();
+            // ── Hover: which row the pointer entered ────────────────
+            let m1 = manager.clone();
             app_handle.listen("menu-hover", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuHoverPayload>(event.payload()) {
-                    let mgr = MenuManager {
-                        menu: m1.clone(),
-                        app: ah1.clone(),
-                        auto_hide_epoch: e1.clone(),
-                    };
-                    mgr.handle_hover(payload);
+                    m1.handle_hover(&payload);
                 }
             });
 
-            // Listen for hover-out events
-            let ah2 = app_handle.clone();
-            let m2 = menu_clone.clone();
-            let e2 = epoch.clone();
-            app_handle.listen("menu-hover-out", move |event| {
-                if let Ok(payload) = serde_json::from_str::<MenuHoverOutPayload>(event.payload()) {
-                    let mgr = MenuManager {
-                        menu: m2.clone(),
-                        app: ah2.clone(),
-                        auto_hide_epoch: e2.clone(),
-                    };
-                    mgr.handle_hover_out(payload);
+            // ── Measured: how large the frontend drew the level ─────
+            // This is the input that drives placement.
+            let m2 = manager.clone();
+            app_handle.listen("menu-measured", move |event| {
+                if let Ok(payload) = serde_json::from_str::<MenuMeasuredPayload>(event.payload()) {
+                    m2.handle_measured(&payload);
                 }
             });
 
-            // Listen for execute events
-            let ah3 = app_handle.clone();
-            let m3 = menu_clone.clone();
-            let e3 = epoch.clone();
+            // ── Execute ────────────────────────────────────────────
+            let m3 = manager.clone();
             app_handle.listen("menu-execute", move |event| {
                 if let Ok(payload) = serde_json::from_str::<MenuExecutePayload>(event.payload()) {
-                    let mgr = MenuManager {
-                        menu: m3.clone(),
-                        app: ah3.clone(),
-                        auto_hide_epoch: e3.clone(),
-                    };
-                    mgr.handle_execute(payload);
+                    m3.handle_execute(payload);
                 }
             });
 
-            // Listen for close-all from frontend (e.g. Escape key)
-            let ah4 = app_handle.clone();
-            let m4 = menu_clone.clone();
-            let e4 = epoch.clone();
+            // ── Close-all from frontend (e.g. Escape key) ───────────
+            let m4 = manager.clone();
             app_handle.listen("menu-close-all", move |_| {
                 if !config::is_dev() {
-                    let mgr = MenuManager {
-                        menu: m4.clone(),
-                        app: ah4.clone(),
-                        auto_hide_epoch: e4.clone(),
-                    };
-                    mgr.hide_all();
+                    m4.hide_all();
                 }
             });
 
-            // Listen for blur events — only hide all if deepest window lost focus
-            let ah5 = app_handle.clone();
-            let m5 = menu_clone.clone();
-            let e5 = epoch.clone();
-            app_handle.listen("menu-blur", move |event| {
-                if let Ok(payload) = serde_json::from_str::<MenuBlurPayload>(event.payload()) {
-                    let mgr = MenuManager {
-                        menu: m5.clone(),
-                        app: ah5.clone(),
-                        auto_hide_epoch: e5.clone(),
-                    };
-                    mgr.handle_blur(payload);
-                }
-            });
+            // Dismissal is not event-driven: `start_idle_watchdog` polls which
+            // window holds focus, which is the only way to tell "focus moved
+            // between our windows" from "focus left the menu".
 
             // Start the external event monitor
-            monitor::start_monitoring(app_handle, menu, epoch);
+            monitor::start_monitoring(manager);
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            create_window,
             get_config,
             get_style_css,
             read_config_file,

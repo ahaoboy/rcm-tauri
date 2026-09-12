@@ -1,17 +1,12 @@
-import {
-  availableMonitors,
-  getCurrentWindow,
-  LogicalSize,
-  PhysicalPosition,
-} from "@tauri-apps/api/window"
 import React, { useCallback, useEffect, useRef } from "react"
 
+import { emitMenuMeasured } from "../api/menuEvents"
 import { feLog } from "../feLog"
 import type { MenuData, MenuItem, IndexPath } from "../types/menu"
-import { computeWindowPosition } from "../utils/layout"
-import type { PendingPos } from "../utils/layout"
+import { measureLevel } from "../utils/measure"
 import { IconRibbon } from "./IconRibbon"
 import { MenuGroup } from "./MenuGroup"
+import { MenuItemRow } from "./MenuItemRow"
 import { MenuSeparator } from "./MenuSeparator"
 
 interface ContextMenuProps {
@@ -19,8 +14,6 @@ interface ContextMenuProps {
   indexPath: IndexPath
   menu: MenuData
   showIcons?: boolean
-  menuActiveRef?: React.RefObject<boolean>
-  pendingPosRef?: React.RefObject<PendingPos | null>
 }
 
 /**
@@ -66,13 +59,19 @@ function navigateMenu(
   return { type: "submenu", items: item.items || [] }
 }
 
+/**
+ * ContextMenu — renders one menu level.
+ *
+ * It draws the level and, after layout, measures it and reports the size to
+ * Rust. Rust owns the position: it clamps/flips the window, resizes, moves and
+ * reveals it. Nothing here reads or writes window geometry beyond that single
+ * measurement.
+ */
 export const ContextMenu: React.FC<ContextMenuProps> = ({
   depth,
   indexPath,
   menu,
   showIcons = false,
-  menuActiveRef,
-  pendingPosRef,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null)
   const measuredRef = useRef(false)
@@ -80,91 +79,33 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const resolved = navigateMenu(menu, indexPath)
 
   /**
-   * Measure .rcm-root and the #root container's CSS padding, resize the
-   * Tauri window to fit, compute the final position (clamp, flip, edge
-   * cases), then position and show the window.
+   * Measure `.rcm-root` (plus the container's padding) and report it.
    *
-   * The padding is read from computed style at runtime — no hardcoded
-   * WINDOW_PADDING constant. Users can freely change `--rcm-window-pad`
-   * in CSS and the layout will adapt automatically.
-   *
-   * Uses offsetWidth/offsetHeight — NOT affected by CSS transforms (the
-   * rcm-fade-in animation's scale(0.94) would shrink getBoundingClientRect).
+   * Uses `offsetWidth` / `offsetHeight` via `measureLevel` — not
+   * `getBoundingClientRect`, which a CSS transform would shrink. The padding is
+   * read from computed style, so changing `--rcm-window-pad` still works.
    */
-  const resizeAndShow = useCallback(async () => {
+  const measureAndReport = useCallback(() => {
     if (!rootRef.current || measuredRef.current) return
-
-    const pos = pendingPosRef?.current
-    if (!pos) return
-
-    const rootEl = rootRef.current
-    const containerEl = rootEl.parentElement ?? rootEl
-    const style = getComputedStyle(containerEl)
-
-    const padLeft = parseFloat(style.paddingLeft) || 0
-    const padRight = parseFloat(style.paddingRight) || 0
-    const padTop = parseFloat(style.paddingTop) || 0
-    const padBottom = parseFloat(style.paddingBottom) || 0
-
-    const rootW = rootEl.offsetWidth
-    const rootH = rootEl.offsetHeight
-
-    const w = rootW + padLeft + padRight
-    const h = rootH + padTop + padBottom
-
     measuredRef.current = true
-    pendingPosRef.current = null
 
-    const win = getCurrentWindow()
-    const dpi = window.devicePixelRatio || 1
-
-    try {
-      await win.setSize(new LogicalSize(w, h))
-    } catch {
-      // Window may not be available yet
-    }
-
-    // Compute final window position (clamp, flip, edge cases)
-    const monitors = await availableMonitors()
-    const { x: finalX, y: finalY } = computeWindowPosition(
-      {
-        idealX: pos.x,
-        idealY: pos.y,
-        parentRootX: pos.parentRootX,
-        winW: w * dpi,
-        winH: h * dpi,
-        rootOffsetX: padLeft * dpi,
-        rootOffsetY: padTop * dpi,
-        rootW: rootW * dpi,
-      },
-      monitors,
-    )
-
+    const measurement = measureLevel(rootRef.current)
     feLog.info(
       `ContextMenu:d${depth}`,
-      `win=(${w}x${h}) pos=(${finalX.toFixed(0)},${finalY.toFixed(0)})`,
+      `measured win=${measurement.winW}x${measurement.winH} root=${measurement.rootW}x${measurement.rootH}`,
     )
+    emitMenuMeasured({ depth, ...measurement })
+  }, [depth])
 
-    await win.setPosition(new PhysicalPosition(Math.round(finalX), Math.round(finalY)))
-    await win.setAlwaysOnTop(true)
-    if (menuActiveRef) {
-      menuActiveRef.current = true
-    }
-    await win.show()
-    await win.setFocus()
-  }, [depth, menuActiveRef, pendingPosRef])
-
-  // Reset measured flag when menu data changes
+  // Re-measure whenever the rendered level changes.
   useEffect(() => {
     measuredRef.current = false
   }, [menu, indexPath])
 
   useEffect(() => {
-    const raf = requestAnimationFrame(() => {
-      resizeAndShow()
-    })
+    const raf = requestAnimationFrame(measureAndReport)
     return () => cancelAnimationFrame(raf)
-  }, [resolved, resizeAndShow])
+  }, [resolved, measureAndReport])
 
   if (!resolved) {
     return <div className="rcm-root" />
@@ -198,7 +139,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   return (
     <div className="rcm-root" ref={rootRef} role="menu">
       {resolved.items.map((item, idx) => (
-        <MenuItemRowWrapper
+        <MenuItemRow
           key={item.key || `sub-${idx}`}
           item={item}
           depth={depth}
@@ -208,15 +149,4 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       ))}
     </div>
   )
-}
-
-import { MenuItemRow } from "./MenuItemRow"
-
-const MenuItemRowWrapper: React.FC<{
-  item: MenuItem
-  depth: number
-  indexPath: IndexPath
-  showIcons?: boolean
-}> = ({ item, depth, indexPath, showIcons }) => {
-  return <MenuItemRow item={item} depth={depth} indexPath={indexPath} showIcons={showIcons} />
 }

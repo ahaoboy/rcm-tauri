@@ -6,7 +6,6 @@
 
 use super::SystemCmdResult;
 use crate::types::CommandPayload;
-use std::path::Path;
 
 /// Run `@add-to-quick-access` — pin a file/folder to Quick Access.
 pub fn run_add(cmd: &CommandPayload) -> SystemCmdResult {
@@ -77,28 +76,6 @@ pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
                 message: msg,
             }
         }
-    }
-}
-
-/// Check whether a file or folder is currently pinned to Quick Access.
-pub fn is_in_quick_access(path: &str) -> bool {
-    // quick_access::list already canonicalizes paths internally, so we
-    // canonicalize the input once for consistent comparison.
-    let Ok(target) = Path::new(path).canonicalize() else {
-        return false;
-    };
-
-    match quick_access::list() {
-        Ok(entries) => entries.iter().any(|e| {
-            // Use quick-access's own paths_equal logic by reusing Path comparison.
-            // We compare the stored path (already absolute) with the target.
-            if let Ok(stored) = std::fs::canonicalize(&e.path) {
-                stored == target
-            } else {
-                false
-            }
-        }),
-        Err(_) => false,
     }
 }
 

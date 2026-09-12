@@ -1,4 +1,13 @@
-const DEFAULT_MODULE: &str = include_str!("../../rcm-kit/dist/full.js");
+/// The default menu script, bundled into the binary.
+///
+/// This path must stay inside the crate: cargo only ships files under the crate
+/// directory, so a path like `../../rcm-kit/dist/full.js` resolves when building
+/// from a checkout of this repo but fails for anyone consuming the crate
+/// (crates.io, a git dependency, or `cargo install`).
+///
+/// The file is generated from `rcm-kit` by `pnpm build:rcm`; CI verifies it has
+/// not gone stale.
+const DEFAULT_MODULE: &str = include_str!("../assets/full.js");
 const MENU_FILE: &str = "rcm.js";
 const STYLE_FILE: &str = "style.css";
 const CONFIG_FILE: &str = "rcm.config.json";

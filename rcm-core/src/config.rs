@@ -44,10 +44,6 @@ impl Theme {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Data
-// ═══════════════════════════════════════════════════════════════════════════
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ConfigFile {
     /// Dev mode flag
@@ -220,10 +216,6 @@ impl FilterRule {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Init — called once at startup
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Ensure the config file exists (creating defaults if missing),
 /// then log the current configuration.
 pub fn init() {
@@ -246,10 +238,6 @@ pub fn init() {
     );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Getters — always read from file so manual edits take effect immediately
-// ═══════════════════════════════════════════════════════════════════════════
-
 pub fn is_dev() -> bool {
     read_config().dev
 }
@@ -263,6 +251,26 @@ pub fn is_icons() -> bool {
 /// - `[]` in config → empty (allow all events).
 pub fn filters() -> Vec<FilterRule> {
     read_config().filters.unwrap_or_else(default_filters)
+}
+
+/// Why a context-menu event should be ignored, or `None` to handle it.
+///
+/// Returns a human-readable reason so the caller can log it. Both frontends'
+/// event monitors call this so the filtering behaviour cannot diverge.
+pub fn ignore_reason(event: &rcm_com::ContextMenuInfo) -> Option<String> {
+    for rule in filters() {
+        if rule.matches(event) {
+            return Some(if rule.reason.is_empty() {
+                format!(
+                    "class_re={:?} file_eq={:?} flags_eq={:?}",
+                    rule.class, rule.file, rule.flags
+                )
+            } else {
+                format!("{} (hwnd={})", rule.reason, event.hwnd)
+            });
+        }
+    }
+    None
 }
 
 pub fn theme() -> Theme {
@@ -286,16 +294,8 @@ pub fn remote_config_url() -> Option<String> {
 }
 
 fn url_or_none(s: &str) -> Option<String> {
-    if s.is_empty() {
-        None
-    } else {
-        Some(s.to_string())
-    }
+    (!s.is_empty()).then(|| s.to_string())
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Setters — read-modify-write the config file
-// ═══════════════════════════════════════════════════════════════════════════
 
 pub fn set_dev(dev: bool) {
     update_config(|cfg| cfg.dev = dev);
@@ -305,46 +305,42 @@ pub fn set_icons(icons: bool) {
     update_config(|cfg| cfg.icons = icons);
 }
 
-pub fn set_remote_js_url(url: String) {
-    update_config(|cfg| cfg.js_url = url);
-}
-pub fn set_remote_css_url(url: String) {
-    update_config(|cfg| cfg.css_url = url);
-}
-pub fn set_remote_config_url(url: String) {
-    update_config(|cfg| cfg.config_url = url);
-}
-
 pub fn set_theme(theme: Theme) {
     update_config(|cfg| cfg.theme = theme);
-}
-
-pub fn set_lang(lang: Option<Language>) {
-    update_config(|cfg| cfg.lang = lang);
 }
 
 /// Reset all config and menu files to embedded defaults.
 pub fn reset() {
     save_inner(&config_path(), &ConfigFile::default());
     crate::menu::write_menu_defaults();
-    println!("config: reset to defaults");
+    crate::log::info("Config", "reset to defaults");
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Internal
-// ═══════════════════════════════════════════════════════════════════════════
 
 fn config_path() -> PathBuf {
     crate::exe_dir().join("rcm.config.json")
 }
 
 /// Read and parse the config file, falling back to defaults on any error.
+///
+/// Failures are logged rather than propagated: the app must still start, and a
+/// silent fallback to defaults makes a hand-edited typo look like every setting
+/// reverted on its own.
 fn read_config() -> ConfigFile {
     let path = config_path();
-    std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|t| serde_json::from_str(&t).ok())
-        .unwrap_or_default()
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(e) => {
+            crate::log::warn("Config", &format!("read '{}': {e}", path.display()));
+            return ConfigFile::default();
+        }
+    };
+    match serde_json::from_str(&text) {
+        Ok(config) => config,
+        Err(e) => {
+            crate::log::warn("Config", &format!("parse '{}': {e}", path.display()));
+            ConfigFile::default()
+        }
+    }
 }
 
 /// Read the config file, apply `f`, and write it back.
