@@ -55,7 +55,12 @@ pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
         (sources, archive_path.to_string_lossy().into_owned())
     };
 
-    easy_archive::cli::handle_compression(&final_sources, &archive, fmt);
+    if let Err(e) = easy_archive::cli::handle_compression(&final_sources, &archive, fmt) {
+        return SystemCmdResult {
+            success: false,
+            message: format!("Failed to create '{archive}': {e}"),
+        };
+    }
 
     SystemCmdResult {
         success: true,

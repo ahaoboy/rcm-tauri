@@ -83,10 +83,6 @@ impl MenuHost for ReactorHost {
         win32::force_foreground(as_raw(window));
     }
 
-    fn is_window_focused(&self, window: Self::Window) -> bool {
-        win32::foreground_raw() as isize == window
-    }
-
     fn work_areas(&self) -> Vec<Rect> {
         win32::list_work_areas()
     }
@@ -122,11 +118,8 @@ fn with<R>(f: impl FnOnce(&mut MenuController<ReactorHost>) -> R) -> Option<R> {
 
 /// Prepare a fresh root menu and return the level the component must adopt.
 pub fn show_root(menu: Menu, at: ui::Point) -> Option<MenuShowRequest> {
-    with(|c| {
-        c.set_icons_enabled(rcm_core::config::is_icons());
-        c.set_dev_mode(rcm_core::config::is_dev());
-        c.show_root(menu, at)
-    })
+    refresh_settings();
+    with(|c| c.show_root(menu, at))
 }
 
 /// Turn a freshly created window into a hidden, borderless popup of `size`.
@@ -150,6 +143,11 @@ pub fn adopt(depth: usize, window: RawWindow, scale: f64) -> bool {
     .unwrap_or(false)
 }
 
+/// Update the DPI scale the host reports, once the renderer has measured it.
+pub fn set_scale(scale: f64) {
+    let _ = with(|c| c.host_mut().set_scale(scale));
+}
+
 /// Place a level's window.
 ///
 /// Pass the real frontend [`Measurement`] once available, or
@@ -168,7 +166,10 @@ pub fn hover(info: &HoverInfo) -> HoverResult {
 pub fn handle_idle() -> bool {
     let focused = win32::foreground_raw();
     with(|c| {
-        let ours = focused.is_null() || c.state().is_open_window(focused as isize);
+        // A null foreground window means no window is active, so the menu is
+        // certainly not focused. Treating it as "ours" would silently disable
+        // the click-away dismiss whenever the OS reports a transient null.
+        let ours = !focused.is_null() && c.state().is_open_window(focused as isize);
         c.handle_idle(ours)
     })
     .unwrap_or(false)

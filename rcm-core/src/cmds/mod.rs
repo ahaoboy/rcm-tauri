@@ -43,10 +43,6 @@ pub mod trash;
 pub mod unzip;
 pub mod zip;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SystemCommand enum
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Built-in system commands identified by `@`-prefixed strings.
 ///
 /// Each variant corresponds to a constant exported from
@@ -111,10 +107,6 @@ pub enum SystemCommand {
     RemoveFromDesktop,
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FromStr — parse "@unzip" → SystemCommand::Unzip, etc.
-// ═══════════════════════════════════════════════════════════════════════════
-
 impl FromStr for SystemCommand {
     type Err = String;
 
@@ -152,10 +144,6 @@ impl FromStr for SystemCommand {
         }
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// SystemCmdResult
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Result returned by [`SystemCommand::run`].
 #[derive(Debug, Clone, serde::Serialize)]
@@ -202,44 +190,6 @@ impl SystemCommand {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Shared utilities
-// ═══════════════════════════════════════════════════════════════════════════
-
-/// Run a PowerShell scriptlet and return its stdout on success.
-#[allow(dead_code)]
-pub(crate) fn powershell(script: &str) -> Result<String, String> {
-    let output = crate::sys_cmd("powershell")
-        .args(["-NoProfile", "-Command", script])
-        .output()
-        .map_err(|e| format!("failed to spawn powershell: {e}"))?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-    } else {
-        let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        Err(if err.is_empty() {
-            "powershell returned non-zero".into()
-        } else {
-            err
-        })
-    }
-}
-
-/// Build a `std::process::Command` from the payload, suitable for
-/// synchronous execution (these are quick operations).
-#[allow(dead_code)]
-pub(crate) fn build_sys_cmd(exe: &str, cmd: &CommandPayload) -> std::process::Command {
-    let mut c = crate::sys_cmd(exe);
-    if !cmd.args.is_empty() {
-        c.args(&cmd.args);
-    }
-    if !cmd.cwd.is_empty() {
-        c.current_dir(&cmd.cwd);
-    }
-    c
-}
-
 /// Return a unique path by appending ` (2)`, ` (3)`, … if the target
 /// already exists.
 pub(crate) fn unique_path(path: &std::path::Path) -> std::path::PathBuf {
@@ -249,10 +199,6 @@ pub(crate) fn unique_path(path: &std::path::Path) -> std::path::PathBuf {
         path.to_path_buf()
     }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Public helper
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Check whether a command string is a system command (`@` prefix).
 pub fn is_system_command(exe: &str) -> bool {

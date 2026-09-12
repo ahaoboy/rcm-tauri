@@ -30,9 +30,6 @@ export interface MenuData {
   groups: MenuItem[]
 }
 
-/** Button type from input events. */
-export type ButtonType = "Left" | "Right"
-
 /** ── Event system types ─────────────────────────────────────────────── */
 
 /**

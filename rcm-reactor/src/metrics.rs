@@ -38,6 +38,8 @@ pub struct MenuStyle {
     pub row_padding: (f64, f64),
     /// Width of the icon gutter reserved in a level that shows icons.
     pub icon_width: f64,
+    /// Width reserved for a row's submenu arrow and its surrounding padding.
+    pub arrow_gutter: f64,
     /// Corner radius of the popup border.
     pub corner_radius: f64,
     /// Corner radius of a highlighted row.
@@ -55,6 +57,7 @@ pub const MENU_STYLE: MenuStyle = MenuStyle {
     padding: 4.0,
     row_padding: (4.0, 6.0),
     icon_width: 16.0,
+    arrow_gutter: 40.0,
     corner_radius: 6.0,
     row_corner_radius: 4.0,
 };

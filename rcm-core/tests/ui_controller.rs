@@ -48,8 +48,6 @@ struct HostState {
     closed: Vec<u32>,
     /// Windows passed to `focus_window`, in order.
     focused: Vec<u32>,
-    /// Whether `is_window_focused` should claim focus.
-    focused_now: bool,
     /// What [`MenuHost::row_offset`] should answer: a per-row height and a top
     /// padding, or `None` to model a host that cannot estimate.
     row_estimate: Option<(f64, f64)>,
@@ -69,7 +67,6 @@ impl MockHost {
         state.areas = vec![Rect::new(0, 0, 1920, 1080)];
         state.scale = 1.0;
         state.next_window = 1;
-        state.focused_now = true;
         drop(state);
         host
     }
@@ -102,10 +99,6 @@ impl MenuHost for MockHost {
 
     fn focus_window(&mut self, window: Self::Window) {
         self.state.borrow_mut().focused.push(window);
-    }
-
-    fn is_window_focused(&self, _window: Self::Window) -> bool {
-        self.state.borrow().focused_now
     }
 
     fn work_areas(&self) -> Vec<Rect> {
@@ -750,15 +743,15 @@ fn blur_only_dismisses_when_focus_left_the_menu_entirely() {
     controller.place(1, Measurement::exact(Size::new(200, 60)));
 
     // The submenu now holds focus, which is the normal state while it is open.
-    assert!(!controller.blur(true), "a menu window still has focus");
+    assert!(!controller.handle_idle(true), "a menu window still has focus");
     assert!(controller.has_levels());
 
     // Focus left every menu window: the first miss is still tolerated, because
     // the OS may just be reassigning focus after a level closed.
-    assert!(!controller.blur(false), "the first miss is tolerated");
+    assert!(!controller.handle_idle(false), "the first miss is tolerated");
     assert!(controller.has_levels());
 
-    assert!(controller.blur(false), "the second miss dismisses");
+    assert!(controller.handle_idle(false), "the second miss dismisses");
     assert!(!controller.has_levels());
 }
 
@@ -779,14 +772,14 @@ fn a_blur_storm_while_the_pointer_moves_through_the_menu_does_not_dismiss() {
     assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
 
     // The hidden submenu's blur now arrives. Focus has not left the menu.
-    assert!(!controller.blur(false), "a stale blur must not dismiss");
+    assert!(!controller.handle_idle(false), "a stale blur must not dismiss");
     assert!(controller.has_levels(), "the root menu is still open");
     assert_eq!(controller.deepest(), 0);
 
     // The next hover keeps it alive even if another stale blur lands.
     assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
     assert!(
-        !controller.blur(false),
+        !controller.handle_idle(false),
         "interaction restarted the miss counter"
     );
     assert!(controller.has_levels());
@@ -824,8 +817,8 @@ fn a_submenu_never_dismisses_its_parent() {
 
     // A blur while the parent hands focus to the child, and the child reporting
     // focus, must both leave the menu standing.
-    assert!(!controller.blur(false), "the parent's blur is tolerated");
-    assert!(!controller.blur(true), "the child holds focus");
+    assert!(!controller.handle_idle(false), "the parent's blur is tolerated");
+    assert!(!controller.handle_idle(true), "the child holds focus");
     assert!(controller.has_levels());
 }
 

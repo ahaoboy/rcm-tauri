@@ -53,11 +53,6 @@ impl TauriHost {
         Self { app }
     }
 
-    /// The Tauri app handle this host wraps.
-    pub fn app(&self) -> &tauri::AppHandle {
-        &self.app
-    }
-
     fn window(&self, label: &'static str) -> Option<tauri::WebviewWindow> {
         self.app.get_webview_window(label)
     }
@@ -161,12 +156,6 @@ impl MenuHost for TauriHost {
             let _ = win.set_always_on_top(true);
             let _ = win.set_focus();
         }
-    }
-
-    fn is_window_focused(&self, window: Self::Window) -> bool {
-        self.window(window)
-            .and_then(|w| w.is_focused().ok())
-            .unwrap_or(true)
     }
 
     fn work_areas(&self) -> Vec<Rect> {

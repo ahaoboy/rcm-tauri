@@ -17,7 +17,6 @@
  *   - fetch initial config (dev mode, icons)
  *   - listen for `menu-show` (filtered by depth)
  *   - listen for `menu-hide-all`, `dev-mode`, `icons-changed`
- *   - emit `menu-blur` on focus loss (when the menu is active)
  *   - prevent window close → hide instead
  *
  * The one exception is parking the window off-screen on mount: Rust reveals the

@@ -101,11 +101,6 @@ pub fn run_unpin(cmd: &CommandPayload) -> SystemCmdResult {
     }
 }
 
-/// Check whether a file is pinned to Start.
-pub fn is_pinned_to_start(path: &str) -> bool {
-    startmenu::exists(Path::new(path)).ok().flatten().is_some()
-}
-
 /// List all items pinned to the Start Menu as [`crate::types::Entry`]s
 /// (user + machine scopes, with resolved args and target).
 pub fn list_pinned_to_start() -> Vec<crate::types::Entry> {

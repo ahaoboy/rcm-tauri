@@ -95,13 +95,6 @@ impl<W: Copy + Ord> MenuState<W> {
         self.windows.keys().copied().collect()
     }
 
-    /// The depth a window is registered at, if it is ours.
-    pub fn depth_of(&self, window: W) -> Option<usize> {
-        self.windows
-            .iter()
-            .find_map(|(depth, w)| (*w == window).then_some(*depth))
-    }
-
     /// Whether `window` belongs to the open menu.
     pub fn is_open_window(&self, window: W) -> bool {
         self.windows.values().any(|w| *w == window)
@@ -168,18 +161,11 @@ impl<W: Copy + Ord> MenuState<W> {
     /// The caller is responsible for actually hiding/closing the returned
     /// handles, which keeps this decoupled from the toolkit.
     pub fn take_deeper_than(&mut self, depth: usize) -> Vec<W> {
-        let doomed: Vec<usize> = self
-            .windows
-            .keys()
-            .copied()
-            .filter(|d| *d > depth)
-            .collect();
-        let windows = doomed
-            .into_iter()
-            .filter_map(|d| self.windows.remove(&d))
-            .collect();
         self.deepest = depth;
-        windows
+        self.windows
+            .split_off(&(depth + 1))
+            .into_values()
+            .collect()
     }
 
     /// Remove and return every open window, resetting all bookkeeping.
@@ -236,7 +222,6 @@ mod tests {
         assert!(state.has_windows());
         assert!(state.idle_ms().is_some());
         assert!(state.window(2) == Some(20));
-        assert_eq!(state.depth_of(30), Some(1));
         assert!(state.is_open_window(10));
         assert!(!state.is_open_window(99));
     }

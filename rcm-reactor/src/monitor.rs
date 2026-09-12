@@ -6,7 +6,7 @@
 //! module is only the Reactor-specific plumbing.
 
 use rcm_core::ui::Point;
-use rcm_core::{config, log};
+use rcm_core::{log, monitor};
 
 use crate::events::{AppEvent, push};
 
@@ -45,31 +45,8 @@ pub fn start() {
 }
 
 fn handle_event(event: rcm_com::ContextMenuInfo) {
-    log::event(
-        "RECV",
-        "rcm_com",
-        &format!("{:?} pos=({},{})", event.event, event.x, event.y),
-    );
-
-    if let Some(reason) = config::ignore_reason(&event) {
-        log::info("Rust::monitor", &format!("filtered: {reason}"));
-        return;
-    }
-
-    match &event.event {
-        rcm_com::Event::Menu { .. } => {
-            // When blocking is disabled the native system menu is already
-            // showing. Do NOT open the custom menu, and hide any that are open
-            // so system + custom menus never appear together.
-            if !rcm_core::ui::is_blocking_enabled() {
-                log::info(
-                    "Rust::monitor",
-                    "blocking disabled — suppressing custom menu (native menu shown)",
-                );
-                push(AppEvent::HideAll);
-                return;
-            }
-
+    match rcm_core::monitor::classify(&event) {
+        monitor::Action::Evaluate => {
             let menu = match rcm_vm::from_info(&event) {
                 Ok(menu) => menu,
                 Err(e) => {
@@ -77,20 +54,12 @@ fn handle_event(event: rcm_com::ContextMenuInfo) {
                     return;
                 }
             };
-
             push(AppEvent::ShowMenu {
                 menu: std::sync::Arc::new(menu),
                 at: Point::new(event.x, event.y),
             });
         }
-        _ => {
-            log::info(
-                "Rust::monitor",
-                &format!("non-Menu event (dev={})", config::is_dev()),
-            );
-            if !config::is_dev() {
-                push(AppEvent::HideAll);
-            }
-        }
+        monitor::Action::HideAll => push(AppEvent::HideAll),
+        monitor::Action::Ignore => {}
     }
 }

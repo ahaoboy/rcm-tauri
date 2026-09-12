@@ -61,11 +61,11 @@ pub struct MenuWindow {
     hovered: Option<usize>,
     /// Content size in DIPs once the renderer has reported it.
     measured: Option<(f64, f64, f64)>,
+    /// Height in DIPs to use until the renderer reports a real one.
+    estimated_height: f64,
     attach_timer: Option<ComponentTimer>,
     /// Measures the rendered menu so the controller can clamp against it.
     measurer: ElementRef<Grid>,
-    /// Native handle, learned once from `run_window` and reused thereafter.
-    hwnd: isize,
     /// Whether the controller has been told about this window.
     attached: bool,
 }
@@ -80,6 +80,8 @@ pub enum Message {
     Measured(f64, f64, f64),
     /// Pointer entered row `usize`.
     Hover(usize),
+    /// Pointer left the row it was on — clears the highlight.
+    HoverOut,
     /// Row `usize` was activated (click).
     Activate(usize),
     /// A ribbon item at `usize` with children was activated.
@@ -112,11 +114,19 @@ impl MenuWindow {
     fn content_size(&self) -> (f64, f64) {
         match self.measured {
             Some((w, h, _)) if w > 0.0 && h > 0.0 => (w, h),
-            _ => (
-                self.style.fallback_width,
-                level_height(self.level(), &self.style),
-            ),
+            _ => (self.style.fallback_width, self.estimated_height),
         }
+    }
+
+    /// The item at `index`, unless it is a separator or disabled.
+    ///
+    /// Rows that cannot be interacted with are silently ignored, which is what
+    /// both hover and click need.
+    fn active_item(&self, index: usize) -> Option<(&Item, Vec<i32>)> {
+        let MenuRow::Item { item, path } = self.level().row(index)? else {
+            return None;
+        };
+        (!item.disable).then(|| (item.as_ref(), path.clone()))
     }
 
     /// The measurement to hand to the controller, in physical pixels.
@@ -192,9 +202,9 @@ impl Component for MenuWindow {
             style: MENU_STYLE,
             hovered: None,
             measured: None,
+            estimated_height: level_height(&input.request.level, &MENU_STYLE),
             attach_timer: None,
             measurer: ElementRef::new(),
-            hwnd: 0,
             attached: false,
         };
         // The timer keeps itself alive until it fires; dropping it cancels it.
@@ -227,7 +237,6 @@ impl Component for MenuWindow {
                 self.attach_timer = None;
             }
             Message::Attached { raw } => {
-                self.hwnd = raw;
                 let depth = self.input.depth();
 
                 if !menu_runtime::adopt(depth, raw, self.scale()) {
@@ -266,6 +275,11 @@ impl Component for MenuWindow {
                 );
                 self.measured = Some((width, height, scale));
 
+                // Keep the host's DPI in step with the real value: it is
+                // adopted before the first measurement, so without this it
+                // would report the 1.0 default forever.
+                menu_runtime::set_scale(scale);
+
                 // `view` publishes the measured `client_size`, so the window
                 // resizes on this commit; re-clamp with the real size. If the
                 // handle has not arrived yet, `Attached` will place instead.
@@ -279,23 +293,17 @@ impl Component for MenuWindow {
                 }
                 self.hovered = Some(index);
 
-                let Some(MenuRow::Item { item, path }) = self.level().row(index) else {
-                    return;
-                };
-                if item.disable {
-                    return;
+                if let Some((_, path)) = self.active_item(index) {
+                    self.enter_row(context, index, path);
                 }
-                let path = path.clone();
-                self.enter_row(context, index, path);
+            }
+            Message::HoverOut => {
+                self.hovered = None;
             }
             Message::Activate(index) => {
-                let Some(MenuRow::Item { item, path }) = self.level().row(index) else {
+                let Some((item, path)) = self.active_item(index) else {
                     return;
                 };
-                if item.disable {
-                    return;
-                }
-                let path = path.clone();
                 if item.has_children() {
                     self.enter_row(context, index, path);
                 } else if let Some(cmd) = &item.command {
@@ -511,6 +519,7 @@ impl MenuWindow {
                 .on_pointer_entered(
                     context.callback(move |_: PointerEventInfo| Message::Hover(index)),
                 )
+                .on_pointer_exited(context.callback(|_: PointerEventInfo| Message::HoverOut))
                 .on_pointer_released(
                     context.callback(move |_: PointerEventInfo| Message::Activate(index)),
                 );
@@ -526,7 +535,7 @@ impl MenuWindow {
     /// wider than the region the position clamp assumes).
     fn label_view(&self, label: String) -> TextBlock {
         let m = &self.style;
-        let reserve = m.icon_width + m.padding * 2.0 + 40.0;
+        let reserve = m.icon_width + m.padding * 2.0 + m.arrow_gutter;
         TextBlock::new()
             .text(label)
             .max_lines(1)

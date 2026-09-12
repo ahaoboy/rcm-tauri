@@ -172,16 +172,8 @@ impl<H: MenuHost> MenuController<H> {
         &mut self.host
     }
 
-    pub fn metrics(&self) -> &MenuMetrics {
-        &self.metrics
-    }
-
     pub fn state(&self) -> &MenuState<H::Window> {
         &self.state
-    }
-
-    pub fn menu(&self) -> Option<&Menu> {
-        self.menu.as_deref()
     }
 
     /// The open level at `depth`, if any.
@@ -189,28 +181,13 @@ impl<H: MenuHost> MenuController<H> {
         self.levels.get(&depth).map(|open| &open.request.level)
     }
 
-    /// The level to render at `depth`, if it is open.
-    pub fn open_level(&self, depth: usize) -> Option<&MenuShowRequest> {
-        self.levels.get(&depth).map(|open| &open.request)
-    }
-
     /// The rectangle a level was last placed at.
     pub fn placed_rect(&self, depth: usize) -> Option<Rect> {
         self.levels.get(&depth).and_then(|open| open.rect)
     }
 
-    /// The user's `icons` preference, as read from `rcm.config.json`.
-    pub fn icons_enabled(&self) -> bool {
-        self.options.icons_enabled
-    }
-
     pub fn set_icons_enabled(&mut self, enabled: bool) {
         self.options = FlattenOptions::new(enabled);
-    }
-
-    /// Dev mode keeps the menu open after a command runs.
-    pub fn dev_mode(&self) -> bool {
-        self.dev_mode
     }
 
     pub fn set_dev_mode(&mut self, dev: bool) {
@@ -225,11 +202,6 @@ impl<H: MenuHost> MenuController<H> {
     /// Whether any menu level is open.
     pub fn has_levels(&self) -> bool {
         self.state.has_windows()
-    }
-
-    /// Monitor work areas, in physical pixels.
-    pub fn work_areas(&self) -> Vec<Rect> {
-        self.host.work_areas()
     }
 
     /// Flatten a level from the current menu without changing any state.
@@ -540,16 +512,12 @@ impl<H: MenuHost> MenuController<H> {
     /// immediate form of [`Self::handle_idle`]: the caller queries every open
     /// window and passes the answer.
     ///
-    /// Returns `true` when the menu was closed.
-    pub fn blur(&mut self, any_window_focused: bool) -> bool {
-        self.handle_idle(any_window_focused)
-    }
-
     /// Drive the click-away dismiss and the auto-hide timeout.
     ///
     /// This is the **only** decision point for dismissing the menu.
     /// `foreground_is_ours` must be a fresh query — "is any open menu window
-    /// focused right now" — normally from [`MenuHost::is_window_focused`].
+    /// focused right now" — answered by the host, which is the only party that
+    /// can ask the OS.
     ///
     /// Returns `true` when the menu was closed.
     pub fn handle_idle(&mut self, foreground_is_ours: bool) -> bool {
@@ -578,11 +546,6 @@ impl<H: MenuHost> MenuController<H> {
         }
 
         false
-    }
-
-    /// Reset the idle timer without showing anything.
-    pub fn touch(&mut self) {
-        self.state.touch();
     }
 
     /// Whether the menu should close after running a command.

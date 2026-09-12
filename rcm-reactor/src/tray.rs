@@ -69,8 +69,6 @@ impl TrayState {
 
     /// Re-tick the theme checkmarks for `theme`.
     fn sync_theme(&self, theme: rcm_core::config::Theme) {
-        let current = rcm_core::config::Theme::default();
-        let _ = current;
         self.theme_system
             .set_checked(theme == rcm_core::config::Theme::System);
         self.theme_light
@@ -395,7 +393,13 @@ pub fn start() {
             // receiver after the message is dispatched.
             let mut msg = MSG::default();
             unsafe {
-                while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                loop {
+                    // `GetMessageW` returns -1 on error and 0 on `WM_QUIT`, so
+                    // only a positive value means "keep pumping". Treating an
+                    // error as a message would spin this loop forever.
+                    if GetMessageW(&mut msg, None, 0, 0).0 <= 0 {
+                        break;
+                    }
                     let _ = TranslateMessage(&msg);
                     DispatchMessageW(&msg);
                     while let Ok(event) = MenuEvent::receiver().try_recv() {

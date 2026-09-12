@@ -32,14 +32,10 @@ pub mod metrics;
 pub mod position;
 pub mod state;
 
-pub use blocking::{
-    cached_blocking_enabled, disable_blocking, enable_blocking, is_blocking_enabled,
-    set_cached_blocking_enabled,
-};
+pub use blocking::{disable_blocking, enable_blocking, is_blocking_enabled};
 pub use controller::{HoverInfo, HoverResult, MenuController, MenuShowRequest};
 pub use geometry::{Point, Rect, Size};
 pub use host::{Measurement, MenuHost, MenuWindowInput};
 pub use level::{FlattenOptions, MenuLevel, MenuRow};
 pub use metrics::MenuMetrics;
-pub use position::{PositionInfo, choose_monitor_for_point, compute_window_position};
 pub use state::MenuState;

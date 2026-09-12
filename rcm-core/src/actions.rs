@@ -17,10 +17,6 @@ use rcm_reg::MenuStyle;
 
 use crate::{config, log, menu, registry};
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Stable ids and labels
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Ids for every tray entry.
 ///
 /// Shared so both frontends route clicks identically, and so the ids stay
@@ -72,10 +68,6 @@ pub mod text {
     pub const THEME_DARK: &str = "Dark";
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Observable state
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Whether the compact Windows 11 context menu is active.
 pub fn is_win11() -> bool {
     MenuStyle::current() == MenuStyle::Windows11
@@ -95,10 +87,6 @@ pub fn has_remote() -> bool {
         || config::remote_config_url().is_some()
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Context-menu style
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Switch the context-menu style. Returns the style that is now active.
 pub fn set_style(style: MenuStyle) -> Result<MenuStyle, String> {
     style.set().map_err(|e| {
@@ -109,10 +97,6 @@ pub fn set_style(style: MenuStyle) -> Result<MenuStyle, String> {
     Ok(style)
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Shell-extension registration
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Register or unregister the shell extension. Returns the resulting status.
 pub fn set_registered(register: bool) -> bool {
     if register {
@@ -122,10 +106,6 @@ pub fn set_registered(register: bool) -> bool {
     }
     register_status()
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Native menu blocking
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Enable or disable native context-menu blocking.
 ///
@@ -155,10 +135,6 @@ pub fn set_blocking(enable: bool) -> Result<String, String> {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Config toggles
-// ═══════════════════════════════════════════════════════════════════════════
-
 /// Flip the icon-ribbon preference. Returns the new value.
 pub fn toggle_icons() -> bool {
     let value = !config::is_icons();
@@ -178,10 +154,6 @@ pub fn set_theme(theme: config::Theme) -> config::Theme {
     config::set_theme(theme);
     theme
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Autostart
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Flip the "launch at startup" registration. Returns the new value.
 pub fn toggle_autostart() -> Result<bool, String> {
@@ -211,10 +183,6 @@ pub fn toggle_autostart() -> Result<bool, String> {
     );
     Ok(enabled)
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Remote pull
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Which remote file to download.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -273,16 +241,6 @@ pub struct PullOutcome {
 }
 
 impl PullOutcome {
-    /// File name for messages, e.g. `rcm.js`.
-    pub fn label(&self) -> &'static str {
-        self.file.file_name()
-    }
-
-    /// Message for a failure window, e.g. `Pull rcm.js Failed`.
-    pub fn error_title(&self) -> String {
-        format!("Pull {} Failed", self.label())
-    }
-
     /// Contents of `style.css`, for frontends that push CSS to open windows.
     /// `None` for every other file.
     pub fn style_css(&self) -> Option<String> {
@@ -305,10 +263,6 @@ pub fn pull(file: PullFile) -> Result<PullOutcome, String> {
     log::info("Pull", &format!("{} saved to {path}", file.file_name()));
     Ok(PullOutcome { file, path })
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Maintenance
-// ═══════════════════════════════════════════════════════════════════════════
 
 /// Restart Explorer so registry changes take effect.
 pub fn apply() -> Result<(), String> {

@@ -149,8 +149,6 @@ impl MenuMeasuredPayload {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct MenuExecutePayload {
-    /// Index path to the clicked item.
-    pub path: Vec<i32>,
     /// Command to execute (sent directly from frontend).
     pub command: rcm_core::CommandPayload,
 }

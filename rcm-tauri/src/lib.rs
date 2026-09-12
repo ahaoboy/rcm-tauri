@@ -30,12 +30,6 @@ fn get_config() -> ConfigPayload {
     }
 }
 
-/// Create a submenu window (called from frontend for lazy init).
-#[tauri::command]
-async fn create_window(app: tauri::AppHandle, label: String) {
-    MenuManager::new(app).ensure_window_labeled(&label);
-}
-
 /// Return CSS content for the frontend.
 /// Cached after the first load — all windows share the same CSS.
 #[tauri::command]
@@ -75,12 +69,10 @@ fn notify_style_updated(app: tauri::AppHandle, css: String) -> Result<(), String
 #[tauri::command]
 async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
     let label = "config-editor";
-    if app.get_webview_window(label).is_some() {
-        // Already open — focus it
-        if let Some(win) = app.get_webview_window(label) {
-            let _ = win.show();
-            let _ = win.set_focus();
-        }
+    // Already open — bring the existing window forward instead of making a second one.
+    if let Some(win) = app.get_webview_window(label) {
+        let _ = win.show();
+        let _ = win.set_focus();
         return Ok(());
     }
 
@@ -311,7 +303,6 @@ fn run_app() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            create_window,
             get_config,
             get_style_css,
             read_config_file,

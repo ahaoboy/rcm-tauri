@@ -208,11 +208,6 @@ impl MenuLevel {
         path.len().saturating_sub(1)
     }
 
-    /// Whether this level has nothing to show.
-    pub fn is_empty(&self) -> bool {
-        self.rows.is_empty() && self.ribbon.is_empty()
-    }
-
     /// The row at `index`, if any.
     pub fn row(&self, index: usize) -> Option<&MenuRow> {
         self.rows.get(index)

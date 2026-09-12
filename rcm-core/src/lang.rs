@@ -53,15 +53,10 @@ fn unix_lang() -> String {
 fn locale_to_lang(locale: &str) -> String {
     let lower = locale.to_lowercase();
 
-    if lower.starts_with("zh")
-        || lower.starts_with("chinese")
-        || lower.contains("zh-")
-        || lower.contains("zh_")
-    {
+    if lower.starts_with("zh") || lower.starts_with("chinese") {
         return "zh".to_string();
     }
 
-    // Everything else falls back to English
     "en".to_string()
 }
 

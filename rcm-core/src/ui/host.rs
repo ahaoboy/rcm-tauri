@@ -14,7 +14,7 @@
 //!    the frontend to render it. **No geometry is applied yet.** A frontend that
 //!    renders from Rust-provided data emits its "render this level" event here.
 //! 2. [`MenuHost::place_window`] — apply the final rectangle computed by
-//!    [`compute_window_position`](super::compute_window_position), reveal the
+//!    [`compute_window_position`](super::position::compute_window_position), reveal the
 //!    window and focus it.
 //!
 //! Between the two, the frontend measures its own content and reports a
@@ -166,18 +166,8 @@ pub trait MenuHost {
     /// it lost focus and dismisses itself — the symptom is the menu vanishing
     /// while the pointer is still on it.
     ///
-    /// A host that cannot focus a window may leave this as a no-op, but then
-    /// [`Self::is_window_focused`] must not report a focus loss caused by one of
-    /// our own windows closing.
+    /// A host that cannot focus a window may leave this as a no-op.
     fn focus_window(&mut self, window: Self::Window);
-
-    /// Whether `window` currently holds focus.
-    ///
-    /// Used for the click-away dismiss. Defaults to `true` so a host that cannot
-    /// answer never triggers a spurious dismissal.
-    fn is_window_focused(&self, _window: Self::Window) -> bool {
-        true
-    }
 
     /// Monitor work areas in physical pixels, for clamping and flipping.
     fn work_areas(&self) -> Vec<Rect>;

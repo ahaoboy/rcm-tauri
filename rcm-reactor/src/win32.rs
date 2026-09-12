@@ -37,18 +37,6 @@ pub struct WorkArea {
     pub bottom: i32,
 }
 
-impl WorkArea {
-    /// Width of the work area in pixels.
-    pub fn width(&self) -> i32 {
-        self.right - self.left
-    }
-
-    /// Height of the work area in pixels.
-    pub fn height(&self) -> i32 {
-        self.bottom - self.top
-    }
-}
-
 impl From<WorkArea> for rcm_core::ui::Rect {
     fn from(area: WorkArea) -> Self {
         rcm_core::ui::Rect::new(
@@ -243,7 +231,6 @@ pub fn move_window(raw: *mut core::ffi::c_void, x: i32, y: i32, w: i32, h: i32) 
 }
 
 /// Hide a window (`SW_HIDE`).
-#[allow(dead_code)]
 pub fn hide(raw: *mut core::ffi::c_void) {
     unsafe {
         let _ = ShowWindow(hwnd(raw), SW_HIDE);

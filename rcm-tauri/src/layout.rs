@@ -18,7 +18,6 @@
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-use rcm_core::runner::execute;
 use rcm_core::ui::{HoverInfo, HoverResult, Measurement, MenuController, MenuMetrics, Point};
 use rcm_core::{config, log};
 use tauri::{Emitter, Manager};
@@ -37,10 +36,11 @@ const IDLE_POLL_MS: u64 = 80;
 /// Number of submenu webviews created up-front and then reused.
 ///
 /// Creating a webview is expensive, so a small pool is prepared at startup and
-/// depth `d` (1-based) reuses `submenu-{d-1}`. Anything deeper is created on
-/// demand. Must be at least `MenuMetrics::max_submenu_depth` to avoid a stall on
-/// the first deep nesting.
-const PRE_CREATED_WINDOWS: usize = 3;
+/// depth `d` (1-based) reuses `submenu-{d-1}`. It must cover every depth the
+/// controller can reach (`MenuMetrics::max_submenu_depth`), otherwise the
+/// deepest level would build a webview on the critical path — the stall the
+/// pool exists to avoid.
+const PRE_CREATED_WINDOWS: usize = MenuMetrics::DEFAULT.max_submenu_depth;
 
 /// The process-wide controller.
 ///
@@ -83,19 +83,7 @@ impl MenuManager {
         TauriHost::new(self.app.clone())
     }
 
-    /// Ensure a submenu window with an explicit label exists.
-    ///
-    /// Used by the `create_window` command, which the frontend calls to lazily
-    /// initialise a level beyond the pre-created pool.
-    pub fn ensure_window_labeled(&self, label: &str) {
-        self.host().ensure_labeled(label);
-    }
-
     /// Ensure the pool of reusable submenu windows exists.
-    ///
-    /// The pool is fixed at [`PRE_CREATED_WINDOWS`] because those are exactly the
-    /// labels that can be interned, and every menu depth is capped at that count
-    /// anyway.
     pub fn pre_create_submenus(&self) {
         let mut host = self.host();
         for depth in 1..=PRE_CREATED_WINDOWS {
@@ -170,7 +158,7 @@ impl MenuManager {
         .unwrap_or(true);
 
         tauri::async_runtime::spawn(async move {
-            execute(&cmd).await;
+            rcm_core::runner::execute_logged(&cmd, "RcmTauri::execute").await;
         });
 
         if close {
@@ -213,11 +201,6 @@ impl MenuManager {
     pub fn hide_all(&self) {
         let _ = with(|c| c.hide_all());
         let _ = self.app.emit("menu-hide-all", true);
-    }
-
-    /// Close every level deeper than `depth`.
-    pub fn hide_deeper_than(&self, depth: usize) {
-        let _ = with(|c| c.hide_deeper_than(depth));
     }
 
     /// Start the watchdog that dismisses the menu on click-away or inactivity.

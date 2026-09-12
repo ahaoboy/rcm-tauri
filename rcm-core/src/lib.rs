@@ -6,6 +6,7 @@ pub mod files;
 pub mod lang;
 pub mod log;
 pub mod menu;
+pub mod monitor;
 pub mod paths;
 pub mod process;
 pub mod registry;
