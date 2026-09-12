@@ -81,8 +81,6 @@ pub enum Message {
     Execute(CommandPayload),
     /// Close every menu popup.
     CloseAll,
-    /// Focus was lost.
-    Blur,
     /// Does nothing; `run_window` requires a message to be returned.
     NoOp,
 }
@@ -182,7 +180,7 @@ impl Component for MenuWindow {
     fn create(input: &Self::Input, context: &ComponentContext<Self>) -> Self {
         let mut window = Self {
             input: input.clone(),
-            metrics: crate::events::metrics(),
+            metrics: crate::events::METRICS,
             hovered: None,
             measured: None,
             attach_timer: None,
@@ -201,18 +199,14 @@ impl Component for MenuWindow {
                 let depth = self.input.depth();
                 // A measurement may already have arrived (it fires on the first
                 // layout, which can beat this timer). `measurement()` prefers it,
-                // so place with it when present and fall back to the estimate
+                // so this places with the real size when present and the estimate
                 // otherwise.
                 let measurement = self.measurement();
-                let measured = self.measured.is_some();
+                let scale = self.scale();
                 let _ = context.run_window(move |handle| {
                     let raw = handle.as_raw() as isize;
-                    if menu_runtime::adopt(depth, raw, 1.0) {
-                        if measured {
-                            menu_runtime::place_measured(depth, measurement);
-                        } else {
-                            menu_runtime::place_estimated(depth, measurement.window);
-                        }
+                    if menu_runtime::adopt(depth, raw, scale) {
+                        menu_runtime::place(depth, measurement);
                     }
                     Message::NoOp
                 });
@@ -243,7 +237,7 @@ impl Component for MenuWindow {
                 let depth = self.input.depth();
                 let measurement = self.measurement();
                 let _ = context.run_window(move |_| {
-                    menu_runtime::place_measured(depth, measurement);
+                    menu_runtime::place(depth, measurement);
                     Message::NoOp
                 });
             }
@@ -282,9 +276,6 @@ impl Component for MenuWindow {
             }
             Message::Execute(cmd) => {
                 self.run(cmd);
-            }
-            Message::Blur => {
-                menu_runtime::blur(self.input.depth());
             }
             Message::CloseAll => {
                 menu_runtime::hide_all();
@@ -402,7 +393,6 @@ impl Component for MenuWindow {
                     .padding(self.metrics.padding)
                     .is_tab_stop(true)
                     .allow_focus_on_interaction(true)
-                    .on_lost_focus(context.callback(|_: FocusEventInfo| Message::Blur))
                     .on_preview_key_down(context.routed_callback(|event: KeyEventInfo| {
                         if event.key == VirtualKey::ESCAPE {
                             RoutedMessage::handled(Message::CloseAll)

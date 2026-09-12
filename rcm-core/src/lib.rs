@@ -13,7 +13,9 @@ pub mod runner;
 pub mod style;
 pub mod types;
 pub mod ui;
-pub use types::{CommandPayload, FileInfo, IndexPath, InvokeProps, Item, Menu, NavigateResult};
+pub use types::{
+    CommandPayload, FileInfo, IndexPath, InvokeProps, Item, Menu, NavigateResult, WindowMode,
+};
 
 /// Windows process creation flag: suppress console window.
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;

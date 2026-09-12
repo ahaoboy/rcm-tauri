@@ -38,6 +38,10 @@ use super::level::MenuLevel;
 use crate::types::Menu;
 
 /// What a frontend needs in order to build one menu window.
+///
+/// Deliberately free of geometry: opening a window is only about *what* to draw.
+/// The frontend measures what it drew and the controller answers with a final
+/// rectangle — see [`MenuHost::place_window`].
 #[derive(Debug, Clone)]
 pub struct MenuWindowInput {
     /// The complete menu tree.
@@ -48,22 +52,11 @@ pub struct MenuWindowInput {
     pub menu: Arc<Menu>,
     /// The level to render (rows, ribbon and alignment flags).
     pub level: MenuLevel,
-    /// Ideal screen position of the menu *content*, in physical pixels.
-    ///
-    /// Advisory only — [`MenuHost::place_window`] receives the final, clamped
-    /// rectangle. Frontends that position natively can ignore this.
-    pub position: Point,
-    /// Left edge of the parent menu's content, for submenu flipping.
-    /// `None` for the root menu.
-    pub parent_left: Option<i32>,
 }
 
 impl PartialEq for MenuWindowInput {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.menu, &other.menu)
-            && self.level == other.level
-            && self.position == other.position
-            && self.parent_left == other.parent_left
+        Arc::ptr_eq(&self.menu, &other.menu) && self.level == other.level
     }
 }
 
@@ -98,13 +91,23 @@ pub struct Measurement {
 }
 
 impl Measurement {
+    /// A measurement of `content` drawn inside a `window` of `window` size.
+    ///
+    /// Prefer this over a struct literal: it keeps the field order in one place
+    /// and lets `Measurement` gain fields without breaking external callers.
+    ///
+    /// All values are physical pixels.
+    pub const fn new(window: Size, content: Size, content_offset: Point) -> Self {
+        Self {
+            window,
+            content,
+            content_offset,
+        }
+    }
+
     /// A measurement whose window is exactly its content (no padding).
     pub const fn exact(content: Size) -> Self {
-        Self {
-            window: content,
-            content,
-            content_offset: Point::new(0, 0),
-        }
+        Self::new(content, content, Point::new(0, 0))
     }
 
     /// Whether both sizes are usable.

@@ -28,14 +28,7 @@
 import { getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window"
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import {
-  emitMenuBlur,
-  getConfig,
-  onDevMode,
-  onIconsChanged,
-  onMenuHideAll,
-  onMenuShow,
-} from "../api/menuEvents"
+import { getConfig, onDevMode, onIconsChanged, onMenuHideAll, onMenuShow } from "../api/menuEvents"
 import { feLog } from "../feLog"
 import type { MenuData, IndexPath } from "../types/menu"
 
@@ -48,8 +41,6 @@ export interface MenuWindowState {
   showIcons: boolean
   /** Hide the window and clear React state. No-op in dev mode. */
   hide: () => Promise<void>
-  /** Whether the menu is currently shown (armed for blur detection). */
-  menuActive: React.RefObject<boolean>
 }
 
 export interface UseMenuWindowOptions {
@@ -68,7 +59,6 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
   const [indexPath, setIndexPath] = useState<IndexPath>([])
   const [showIcons, setShowIcons] = useState(false)
   const devMode = useRef(false)
-  const menuActive = useRef(false)
 
   useEffect(() => {
     const win = getCurrentWindow()
@@ -111,15 +101,9 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
         cleanups.push(unlistenIcons)
       }
 
-      // ── Blur → Rust decides whether to hide all ──────────────
-      const unlistenFocus = await win.onFocusChanged(({ payload: focused }) => {
-        feLog.info(tag, `onFocusChanged focused=${focused} menuActive=${menuActive.current}`)
-        if (!focused && !devMode.current && menuActive.current) {
-          feLog.eventSend("menu-blur", `depth=${depth}`)
-          emitMenuBlur(depth)
-        }
-      })
-      cleanups.push(unlistenFocus)
+      // Dismissal is not event-driven: Rust polls which window holds focus. A
+      // blur cannot tell "focus moved to another menu window" from "focus left
+      // the menu", so emitting one only caused spurious dismissals.
 
       // ── Rust → Frontend: render this level ───────────────────
       const unlistenShow = await onMenuShow((payload) => {
@@ -163,7 +147,6 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
 
   const hide = useCallback(async () => {
     if (devMode.current) return
-    menuActive.current = false
     const win = getCurrentWindow()
     await win.hide()
     await win.setPosition(OFF_SCREEN)
@@ -171,5 +154,5 @@ export function useMenuWindow(options: UseMenuWindowOptions): MenuWindowState {
     setIndexPath([])
   }, [])
 
-  return { menu, indexPath, devMode, showIcons, hide, menuActive }
+  return { menu, indexPath, devMode, showIcons, hide }
 }

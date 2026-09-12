@@ -34,9 +34,7 @@ pub const MENU_HOVER_ARGB: (u8, u8, u8, u8) = (0x30, 0x80, 0x80, 0x80);
 /// Layout geometry (`submenu_gap`, `edge_gap`, auto-hide, depth limit) comes
 /// from [`rcm_core::ui`] and is shared with the Tauri build; only the row
 /// presentation metrics are Reactor-specific.
-pub fn metrics() -> MenuMetrics {
-    MenuMetrics::for_reactor()
-}
+pub const METRICS: MenuMetrics = MenuMetrics::for_reactor();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Events

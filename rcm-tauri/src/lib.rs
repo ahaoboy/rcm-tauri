@@ -9,7 +9,7 @@ pub mod monitor;
 pub mod tray;
 
 use crate::events::ConfigPayload;
-use crate::events::{MenuBlurPayload, MenuExecutePayload, MenuHoverPayload, MenuMeasuredPayload};
+use crate::events::{MenuExecutePayload, MenuHoverPayload, MenuMeasuredPayload};
 use crate::layout::MenuManager;
 use rcm_core::{config, log};
 use tauri::{Emitter, Listener, Manager};
@@ -301,13 +301,9 @@ fn run_app() {
                 }
             });
 
-            // ── Blur: only the deepest window dismisses ─────────────
-            let m5 = manager.clone();
-            app_handle.listen("menu-blur", move |event| {
-                if let Ok(payload) = serde_json::from_str::<MenuBlurPayload>(event.payload()) {
-                    m5.handle_blur(payload.depth);
-                }
-            });
+            // Dismissal is not event-driven: `start_idle_watchdog` polls which
+            // window holds focus, which is the only way to tell "focus moved
+            // between our windows" from "focus left the menu".
 
             // Start the external event monitor
             monitor::start_monitoring(manager);

@@ -21,12 +21,7 @@ interface MenuItemRowProps {
  * The only geometry reported is this row's offset from the top of `.rcm-root`,
  * which Rust uses to align a submenu with the hovered row.
  */
-export const MenuItemRow: React.FC<MenuItemRowProps> = ({
-  item,
-  depth,
-  indexPath,
-  showIcons,
-}) => {
+export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, depth, indexPath, showIcons }) => {
   const rowRef = useRef<HTMLDivElement>(null)
   const hasChildren = item.items && item.items.length > 0
 

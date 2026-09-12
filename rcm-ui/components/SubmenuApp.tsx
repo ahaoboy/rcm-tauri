@@ -22,7 +22,7 @@ export function SubmenuApp() {
   const myLevel = parseInt(window.location.hash.replace("#submenu-", ""), 10) || 0
   const depth = myLevel + 1
 
-  const { menu, indexPath, menuActive } = useMenuWindow({
+  const { menu, indexPath } = useMenuWindow({
     depth,
     tag: `App:submenu-${myLevel}`,
   })
@@ -36,13 +36,5 @@ export function SubmenuApp() {
     return <div className="rcm-root" />
   }
 
-  return (
-    <ContextMenu
-      depth={depth}
-      indexPath={indexPath}
-      menu={menu}
-      showIcons={false}
-      menuActiveRef={menuActive}
-    />
-  )
+  return <ContextMenu depth={depth} indexPath={indexPath} menu={menu} showIcons={false} />
 }

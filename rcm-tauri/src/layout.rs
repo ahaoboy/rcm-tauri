@@ -26,8 +26,13 @@ use tauri::{Emitter, Manager};
 use crate::events::{MenuExecutePayload, MenuHoverPayload, MenuMeasuredPayload, label_for_depth};
 use crate::menu_host::TauriHost;
 
-/// How often the auto-hide / click-away watchdog runs.
-const IDLE_POLL_MS: u64 = 500;
+/// How often the click-away / auto-hide watchdog runs.
+///
+/// Dismissal needs two consecutive polls with focus outside the menu, so the
+/// worst-case latency after clicking away is about twice this value. It is kept
+/// short because blur events are deliberately not used as a trigger: only a live
+/// focus query can tell "focus moved between our windows" from "focus left".
+const IDLE_POLL_MS: u64 = 80;
 
 /// The process-wide controller.
 ///
@@ -165,17 +170,16 @@ impl MenuManager {
         }
     }
 
-    /// Handle blur from a menu window — only the deepest one dismisses.
-    pub fn handle_blur(&self, depth: usize) {
-        let _ = with(|c| c.blur(depth));
-    }
-
     /// Whether any menu level is currently open.
     pub fn has_open_levels(&self) -> bool {
         with(|c| c.has_levels()).unwrap_or(false)
     }
 
     /// Whether any open menu window currently holds focus.
+    ///
+    /// This is the authoritative input to dismissal: asking the OS directly is
+    /// the only way to distinguish focus moving between our own windows (normal
+    /// — a parent hands it to its submenu) from focus leaving the menu.
     fn foreground_is_ours(&self) -> bool {
         let depths = with(|c| c.state().depths()).unwrap_or_default();
         depths.into_iter().any(|depth| {

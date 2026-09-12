@@ -9,10 +9,14 @@
  *   Rust  → FE:  menu-show (what to render), menu-hide-all, dev-mode,
  *                icons-changed, theme-changed, style-changed
  *   FE    → Rust: menu-hover (which row), menu-measured (how big it drew),
- *                 menu-execute, menu-blur, menu-close-all, log-event
+ *                 menu-execute, menu-close-all, log-event
  *
  * Rust never sends a position and the frontend never computes one. The only
  * geometry crossing the boundary is a measurement.
+ *
+ * Dismissal is *not* an event: Rust polls which window holds focus, because a
+ * blur cannot distinguish "focus moved to another menu window" from "focus left
+ * the menu".
  */
 
 import { invoke } from "@tauri-apps/api/core"
@@ -79,10 +83,6 @@ export function emitMenuMeasured(data: MenuMeasuredData): Promise<void> {
 
 export function emitMenuExecute(path: IndexPath, command: CommandPayload): Promise<void> {
   return emit("menu-execute", { path, command })
-}
-
-export function emitMenuBlur(depth: number): Promise<void> {
-  return emit("menu-blur", { depth })
 }
 
 export function emitMenuCloseAll(): Promise<void> {

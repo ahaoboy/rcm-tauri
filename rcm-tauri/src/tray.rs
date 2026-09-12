@@ -121,86 +121,99 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Create menu items ────────────────────────────────────────────
     let win11_i = CheckMenuItem::with_id(
         app,
-        WIN11_STYLE_ID,
-        WIN11_TEXT,
+        ids::WIN11_STYLE,
+        text::WIN11,
         true,
         actions::is_win11(),
         None::<&str>,
     )?;
     let classic_i = CheckMenuItem::with_id(
         app,
-        CLASSIC_STYLE_ID,
-        CLASSIC_TEXT,
+        ids::CLASSIC_STYLE,
+        text::CLASSIC,
         true,
         !actions::is_win11(),
         None::<&str>,
     )?;
     let register_i = CheckMenuItem::with_id(
         app,
-        REGISTER_ID,
-        REGISTER_TEXT,
+        ids::REGISTER,
+        text::REGISTER,
         true,
         actions::register_status(),
         None::<&str>,
     )?;
-    let unregister_i = MenuItem::with_id(app, UNREGISTER_ID, UNREGISTER_TEXT, true, None::<&str>)?;
+    let unregister_i =
+        MenuItem::with_id(app, ids::UNREGISTER, text::UNREGISTER, true, None::<&str>)?;
 
     let blocking = rcm_core::ui::is_blocking_enabled();
     let enable_i =
-        CheckMenuItem::with_id(app, ENABLE_ID, ENABLE_TEXT, true, blocking, None::<&str>)?;
-    let disable_i =
-        CheckMenuItem::with_id(app, DISABLE_ID, DISABLE_TEXT, true, !blocking, None::<&str>)?;
+        CheckMenuItem::with_id(app, ids::ENABLE, text::ENABLE, true, blocking, None::<&str>)?;
+    let disable_i = CheckMenuItem::with_id(
+        app,
+        ids::DISABLE,
+        text::DISABLE,
+        true,
+        !blocking,
+        None::<&str>,
+    )?;
 
     let theme_sys_i = CheckMenuItem::with_id(
         app,
-        THEME_SYSTEM_ID,
-        THEME_SYSTEM_TEXT,
+        ids::THEME_SYSTEM,
+        text::THEME_SYSTEM,
         true,
         config::theme() == config::Theme::System,
         None::<&str>,
     )?;
     let theme_light_i = CheckMenuItem::with_id(
         app,
-        THEME_LIGHT_ID,
-        THEME_LIGHT_TEXT,
+        ids::THEME_LIGHT,
+        text::THEME_LIGHT,
         true,
         config::theme() == config::Theme::Light,
         None::<&str>,
     )?;
     let theme_dark_i = CheckMenuItem::with_id(
         app,
-        THEME_DARK_ID,
-        THEME_DARK_TEXT,
+        ids::THEME_DARK,
+        text::THEME_DARK,
         true,
         config::theme() == config::Theme::Dark,
         None::<&str>,
     )?;
     let icons_i = CheckMenuItem::with_id(
         app,
-        ICONS_ID,
-        ICONS_TEXT,
+        ids::ICONS,
+        text::ICONS,
         true,
         config::is_icons(),
         None::<&str>,
     )?;
-    let dev_i =
-        CheckMenuItem::with_id(app, DEV_ID, DEV_TEXT, true, config::is_dev(), None::<&str>)?;
+    let dev_i = CheckMenuItem::with_id(
+        app,
+        ids::DEV,
+        text::DEV,
+        true,
+        config::is_dev(),
+        None::<&str>,
+    )?;
     let autostart_i = CheckMenuItem::with_id(
         app,
-        AUTOSTART_ID,
-        AUTOSTART_TEXT,
+        ids::AUTOSTART,
+        text::AUTOSTART,
         true,
         rcm_core::registry::is_autostart_enabled(),
         None::<&str>,
     )?;
-    let pull_js_i = MenuItem::with_id(app, PULL_JS_ID, PULL_JS_TEXT, true, None::<&str>)?;
-    let pull_css_i = MenuItem::with_id(app, PULL_CSS_ID, PULL_CSS_TEXT, true, None::<&str>)?;
+    let pull_js_i = MenuItem::with_id(app, ids::PULL_JS, text::PULL_JS, true, None::<&str>)?;
+    let pull_css_i = MenuItem::with_id(app, ids::PULL_CSS, text::PULL_CSS, true, None::<&str>)?;
     let pull_config_i =
-        MenuItem::with_id(app, PULL_CONFIG_ID, PULL_CONFIG_TEXT, true, None::<&str>)?;
-    let config_i = MenuItem::with_id(app, CONFIG_ID, CONFIG_TEXT, true, None::<&str>)?;
-    let reset_i = MenuItem::with_id(app, RESET_ID, RESET_TEXT, true, None::<&str>)?;
-    let apply_i = MenuItem::with_id(app, APPLY_ID, APPLY_TEXT, true, None::<&str>)?;
-    let quit_i = MenuItem::with_id(app, QUIT_ID, QUIT_TEXT, true, None::<&str>)?;
+        MenuItem::with_id(app, ids::PULL_CONFIG, text::PULL_CONFIG, true, None::<&str>)?;
+    let config_i = MenuItem::with_id(app, ids::CONFIG, text::CONFIG, true, None::<&str>)?;
+    let reset_i = MenuItem::with_id(app, ids::RESET, text::RESET, true, None::<&str>)?;
+    let apply_i = MenuItem::with_id(app, ids::APPLY, text::APPLY, true, None::<&str>)?;
+    let quit_i = MenuItem::with_id(app, ids::QUIT, text::QUIT, true, None::<&str>)?;
 
     // ── Clones for the event handler ─────────────────────────────────
     let win11_clone = win11_i.clone();
@@ -240,7 +253,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     )?;
     let pull_menu = Submenu::with_items(
         app,
-        PULL_TEXT,
+        text::PULL,
         true,
         &[&pull_js_i, &pull_css_i, &pull_config_i],
     )?;
@@ -281,55 +294,55 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id().as_ref() {
-            QUIT_ID => {
+            ids::QUIT => {
                 let _ = actions::shutdown();
                 app.exit(0);
             }
-            WIN11_STYLE_ID => {
+            ids::WIN11_STYLE => {
                 handle_style_switch(MenuStyle::Windows11, &win11_clone, &classic_clone)
             }
-            CLASSIC_STYLE_ID => {
+            ids::CLASSIC_STYLE => {
                 handle_style_switch(MenuStyle::Classic, &win11_clone, &classic_clone)
             }
-            REGISTER_ID => handle_register_toggle(true, &register_clone),
-            UNREGISTER_ID => handle_register_toggle(false, &register_clone),
-            ENABLE_ID => handle_blocking_toggle(true, &enable_clone, &disable_clone),
-            DISABLE_ID => handle_blocking_toggle(false, &enable_clone, &disable_clone),
-            ICONS_ID => handle_icons_toggle(app, &icons_clone),
-            DEV_ID => handle_dev_toggle(app, &dev_clone),
-            AUTOSTART_ID => handle_autostart_toggle(&autostart_clone),
-            THEME_SYSTEM_ID => handle_theme(
+            ids::REGISTER => handle_register_toggle(true, &register_clone),
+            ids::UNREGISTER => handle_register_toggle(false, &register_clone),
+            ids::ENABLE => handle_blocking_toggle(true, &enable_clone, &disable_clone),
+            ids::DISABLE => handle_blocking_toggle(false, &enable_clone, &disable_clone),
+            ids::ICONS => handle_icons_toggle(app, &icons_clone),
+            ids::DEV => handle_dev_toggle(app, &dev_clone),
+            ids::AUTOSTART => handle_autostart_toggle(&autostart_clone),
+            ids::THEME_SYSTEM => handle_theme(
                 config::Theme::System,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
                 &theme_dark_clone,
             ),
-            THEME_LIGHT_ID => handle_theme(
+            ids::THEME_LIGHT => handle_theme(
                 config::Theme::Light,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
                 &theme_dark_clone,
             ),
-            THEME_DARK_ID => handle_theme(
+            ids::THEME_DARK => handle_theme(
                 config::Theme::Dark,
                 app,
                 &theme_sys_clone,
                 &theme_light_clone,
                 &theme_dark_clone,
             ),
-            APPLY_ID => handle_apply(),
-            PULL_JS_ID => handle_pull(app, "js"),
-            PULL_CSS_ID => handle_pull(app, "css"),
-            PULL_CONFIG_ID => handle_pull(app, "config"),
-            CONFIG_ID => {
+            ids::APPLY => handle_apply(),
+            ids::PULL_JS => handle_pull(app, "js"),
+            ids::PULL_CSS => handle_pull(app, "css"),
+            ids::PULL_CONFIG => handle_pull(app, "config"),
+            ids::CONFIG => {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {
                     let _ = crate::create_config_window(app_handle).await;
                 });
             }
-            RESET_ID => actions::reset(),
+            ids::RESET => actions::reset(),
             _ => {}
         })
         .build(app)?;

@@ -73,8 +73,6 @@ impl MenuShowRequest {
         MenuWindowInput {
             menu: Arc::clone(&self.menu),
             level: self.level.clone(),
-            position: self.position,
-            parent_left: self.parent_left,
         }
     }
 
@@ -374,16 +372,22 @@ impl<H: MenuHost> MenuController<H> {
     }
 
     /// Parent content rectangle and the hovered row's offset from its top.
+    ///
+    /// `item_y` is taken from the frontend when it measured the row. Otherwise
+    /// it is derived from [`MenuLevel::row_offset`], which is in DIPs, so it is
+    /// scaled by the parent window's DPI to match `rect`'s physical pixels.
     fn parent_geometry(&self, info: &HoverInfo) -> Option<(Rect, i32)> {
         let open = self.levels.get(&info.depth)?;
         let rect = open.rect?;
-        let scale = 1.0_f64;
 
         let item_y = match info.item_y {
             Some(y) => y,
-            // Fall back to the metric-derived offset when the frontend did not
-            // measure the row.
             None => {
+                let scale = self
+                    .state
+                    .window(info.depth)
+                    .map(|window| self.host.scale_factor(window))
+                    .unwrap_or(1.0);
                 (open.request.level.row_offset(info.index, &self.metrics) * scale).round() as i32
             }
         };
@@ -488,23 +492,32 @@ impl<H: MenuHost> MenuController<H> {
 
     // ── Focus / blur / idle ─────────────────────────────────────────────
 
-    /// Handle a blur reported by the level at `depth`.
+    /// Handle a blur reported by one of our windows.
     ///
-    /// Only the deepest level dismisses the menu, matching the Tauri build: a
-    /// parent losing focus to the submenu it just opened is normal.
-    pub fn blur(&mut self, depth: usize) -> bool {
-        if self.state.is_deepest(depth) {
-            self.hide_all();
-            true
-        } else {
-            false
-        }
+    /// Dismissal is decided from **who holds focus**, never from which window
+    /// reported the blur. Focus legitimately moves between our own windows (a
+    /// parent hands it to the submenu it just opened, and closing a level makes
+    /// the OS reassign it), and those blur events arrive *after* our
+    /// bookkeeping has already changed. Comparing depths against a blur event
+    /// therefore cannot tell "focus moved within the menu" from "focus left the
+    /// menu" — it produced spurious dismissals.
+    ///
+    /// The reliable signal is [`MenuHost::is_window_focused`], so this is just an
+    /// immediate form of [`Self::handle_idle`]: the caller queries every open
+    /// window and passes the answer.
+    ///
+    /// Returns `true` when the menu was closed.
+    pub fn blur(&mut self, any_window_focused: bool) -> bool {
+        self.handle_idle(any_window_focused)
     }
 
     /// Drive the click-away dismiss and the auto-hide timeout.
     ///
-    /// `foreground_is_ours` should come from [`MenuHost::is_window_focused`] or
-    /// an equivalent query. Returns `true` when the menu was closed.
+    /// This is the **only** decision point for dismissing the menu.
+    /// `foreground_is_ours` must be a fresh query — "is any open menu window
+    /// focused right now" — normally from [`MenuHost::is_window_focused`].
+    ///
+    /// Returns `true` when the menu was closed.
     pub fn handle_idle(&mut self, foreground_is_ours: bool) -> bool {
         if !self.state.has_windows() || self.dev_mode {
             return false;
@@ -515,10 +528,11 @@ impl<H: MenuHost> MenuController<H> {
             return false;
         }
 
-        // Click-away: only once a window has actually held focus, and only
-        // after the loss persists for two consecutive checks.
+        // Click-away: only once a window has actually held focus, and only when
+        // the loss survives two consecutive checks with no interaction in
+        // between (`touch` clears the counter).
         if self.state.was_foreground() && self.state.note_foreground_miss() {
-            log::info("Menu::idle", "focus lost — hiding all menus");
+            log::info("Menu::idle", "focus left the menu — hiding all menus");
             self.hide_all();
             return true;
         }

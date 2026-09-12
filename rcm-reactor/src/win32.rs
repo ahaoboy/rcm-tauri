@@ -220,11 +220,6 @@ pub fn move_window(raw: *mut core::ffi::c_void, x: i32, y: i32, w: i32, h: i32) 
     }
 }
 
-/// Make a window the active window, without stealing the input queue.
-pub fn focus(raw: *mut core::ffi::c_void) {
-    force_foreground(raw);
-}
-
 /// Hide a window (`SW_HIDE`).
 #[allow(dead_code)]
 pub fn hide(raw: *mut core::ffi::c_void) {

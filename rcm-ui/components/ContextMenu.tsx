@@ -6,15 +6,14 @@ import type { MenuData, MenuItem, IndexPath } from "../types/menu"
 import { measureLevel } from "../utils/measure"
 import { IconRibbon } from "./IconRibbon"
 import { MenuGroup } from "./MenuGroup"
-import { MenuSeparator } from "./MenuSeparator"
 import { MenuItemRow } from "./MenuItemRow"
+import { MenuSeparator } from "./MenuSeparator"
 
 interface ContextMenuProps {
   depth: number
   indexPath: IndexPath
   menu: MenuData
   showIcons?: boolean
-  menuActiveRef?: React.RefObject<boolean>
 }
 
 /**
@@ -73,7 +72,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   indexPath,
   menu,
   showIcons = false,
-  menuActiveRef,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null)
   const measuredRef = useRef(false)
@@ -97,12 +95,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       `measured win=${measurement.winW}x${measurement.winH} root=${measurement.rootW}x${measurement.rootH}`,
     )
     emitMenuMeasured({ depth, ...measurement })
-
-    // The menu is now interactive; arm blur detection.
-    if (menuActiveRef) {
-      menuActiveRef.current = true
-    }
-  }, [depth, menuActiveRef])
+  }, [depth])
 
   // Re-measure whenever the rendered level changes.
   useEffect(() => {

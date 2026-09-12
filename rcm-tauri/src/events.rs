@@ -6,14 +6,19 @@
 //   Rust → FE : menu-show (what to render), menu-hide-all, dev-mode,
 //               icons-changed, theme-changed, style-changed
 //   FE   → Rust: menu-hover (which row), menu-measured (how big it drew),
-//               menu-execute, menu-blur, menu-close-all, log-event
+//               menu-execute, menu-close-all, log-event
+//
+// Dismissal is *not* event-driven: Rust polls which window holds focus, so no
+// blur event is sent. A blur cannot distinguish "focus moved to another menu
+// window" from "focus left the menu", and it arrives after our bookkeeping has
+// changed.
 //
 // Rust never tells the frontend a *position*, and the frontend never tells Rust
 // one except as a measurement. See `rcm_core::ui` for the placement algorithm.
 // ═══════════════════════════════════════════════════════════════════════════
 
-use rcm_core::ui::{MenuWindowInput, Point, Size};
 use rcm_core::Menu;
+use rcm_core::ui::{MenuWindowInput, Point, Size};
 use serde::{Deserialize, Serialize};
 use tauri::PhysicalPosition;
 
@@ -148,12 +153,6 @@ pub struct MenuExecutePayload {
     pub path: Vec<i32>,
     /// Command to execute (sent directly from frontend).
     pub command: rcm_core::CommandPayload,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct MenuBlurPayload {
-    /// Depth of the window that lost focus.
-    pub depth: usize,
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -97,19 +97,18 @@ impl<W: Copy + Ord> MenuState<W> {
         self.deepest
     }
 
-    /// Whether `depth` is currently the deepest visible menu.
-    ///
-    /// Used by blur handling: only the deepest window losing focus dismisses
-    /// the menu, because a parent losing focus to its own submenu is normal.
-    pub fn is_deepest(&self, depth: usize) -> bool {
-        depth == self.deepest
-    }
-
     // ── Auto-hide / activity ────────────────────────────────────────────
 
-    /// Reset the idle timer. Call on every user interaction.
+    /// Reset the idle timer and clear any pending "focus left" suspicion.
+    ///
+    /// Call on every user interaction. Clearing the miss counter here is what
+    /// keeps the menu alive while the pointer moves through it: a blur can
+    /// arrive without focus having actually left the menu (focus moving between
+    /// our own windows, or a level we just closed), so only a run of
+    /// *uninterrupted* misses may dismiss.
     pub fn touch(&mut self) {
         self.last_activity = Some(Instant::now());
+        self.foreground_misses = 0;
     }
 
     /// Milliseconds since the last interaction, or `None` if there was never
@@ -257,13 +256,20 @@ mod tests {
     }
 
     #[test]
-    fn is_deepest_matches_tauri_blur_rule() {
+    fn interaction_clears_a_pending_focus_loss() {
         let mut state = MenuState::<W>::new();
         state.register(0, 10);
-        state.register(1, 20);
+        state.note_foreground();
+        state.note_foreground_miss();
 
-        assert!(state.is_deepest(1), "deepest window dismisses");
-        assert!(!state.is_deepest(0), "parent blur is ignored");
+        // The user is still moving through the menu, so a blur that arrived
+        // without focus actually leaving must not count towards dismissal.
+        state.touch();
+        assert!(
+            !state.note_foreground_miss(),
+            "the miss counter restarted on interaction"
+        );
+        assert!(state.note_foreground_miss(), "a fresh run still dismisses");
     }
 
     #[test]

@@ -20,7 +20,7 @@ use rcm_core::ui::{
 };
 use rcm_core::{Menu, ui};
 
-use crate::events::metrics;
+use crate::events::METRICS;
 use crate::win32;
 
 /// Reactor identifies window levels by their raw `HWND`.
@@ -64,7 +64,7 @@ impl MenuHost for ReactorHost {
         // client area, so applying the size here would fight that conversion by
         // the border width. Position only.
         win32::configure_popup(as_raw(window), rect.x, rect.y, None);
-        win32::focus(as_raw(window));
+        win32::force_foreground(as_raw(window));
     }
 
     fn hide_window(&mut self, window: Self::Window) {
@@ -95,7 +95,7 @@ fn as_raw(window: RawWindow) -> *mut core::ffi::c_void {
 
 fn controller() -> &'static Mutex<MenuController<ReactorHost>> {
     static CONTROLLER: OnceLock<Mutex<MenuController<ReactorHost>>> = OnceLock::new();
-    CONTROLLER.get_or_init(|| Mutex::new(MenuController::new(ReactorHost::new(), metrics())))
+    CONTROLLER.get_or_init(|| Mutex::new(MenuController::new(ReactorHost::new(), METRICS)))
 }
 
 /// Run `f` against the global controller.
@@ -128,24 +128,18 @@ pub fn adopt(depth: usize, window: RawWindow, scale: f64) -> bool {
     .unwrap_or(false)
 }
 
-/// Place a level at its estimated size (before measurement), so it is usable.
-pub fn place_estimated(depth: usize, content: ui::Size) -> Option<Rect> {
-    with(|c| c.place(depth, Measurement::exact(content))).flatten()
-}
-
-/// Place a level from a real measurement.
-pub fn place_measured(depth: usize, measurement: Measurement) -> Option<Rect> {
+/// Place a level's window.
+///
+/// Pass the real frontend [`Measurement`] once available, or
+/// [`Measurement::exact`] of the estimated size beforehand so the window is
+/// usable immediately.
+pub fn place(depth: usize, measurement: Measurement) -> Option<Rect> {
     with(|c| c.place(depth, measurement)).flatten()
 }
 
 /// Handle a pointer entering a menu item.
 pub fn hover(info: &HoverInfo) -> HoverResult {
     with(|c| c.hover(info)).unwrap_or(HoverResult::Ignored)
-}
-
-/// Handle a blur reported by the level at `depth`.
-pub fn blur(depth: usize) -> bool {
-    with(|c| c.blur(depth)).unwrap_or(false)
 }
 
 /// Drive the click-away dismiss and the auto-hide timeout.

@@ -17,21 +17,21 @@ cargo run -p rcm-reactor
 
 ## Feature parity with `rcm-tauri`
 
-| Tauri feature | rcm-reactor equivalent |
-| --- | --- |
-| `monitor.rs` — `rcm_com` pipe listener + filters + `rcm-vm::from_info` | `monitor.rs` (same logic, pushes cross-thread events) |
-| `pipe.rs` — single-instance check | `main.rs::is_rcm_process_running` (verbatim) |
-| `tray.rs` — tray icon, style/register/blocking/dev/icons/theme/autostart/pull/reset/apply/quit | `tray.rs` using `tray-icon` + `muda` |
-| WebView menu windows (`main` + `submenu-0..2`) | One Reactor popup per nesting level, opened with `open_window` |
-| `layout.rs` — `MenuManager` show/hide/hover/execute/blur/auto-hide | `state.rs` (window registry, deepest depth, auto-hide) + `app.rs` (`handle_idle`) |
-| `events.rs` — payloads + window labels | `events.rs` (cross-thread queue) + `state.rs` |
-| `MenuShowPayload` / `MenuHoverPayload` / `MenuExecutePayload` / `MenuBlurPayload` | Folded away — menu levels are native windows driven by pointer events |
-| `get_config`, `get_style_css` | Read directly from `rcm-core::config` / `style.rs` |
-| `read_config_file`, `save_config_file`, `open_in_editor` | `config_editor.rs` |
-| `notify_style_updated`, `pull_js`, `pull_css`, `pull_config` | Tray "Pull" + config editor |
-| `show_error` / `run_error` | `error_window.rs` |
-| `create_window` (lazy submenu creation) | Not needed — levels are created on hover |
-| Reactor UI components (`App`, `ContextMenu`, `MenuItemRow`, `IconRibbon`, `MenuGroup`, `MenuSeparator`, `SubmenuApp`, `ConfigEditor`, `ErrorPage`, `useMenuWindow`, `useTheme`) | `menu_window.rs`, `config_editor.rs`, `error_window.rs`, `app.rs` |
+| Tauri feature                                                                                                                                                                   | rcm-reactor equivalent                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `monitor.rs` — `rcm_com` pipe listener + filters + `rcm-vm::from_info`                                                                                                          | `monitor.rs` (same logic, pushes cross-thread events)                             |
+| `pipe.rs` — single-instance check                                                                                                                                               | `main.rs::is_rcm_process_running` (verbatim)                                      |
+| `tray.rs` — tray icon, style/register/blocking/dev/icons/theme/autostart/pull/reset/apply/quit                                                                                  | `tray.rs` using `tray-icon` + `muda`                                              |
+| WebView menu windows (`main` + `submenu-0..2`)                                                                                                                                  | One Reactor popup per nesting level, opened with `open_window`                    |
+| `layout.rs` — `MenuManager` show/hide/hover/execute/blur/auto-hide                                                                                                              | `state.rs` (window registry, deepest depth, auto-hide) + `app.rs` (`handle_idle`) |
+| `events.rs` — payloads + window labels                                                                                                                                          | `events.rs` (cross-thread queue) + `state.rs`                                     |
+| `MenuShowPayload` / `MenuHoverPayload` / `MenuExecutePayload` / `MenuBlurPayload`                                                                                               | Folded away — menu levels are native windows driven by pointer events             |
+| `get_config`, `get_style_css`                                                                                                                                                   | Read directly from `rcm-core::config` / `style.rs`                                |
+| `read_config_file`, `save_config_file`, `open_in_editor`                                                                                                                        | `config_editor.rs`                                                                |
+| `notify_style_updated`, `pull_js`, `pull_css`, `pull_config`                                                                                                                    | Tray "Pull" + config editor                                                       |
+| `show_error` / `run_error`                                                                                                                                                      | `error_window.rs`                                                                 |
+| `create_window` (lazy submenu creation)                                                                                                                                         | Not needed — levels are created on hover                                          |
+| Reactor UI components (`App`, `ContextMenu`, `MenuItemRow`, `IconRibbon`, `MenuGroup`, `MenuSeparator`, `SubmenuApp`, `ConfigEditor`, `ErrorPage`, `useMenuWindow`, `useTheme`) | `menu_window.rs`, `config_editor.rs`, `error_window.rs`, `app.rs`                 |
 
 ## Deliberately out of scope
 
@@ -52,14 +52,14 @@ around them stay compatible:
 
 Rust owns every layout decision; the frontend draws and measures.
 
-| Concern | Owner |
-| --- | --- |
-| Which level is displayed | `rcm_core::ui` |
-| Where each window goes (clamp, flip) | `rcm_core::ui` |
-| Hover / blur / auto-hide policy | `rcm_core::ui` |
-| Drawing a level | frontend |
-| Measuring the drawn content | frontend |
-| Moving / resizing / focusing a native window | frontend |
+| Concern                                      | Owner          |
+| -------------------------------------------- | -------------- |
+| Which level is displayed                     | `rcm_core::ui` |
+| Where each window goes (clamp, flip)         | `rcm_core::ui` |
+| Hover / blur / auto-hide policy              | `rcm_core::ui` |
+| Drawing a level                              | frontend       |
+| Measuring the drawn content                  | frontend       |
+| Moving / resizing / focusing a native window | frontend       |
 
 The frontend's only geometry output is a `Measurement` — how large it drew a
 level. It never computes a position, and Rust never sends one.
@@ -70,7 +70,7 @@ level. It never computes a position, and Rust never sends one.
 placement while the frontend owns drawing and measuring:
 
 1. **`open_window`** — create or reuse the window and tell the frontend to render
-   the level. *No geometry applied.*
+   the level. _No geometry applied._
 2. **`place_window`** — apply the final rectangle, reveal and focus.
 
 In between, the frontend measures and reports:
@@ -92,14 +92,14 @@ sequenceDiagram
 
 Both frontends implement the same contract:
 
-| | Reactor | Tauri |
-| --- | --- | --- |
-| `MenuHost` impl | `menu_runtime.rs` (`ReactorHost`) | `menu_host.rs` (`TauriHost`) |
-| `Window` key | `HWND` (`isize`) | window label (`&'static str`) |
-| Render event | component `open_window` | `menu-show` emit |
-| Measurement | `observe_composition_host` | `menu-measured` emit |
+|                 | Reactor                           | Tauri                         |
+| --------------- | --------------------------------- | ----------------------------- |
+| `MenuHost` impl | `menu_runtime.rs` (`ReactorHost`) | `menu_host.rs` (`TauriHost`)  |
+| `Window` key    | `HWND` (`isize`)                  | window label (`&'static str`) |
+| Render event    | component `open_window`           | `menu-show` emit              |
+| Measurement     | `observe_composition_host`        | `menu-measured` emit          |
 
-Both run the *same* `MenuController`, so the two builds place menus identically.
+Both run the _same_ `MenuController`, so the two builds place menus identically.
 
 ### Reactor: measurement
 
@@ -109,7 +109,7 @@ and re-reports on every WinUI `SizeChanged`
 (`CompositionHostEvent::Ready | Metrics`). That gives the laid-out content size.
 
 - The root grid is `HorizontalAlignment::Left` / `VerticalAlignment::Top` with a
-  width clamp, so the grid's width *is* the menu's natural width.
+  width clamp, so the grid's width _is_ the menu's natural width.
 - Row grids use an `Auto` label column plus an empty `Star` spacer before the
   arrow: `Auto` keeps the measurable natural width, and the `Star` absorbs the
   slack once the window matches it, pinning the arrow right.
@@ -119,7 +119,7 @@ and re-reports on every WinUI `SizeChanged`
   before that the framework owns the size (`client_size` is in DIPs).
 
 > **Caveat:** `observe_composition_host` is documented as observing an
-> *application-owned lifted Composition host*, not as general layout measurement.
+> _application-owned lifted Composition host_, not as general layout measurement.
 > It works because it reports `IFrameworkElement` metrics, but that can change
 > without notice. The estimate from `MenuMetrics` is used if no measurement
 > arrives, so the menu still opens either way.
@@ -130,16 +130,16 @@ and re-reports on every WinUI `SizeChanged`
 
 All layout intelligence lives in `rcm-core::ui` so both frontends behave the same:
 
-| Module | Responsibility |
-| --- | --- |
-| `geometry` | `Point` / `Size` / `Rect` in physical pixels |
-| `metrics` | `MenuMetrics` — gaps, auto-hide, depth limit, row presentation |
-| `level` | `MenuLevel::flatten` — menu tree → ordered renderable rows |
-| `position` | `compute_window_position` — monitor pick, flip, clamp |
-| `state` | `MenuState` — open windows, deepest depth, blur debounce, idle |
+| Module       | Responsibility                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| `geometry`   | `Point` / `Size` / `Rect` in physical pixels                                                           |
+| `metrics`    | `MenuMetrics` — gaps, auto-hide, depth limit, row presentation                                         |
+| `level`      | `MenuLevel::flatten` — menu tree → ordered renderable rows                                             |
+| `position`   | `compute_window_position` — monitor pick, flip, clamp                                                  |
+| `state`      | `MenuState` — open windows, deepest depth, blur debounce, idle                                         |
 | `controller` | `MenuController` — owns the open levels, their rectangles, and the show/hover/place/hide state machine |
-| `host` | `MenuHost`, `Measurement`, `Placement` — the trait a toolkit implements |
-| `blocking` | cached native menu-blocking flag |
+| `host`       | `MenuHost`, `Measurement`, `Placement` — the trait a toolkit implements                                |
+| `blocking`   | cached native menu-blocking flag                                                                       |
 
 `MenuController` also **stores each level's placed rectangle**, so a submenu's
 position is derived from the parent's real rectangle rather than from anything a
@@ -148,20 +148,20 @@ index, and the row's offset.
 
 ### Shared behaviour outside the layout (`rcm-core`)
 
-Layout was not the only duplicated code. These modules are the *system* half,
+Layout was not the only duplicated code. These modules are the _system_ half,
 used by both frontends:
 
-| Module | What it removes |
-| --- | --- |
-| `actions` | Tray/menu actions: style, register, blocking, icons, dev, theme, autostart, pull, reset, apply, quit, plus the shared tray `ids` and `text` label tables |
-| `files` | Config-editor allow-list, read/save/open, and the identical error strings |
-| `style` | Embedded `style.css`, `write_style_defaults`, cached `load_style_css` |
-| `process` | `is_rcm_process_running` (was duplicated verbatim in two `pipe`/`main` files) |
-| `config::ignore_reason` | Event filter matching and its log message |
-| `runner::execute_logged` | Execute-a-command-and-log-the-failure helper |
-| `ui::blocking` | The blocking flag and its fallback cache |
+| Module                   | What it removes                                                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `actions`                | Tray/menu actions: style, register, blocking, icons, dev, theme, autostart, pull, reset, apply, quit, plus the shared tray `ids` and `text` label tables |
+| `files`                  | Config-editor allow-list, read/save/open, and the identical error strings                                                                                |
+| `style`                  | Embedded `style.css`, `write_style_defaults`, cached `load_style_css`                                                                                    |
+| `process`                | `is_rcm_process_running` (was duplicated verbatim in two `pipe`/`main` files)                                                                            |
+| `config::ignore_reason`  | Event filter matching and its log message                                                                                                                |
+| `runner::execute_logged` | Execute-a-command-and-log-the-failure helper                                                                                                             |
+| `ui::blocking`           | The blocking flag and its fallback cache                                                                                                                 |
 
-`actions` is the biggest win: each tray entry's *behaviour* is shared, and only
+`actions` is the biggest win: each tray entry's _behaviour_ is shared, and only
 the presentation differs — Tauri ticks a `tauri::menu::CheckMenuItem` and emits
 an app event, Reactor ticks a `muda::CheckMenuItem` and pushes an in-process
 event. The functions return the new state (`toggle_icons() -> bool`) so neither
@@ -194,7 +194,7 @@ menu surfaces, unlike WinUI's `CardStroke`, which is nearly invisible on dark.
 ### Row metrics
 
 A menu row is laid out as `MENU_PADDING + MENU_ROW_PAD_X.0` before the label:
-`4 + 4 = 8 px`. The icon gutter (`MENU_ICON_W`) is only reserved when `icons` is enabled *and*
+`4 + 4 = 8 px`. The icon gutter (`MENU_ICON_W`) is only reserved when `icons` is enabled _and_
 at least one row in that level actually carries an icon — see `MenuWindow::shows_icons`. The
 gutter is decided per menu level rather than per row so labels stay aligned within a level,
 and is skipped entirely otherwise, because the icon ribbon is off by default and the reserved
