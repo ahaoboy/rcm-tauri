@@ -289,7 +289,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     // ── Build the tray ───────────────────────────────────────────────
 
     let _tray = TrayIconBuilder::new()
-        .tooltip("rcm-tauri")
+        .tooltip(app.config().product_name.as_deref().unwrap_or("rcm-tauri"))
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
         .show_menu_on_left_click(true)
