@@ -8,13 +8,13 @@
   "type": "module",
   "scripts": {
     "pre-check": "oxfmt && oxlint --fix",
-    "dev": "pnpm run build:rcm && vite",
+    "dev": "bun run build:rcm && vite",
     "build:rcm": "cd rcm-kit && npm run build",
-    "build": "pnpm run build:rcm && vite build",
+    "build": "bun run build:rcm && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "lint": "pnpm run lint-ts && pnpm run lint-rs",
-    "lint-ts": "pnpm lint:fix && pnpm fmt",
+    "lint": "bun run lint-ts && bun run lint-rs",
+    "lint-ts": "bun lint:fix && bun fmt",
     "icon": "tauri icon ./public/icon.png",
     "lint-rs": "cd src-tauri && cargo fmt --all &&  cargo clippy --fix --allow-dirty --allow-staged",
     "update:dll": "curl -L -o rcm-tauri/binaries/rcm_com.dll https://github.com/ahaoboy/rcm-com/releases/latest/download/rcm_com.dll"

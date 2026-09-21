@@ -18,7 +18,7 @@ use rquickjs::{
 /// directory, so a path like `../../rcm-kit/dist/index.js` resolves when building
 /// from a checkout of this repo but fails for anyone consuming the crate.
 ///
-/// The file is generated from `rcm-kit` by `pnpm build:rcm`; CI verifies it has
+/// The file is generated from `rcm-kit` by `bun build:rcm`; CI verifies it has
 /// not gone stale.
 const LIB_MODULE: &str = include_str!("../assets/index.js");
 const LIB_NAME: &str = "rcm-kit";

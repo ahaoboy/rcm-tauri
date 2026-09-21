@@ -5,7 +5,7 @@
 /// from a checkout of this repo but fails for anyone consuming the crate
 /// (crates.io, a git dependency, or `cargo install`).
 ///
-/// The file is generated from `rcm-kit` by `pnpm build:rcm`; CI verifies it has
+/// The file is generated from `rcm-kit` by `bun build:rcm`; CI verifies it has
 /// not gone stale.
 const DEFAULT_MODULE: &str = include_str!("../assets/full.js");
 const MENU_FILE: &str = "rcm.js";
