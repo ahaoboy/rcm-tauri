@@ -35,9 +35,7 @@ jobs:
         with:
           node-version: lts/*
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12
+      - uses: oven-sh/setup-bun@v2
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -46,11 +44,11 @@ jobs:
 
       - name: install frontend dependencies
         run: |
-          pnpm install
-          pnpm update:dll
+          bun install
+          bun run update:dll
 
           cd rcm-kit
-          pnpm build
+          bun run build
 
       - name: Build
         id: tauri

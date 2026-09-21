@@ -2,6 +2,9 @@
   "name": "rcm-tauri",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "rcm-kit"
+  ],
   "type": "module",
   "scripts": {
     "pre-check": "oxfmt && oxlint --fix",
@@ -17,6 +20,30 @@
     "update:dll": "curl -L -o rcm-tauri/binaries/rcm_com.dll https://github.com/ahaoboy/rcm-com/releases/latest/download/rcm_com.dll"
   },
   "dependencies": {
+    "@codemirror/commands": "catalog:",
+    "@codemirror/lang-css": "catalog:",
+    "@codemirror/lang-javascript": "catalog:",
+    "@codemirror/lang-json": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/theme-one-dark": "catalog:",
+    "@codemirror/view": "catalog:",
+    "@tauri-apps/api": "catalog:",
+    "@tauri-apps/plugin-opener": "catalog:",
+    "codemirror": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  },
+  "catalog": {
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-javascript": "^6.2.5",
@@ -28,9 +55,7 @@
     "@tauri-apps/plugin-opener": "^2.5.5",
     "codemirror": "^6.0.2",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
-  },
-  "devDependencies": {
+    "react-dom": "^19.3.0",
     "@tauri-apps/cli": "^2.11.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -38,7 +63,9 @@
     "oxfmt": "^0.68.0",
     "oxlint": "^1.83.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.0"
-  },
-  "workspaces": ["rcm-kit"]
+    "vite": "^8.3.0",
+    "esbuild": "^0.28.2",
+    "type-fest": "^5.10.0",
+    "vitest": "^5.0.1"
+  }
 }

@@ -17,7 +17,7 @@
   "main": "dist/index.js",
   "types": "./src/index.ts",
   "scripts": {
-    "bundle": "esbuild ./src/* --bundle --platform=node --format=esm --outdir=dist --external:rcm-kit --external:fs --external:path --external:os --external:url --charset=utf8",
+    "bundle": "esbuild './src/*' --bundle --platform=node --format=esm --outdir=dist --external:rcm-kit --external:fs --external:path --external:os --external:url --charset=utf8",
     "dts": "tsc -p ./tsconfig.build.json --declaration --emitDeclarationOnly",
     "build": "npm run dts && npm run bundle && npm run embed",
     "embed": "cp dist/full.js ../rcm-core/assets/full.js && cp dist/index.js ../rcm-vm/assets/index.js",
@@ -25,12 +25,12 @@
     "test": "npx vitest run"
   },
   "dependencies": {
-    "esbuild": "0.28.2",
-    "type-fest": "5.10.0",
-    "typescript": "7.0.2"
+    "esbuild": "catalog:",
+    "type-fest": "catalog:",
+    "typescript": "catalog:"
   },
   "devDependencies": {
     "rcm-kit": "workspace:*",
-    "vitest": "5.0.1"
+    "vitest": "catalog:"
   }
 }
