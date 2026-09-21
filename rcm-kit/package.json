@@ -25,12 +25,12 @@
     "test": "npx vitest run"
   },
   "dependencies": {
-    "esbuild": "0.28.1",
-    "type-fest": "5.8.0",
+    "esbuild": "0.28.2",
+    "type-fest": "5.10.0",
     "typescript": "7.0.2"
   },
   "devDependencies": {
     "rcm-kit": "workspace:*",
-    "vitest": "5.0.0"
+    "vitest": "5.0.1"
   }
 }
