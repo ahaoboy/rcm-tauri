@@ -126,6 +126,21 @@ export function notifyStyleUpdated(css: string): Promise<void> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Environment variables
+// ═══════════════════════════════════════════════════════════════════════
+
+/** A single environment variable visible to the RCM process. */
+export interface EnvVar {
+  key: string
+  value: string
+}
+
+/** Read every environment variable of the current process. */
+export function getEnvVars(): Promise<EnvVar[]> {
+  return invoke<EnvVar[]>("get_env_vars")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Pull — download latest files from configured remote URLs
 // ═══════════════════════════════════════════════════════════════════════
 

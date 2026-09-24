@@ -123,6 +123,24 @@ fn pull_config() -> Result<String, String> {
     Ok(path)
 }
 
+/// A single environment variable entry.
+#[derive(serde::Serialize)]
+struct EnvVar {
+    key: String,
+    value: String,
+}
+
+/// Return every environment variable visible to this process, sorted by key
+/// (case-insensitive). Used by the config editor's "env" tab.
+#[tauri::command]
+fn get_env_vars() -> Vec<EnvVar> {
+    let mut vars: Vec<EnvVar> = std::env::vars()
+        .map(|(key, value)| EnvVar { key, value })
+        .collect();
+    vars.sort_by_key(|v| v.key.to_lowercase());
+    vars
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Application entry point
 // ═══════════════════════════════════════════════════════════════════════════
@@ -313,6 +331,7 @@ fn run_app() {
             pull_js,
             pull_css,
             pull_config,
+            get_env_vars,
             show_error,
         ])
         .run(tauri::generate_context!())
