@@ -82,6 +82,18 @@ pub(crate) fn same_property_key(left: &PROPERTYKEY, right: &PROPERTYKEY) -> bool
     left == right
 }
 
+/// Default direction when a group/sort key is applied for the first time (or
+/// when switching to a different key), expressed as `true == ascending`.
+///
+/// Date and size columns are most useful newest / biggest first — matching
+/// Explorer's own defaults — while name and type read naturally A→Z. Without
+/// this, grouping by "Date modified" would put the oldest entries on top.
+pub(crate) fn default_ascending(propkey: &PROPERTYKEY) -> bool {
+    !(same_property_key(propkey, &PKEY_DATE_MODIFIED)
+        || same_property_key(propkey, &PKEY_DATE_CREATED)
+        || same_property_key(propkey, &PKEY_SIZE))
+}
+
 pub(crate) fn target_dir(cwd: &str) -> Result<PathBuf, String> {
     if cwd.trim().is_empty() {
         return Err("No directory specified".into());

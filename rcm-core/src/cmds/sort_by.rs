@@ -4,7 +4,7 @@ use crate::types::CommandPayload;
 
 use super::SystemCmdResult;
 use super::shell_folder_view::{
-    property_key_from_arg, same_property_key, target_dir, with_folder_view,
+    default_ascending, property_key_from_arg, same_property_key, target_dir, with_folder_view,
 };
 use windows::Win32::UI::Shell::{SORT_ASCENDING, SORT_DESCENDING, SORTCOLUMN, SORTDIRECTION};
 
@@ -71,22 +71,36 @@ unsafe fn next_sort_direction(
 ) -> SORTDIRECTION {
     let count = unsafe { view.GetSortColumnCount() }.unwrap_or_default();
     if count <= 0 {
-        return SORT_ASCENDING;
+        return sort_direction(default_ascending(propkey));
     }
 
     let mut columns = vec![SORTCOLUMN::default(); count as usize];
     if unsafe { view.GetSortColumns(&mut columns) }.is_err() {
-        return SORT_ASCENDING;
+        return sort_direction(default_ascending(propkey));
     }
 
     let Some(current) = columns.first() else {
-        return SORT_ASCENDING;
+        return sort_direction(default_ascending(propkey));
     };
 
-    if same_property_key(&current.propkey, propkey) && current.direction == SORT_ASCENDING {
-        SORT_DESCENDING
+    if same_property_key(&current.propkey, propkey) {
+        // Same key — flip the direction (toggle).
+        if current.direction == SORT_ASCENDING {
+            SORT_DESCENDING
+        } else {
+            SORT_ASCENDING
+        }
     } else {
+        // Different key — start from the sensible default for that column.
+        sort_direction(default_ascending(propkey))
+    }
+}
+
+fn sort_direction(ascending: bool) -> SORTDIRECTION {
+    if ascending {
         SORT_ASCENDING
+    } else {
+        SORT_DESCENDING
     }
 }
 

@@ -4,7 +4,8 @@ use crate::types::CommandPayload;
 
 use super::SystemCmdResult;
 use super::shell_folder_view::{
-    PKEY_NULL, property_key_from_arg, same_property_key, target_dir, with_folder_view,
+    PKEY_NULL, default_ascending, property_key_from_arg, same_property_key, target_dir,
+    with_folder_view,
 };
 use windows::Win32::Foundation::PROPERTYKEY;
 
@@ -83,10 +84,16 @@ unsafe fn next_group_ascending(
     let mut current_ascending = windows::core::BOOL::default();
 
     if unsafe { view.GetGroupBy(&mut current_key, Some(&mut current_ascending)) }.is_err() {
-        return true;
+        return default_ascending(propkey);
     }
 
-    !(same_property_key(&current_key, propkey) && current_ascending.as_bool())
+    if same_property_key(&current_key, propkey) {
+        // Same key — flip the direction (toggle).
+        !current_ascending.as_bool()
+    } else {
+        // Different key — start from the sensible default for that column.
+        default_ascending(propkey)
+    }
 }
 
 fn direction_label(ascending: bool) -> &'static str {
