@@ -1,74 +1,88 @@
 //! `@sort-by` - Change the Windows 11 Explorer sort column for a directory.
 
-use crate::types::CommandPayload;
+use windows::Win32::Foundation::PROPERTYKEY;
+use windows::Win32::UI::Shell::{
+    IFolderView2, SORT_ASCENDING, SORT_DESCENDING, SORTCOLUMN, SORTDIRECTION,
+};
 
-use super::SystemCmdResult;
 use super::shell_folder_view::{
     default_ascending, property_key_from_arg, same_property_key, target_dir, with_folder_view,
 };
-use windows::Win32::UI::Shell::{SORT_ASCENDING, SORT_DESCENDING, SORTCOLUMN, SORTDIRECTION};
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let sort_key = match cmd.args.first() {
-        Some(arg) if !arg.is_empty() => arg.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No sort key specified".into(),
+/// Accepted sort keys, matching `property_key_from_arg`.
+const SORT_KEY_EXPECTED: &str = "one of: name, date-modified, type, size, date-created";
+
+/// `@sort-by` — set (and toggle) the Explorer sort column for `cwd`.
+pub struct SortBy;
+
+/// Arguments for [`SortBy`].
+struct Args {
+    /// Requested sort key, echoed back in the result.
+    key: String,
+    /// Resolved property key to sort by.
+    propkey: PROPERTYKEY,
+    /// Directory whose view is updated.
+    cwd: String,
+}
+
+impl SortBy {
+    /// Extract the sort key and resolve it to a property key.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let key = CmdArgs::of(payload).required(0, "key", SORT_KEY_EXPECTED)?;
+        let propkey = property_key_from_arg(key)
+            .ok_or_else(|| CmdError::invalid("key", key, SORT_KEY_EXPECTED))?;
+        Ok(Args {
+            key: key.to_owned(),
+            propkey,
+            cwd: payload.cwd.clone(),
+        })
+    }
+
+    /// Apply the sort column to the Explorer view.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let key = args.key.as_str();
+        let dir = target_dir(&args.cwd)?;
+
+        with_folder_view(&dir, |view| {
+            let direction = unsafe { next_sort_direction(view, &args.propkey) };
+            crate::log::info(
+                "Rust::sort_by",
+                &format!(
+                    "setting sort-by '{key}' ({}) for '{}'",
+                    direction_label(direction),
+                    dir.display()
+                ),
+            );
+
+            let column = SORTCOLUMN {
+                propkey: args.propkey,
+                direction,
             };
-        }
-    };
 
-    let Some(propkey) = property_key_from_arg(sort_key) else {
-        return SystemCmdResult {
-            success: false,
-            message: format!("Unsupported sort key: {sort_key}"),
-        };
-    };
-
-    let dir = match target_dir(&cmd.cwd) {
-        Ok(dir) => dir,
-        Err(message) => {
-            return SystemCmdResult {
-                success: false,
-                message,
-            };
-        }
-    };
-
-    match with_folder_view(&dir, |view| {
-        let direction = unsafe { next_sort_direction(view, &propkey) };
-        crate::log::info(
-            "Rust::sort_by",
-            &format!(
-                "setting sort-by '{sort_key}' ({}) for '{}'",
-                direction_label(direction),
-                dir.display()
-            ),
-        );
-
-        let column = SORTCOLUMN { propkey, direction };
-
-        unsafe { view.SetSortColumns(&[column]) }
-    }) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: format!("Sort by set to {sort_key}"),
-        },
-        Err(message) => {
+            unsafe { view.SetSortColumns(&[column]) }
+        })
+        .map_err(|message| {
             crate::log::error("Rust::sort_by", &message);
-            SystemCmdResult {
-                success: false,
-                message,
-            }
-        }
+            CmdError::failed(message)
+        })?;
+
+        Ok(format!("Sort by set to {key}"))
     }
 }
 
-unsafe fn next_sort_direction(
-    view: &windows::Win32::UI::Shell::IFolderView2,
-    propkey: &windows::Win32::Foundation::PROPERTYKEY,
-) -> SORTDIRECTION {
+impl Command for SortBy {
+    fn id(&self) -> &'static str {
+        "@sort-by"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
+
+unsafe fn next_sort_direction(view: &IFolderView2, propkey: &PROPERTYKEY) -> SORTDIRECTION {
     let count = unsafe { view.GetSortColumnCount() }.unwrap_or_default();
     if count <= 0 {
         return sort_direction(default_ascending(propkey));

@@ -2,102 +2,89 @@
 //! Each file is encoded separately and joined with newlines.
 //! Falls back to encoding the current directory path when no files are selected.
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use clipboard_rs::{Clipboard, ClipboardContext};
 use std::fs;
 use std::path::Path;
+
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use clipboard_rs::{Clipboard, ClipboardContext};
+
+use super::{CmdError, Command};
+use crate::types::CommandPayload;
 
 /// Maximum file size to read (10 MB). Larger files are skipped with a warning.
 const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let mut encoded: Vec<String> = Vec::new();
-    let mut skipped: usize = 0;
+/// `@copy-base64` — encode the selected files' contents as base64 text.
+pub struct CopyBase64;
 
-    let paths: Vec<&str> = if cmd.args.is_empty() {
-        if cmd.cwd.is_empty() {
-            return SystemCmdResult {
-                success: false,
-                message: "Nothing to copy".into(),
-            };
-        }
-        vec![cmd.cwd.as_str()]
-    } else {
-        cmd.args.iter().map(|s| s.as_str()).collect()
-    };
+/// Arguments for [`CopyBase64`].
+struct Args {
+    /// Files to encode; falls back to `cwd` when nothing is selected.
+    paths: Vec<String>,
+}
 
-    for path_str in &paths {
-        let path = Path::new(path_str);
-
-        // Skip directories — can't base64-encode a directory
-        if path.is_dir() {
-            skipped += 1;
-            continue;
-        }
-
-        // Check file size before reading
-        let metadata = match fs::metadata(path) {
-            Ok(m) => m,
-            Err(_e) => {
-                skipped += 1;
-                continue;
+impl CopyBase64 {
+    /// Resolve the file list, defaulting to `cwd`.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let paths = if payload.args.is_empty() {
+            if payload.cwd.is_empty() {
+                return Err(CmdError::missing("path", "one or more file paths"));
             }
+            vec![payload.cwd.clone()]
+        } else {
+            payload.args.clone()
         };
-
-        if metadata.len() > MAX_FILE_SIZE {
-            skipped += 1;
-            continue;
-        }
-
-        let bytes = match fs::read(path) {
-            Ok(b) => b,
-            Err(_) => {
-                skipped += 1;
-                continue;
-            }
-        };
-
-        encoded.push(BASE64.encode(&bytes));
+        Ok(Args { paths })
     }
 
-    if encoded.is_empty() {
-        return SystemCmdResult {
-            success: false,
-            message: if skipped > 0 {
+    /// Encode each file and put the result on the clipboard.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let mut encoded: Vec<String> = Vec::with_capacity(args.paths.len());
+        let mut skipped = 0usize;
+
+        for path in &args.paths {
+            match encode_file(Path::new(path)) {
+                Some(text) => encoded.push(text),
+                None => skipped += 1,
+            }
+        }
+
+        if encoded.is_empty() {
+            return Err(CmdError::failed(if skipped > 0 {
                 format!("No files encoded ({skipped} skipped)")
             } else {
                 "No files to encode".into()
-            },
-        };
-    }
-
-    let text = encoded.join("\n");
-
-    let ctx = match ClipboardContext::new() {
-        Ok(c) => c,
-        Err(e) => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Failed to open clipboard: {e}"),
-            };
+            }));
         }
-    };
 
-    let mut msg = format!("Copied {} file(s) as base64", encoded.len());
-    if skipped > 0 {
-        msg.push_str(&format!(" ({skipped} skipped)"));
+        let mut message = format!("Copied {} file(s) as base64", encoded.len());
+        if skipped > 0 {
+            message.push_str(&format!(" ({skipped} skipped)"));
+        }
+
+        let ctx = ClipboardContext::new()
+            .map_err(|e| CmdError::failed(format!("Failed to open clipboard: {e}")))?;
+        ctx.set_text(encoded.join("\n"))
+            .map_err(|e| CmdError::failed(format!("Failed to set clipboard: {e}")))?;
+        Ok(message)
+    }
+}
+
+impl Command for CopyBase64 {
+    fn id(&self) -> &'static str {
+        "@copy-base64"
     }
 
-    match ctx.set_text(text) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: msg,
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Failed to set clipboard: {e}"),
-        },
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
+}
+
+/// Base64-encode a file, or `None` when it is a directory, too large or unreadable.
+fn encode_file(path: &Path) -> Option<String> {
+    let metadata = fs::metadata(path).ok()?;
+    if metadata.is_dir() || metadata.len() > MAX_FILE_SIZE {
+        return None;
+    }
+    fs::read(path).ok().map(|bytes| BASE64.encode(bytes))
 }

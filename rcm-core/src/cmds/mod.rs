@@ -1,22 +1,29 @@
-//! System command routing for `@xxx` prefixed command identifiers.
+//! Native `@xxx` system commands.
 //!
-//! When the frontend sends a `CommandPayload` whose `exe` starts with `@`,
-//! it is parsed into a [`SystemCommand`] variant via [`FromStr`] and executed
-//! natively rather than being spawned as an external process.
+//! When the frontend sends a [`CommandPayload`] whose `cmd` starts with `@`,
+//! it is dispatched to a native command instead of being spawned as a process.
 //!
-//! Each command lives in its own file under this directory, matching the
-//! constants defined in `rcm/src/system-commands.ts`.
+//! # Architecture
 //!
-//! # Adding a new system command
+//! Every command is a stateless unit struct implementing [`Command`]. Each one
+//! splits its work across three functions:
 //!
-//! 1. Create a new file (e.g. `my_cmd.rs`) with a `pub fn run(cmd: &CommandPayload) -> SystemCmdResult`.
-//! 2. Declare it here with `pub mod my_cmd;`.
-//! 3. Add the variant to `SystemCommand`, the `@xxx` mapping in `FromStr`, and the arm in `SystemCommand::run`.
-//! 4. Add the constant in `rcm/src/system-commands.ts`.
+//! * `args` — extract the structural command-line arguments into a typed struct.
+//! * `execute` — perform the work given those arguments.
+//! * [`Command::id`] / [`Command::run`] — name the command and glue `args`
+//!   into `execute`.
+//!
+//! [`run`] looks the command up in the [`COMMANDS`] table and calls it. That
+//! table is the single place commands are registered: add a unit struct and one
+//! line there. This module deliberately knows nothing about transport concerns
+//! such as exit codes or stdout/stderr; the caller (see `crate::runner`) maps
+//! [`CmdError`] to its own result type.
 
 use crate::types::CommandPayload;
-use std::str::FromStr;
+use std::fmt;
+use std::path::PathBuf;
 
+mod args;
 pub mod autorun;
 pub mod copy;
 pub mod copy_base64;
@@ -43,161 +50,155 @@ pub mod trash;
 pub mod unzip;
 pub mod zip;
 
-/// Built-in system commands identified by `@`-prefixed strings.
+pub(crate) use args::CmdArgs;
+
+/// Error raised while parsing or running a system command.
 ///
-/// Each variant corresponds to a constant exported from
-/// `rcm/src/system-commands.ts`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum SystemCommand {
-    /// Extract a zip archive (`@unzip`).
-    Unzip,
-    /// Create a zip archive (`@zip`).
-    Zip,
-    /// Rename a file or folder with collision avoidance (`@rename`).
-    Rename,
-    /// Create a new empty file (`@new-file`).
-    NewFile,
-    /// Create a new folder (`@new-folder`).
-    NewFolder,
-    /// Move to recycle bin (`@trash`).
-    Trash,
-    /// Open the "Open With" dialog (`@open-with`).
-    OpenWith,
-    /// Copy selected paths to clipboard with Linux-style separators (`@copy-path`).
-    CopyPath,
-    /// Copy file name(s) to clipboard (`@copy-name`).
-    CopyName,
-    /// Copy file content(s) as base64 to clipboard (`@copy-base64`).
-    CopyBase64,
-    /// Resolve .lnk target path and copy to clipboard (`@copy-target`).
-    CopyTarget,
-    /// Fast parallel permanent delete (`@delete`).
-    Delete,
-    /// Open file/folder properties dialog (`@properties`).
-    Properties,
-    /// Copy file(s) to clipboard as file-drop data (`@copy`).
-    Copy,
-    /// Open file location in Explorer; resolves shortcut targets (`@open-file-location`).
-    OpenFileLocation,
-    /// Paste files from clipboard to current directory (`@paste-files`).
-    PasteFiles,
-    /// Change Explorer grouping for the current directory (`@group-by`).
-    GroupBy,
-    /// Change Explorer sorting for the current directory (`@sort-by`).
-    SortBy,
-    /// Open Windows "Format" dialog for a drive (`@format`).
-    Format,
-    /// Eject a removable drive (`@eject`).
-    Eject,
-    /// Pin a file to the Start Menu (`@pin-to-start`).
-    PinToStart,
-    /// Unpin a file from the Start Menu (`@unpin-from-start`).
-    UnpinFromStart,
-    /// Add a file/folder to Quick Access (`@add-to-quick-access`).
-    AddToQuickAccess,
-    /// Remove a file/folder from Quick Access (`@remove-from-quick-access`).
-    RemoveFromQuickAccess,
-    /// Add an .exe to Windows startup (`@add-to-autorun`).
-    AddToAutorun,
-    /// Remove an .exe from Windows startup (`@remove-from-autorun`).
-    RemoveFromAutorun,
-    /// Add a desktop shortcut for the file (`@add-to-desktop`).
-    AddToDesktop,
-    /// Remove the desktop shortcut(s) pointing to the file (`@remove-from-desktop`).
-    RemoveFromDesktop,
+/// The variants distinguish *why* the command failed and carry enough detail
+/// for a useful message: argument errors name the argument, the offending value
+/// and the expected form, so the user can fix the call.
+#[derive(Debug, Clone)]
+pub enum CmdError {
+    /// A required argument is absent.
+    Missing {
+        /// Name of the argument, e.g. `"path"`.
+        name: &'static str,
+        /// What the argument should have been, e.g. `"a file path"`.
+        expected: &'static str,
+    },
+    /// An argument is present but holds an unsupported value.
+    Invalid {
+        /// Name of the argument.
+        name: &'static str,
+        /// The offending value.
+        value: String,
+        /// What the argument should have been.
+        expected: &'static str,
+    },
+    /// The command was valid but the underlying operation failed.
+    Failed {
+        /// Human-readable failure reason.
+        message: String,
+    },
 }
 
-impl FromStr for SystemCommand {
-    type Err = String;
+impl CmdError {
+    /// A required argument is absent.
+    pub fn missing(name: &'static str, expected: &'static str) -> Self {
+        Self::Missing { name, expected }
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "@unzip" => Ok(Self::Unzip),
-            "@zip" => Ok(Self::Zip),
-            "@rename" => Ok(Self::Rename),
-            "@new-file" => Ok(Self::NewFile),
-            "@new-folder" => Ok(Self::NewFolder),
-            "@trash" => Ok(Self::Trash),
-            "@open-with" => Ok(Self::OpenWith),
-            "@copy-path" => Ok(Self::CopyPath),
-            "@copy-name" => Ok(Self::CopyName),
-            "@copy-base64" => Ok(Self::CopyBase64),
-            "@copy-target" => Ok(Self::CopyTarget),
-            "@delete" => Ok(Self::Delete),
-            "@properties" => Ok(Self::Properties),
-            "@copy" => Ok(Self::Copy),
-            "@open-file-location" => Ok(Self::OpenFileLocation),
-            "@paste-files" => Ok(Self::PasteFiles),
-            "@group-by" => Ok(Self::GroupBy),
-            "@sort-by" => Ok(Self::SortBy),
-            "@format" => Ok(Self::Format),
-            "@eject" => Ok(Self::Eject),
-            "@pin-to-start" => Ok(Self::PinToStart),
-            "@unpin-from-start" => Ok(Self::UnpinFromStart),
-            "@add-to-quick-access" => Ok(Self::AddToQuickAccess),
-            "@remove-from-quick-access" => Ok(Self::RemoveFromQuickAccess),
-            "@add-to-autorun" => Ok(Self::AddToAutorun),
-            "@remove-from-autorun" => Ok(Self::RemoveFromAutorun),
-            "@add-to-desktop" => Ok(Self::AddToDesktop),
-            "@remove-from-desktop" => Ok(Self::RemoveFromDesktop),
-            _ => Err(format!("unknown system command: {s}")),
+    /// An argument holds an unsupported value.
+    pub fn invalid(name: &'static str, value: impl Into<String>, expected: &'static str) -> Self {
+        Self::Invalid {
+            name,
+            value: value.into(),
+            expected,
+        }
+    }
+
+    /// The command parsed fine but the operation failed.
+    pub fn failed(message: impl Into<String>) -> Self {
+        Self::Failed {
+            message: message.into(),
         }
     }
 }
 
-/// Result returned by [`SystemCommand::run`].
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct SystemCmdResult {
-    pub success: bool,
-    pub message: String,
-}
-
-impl SystemCommand {
-    /// Execute this system command with the given payload.
-    ///
-    /// Returns a [`SystemCmdResult`] describing success / failure.
-    pub fn run(&self, cmd: &CommandPayload) -> SystemCmdResult {
+impl fmt::Display for CmdError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unzip => unzip::run(cmd),
-            Self::Zip => zip::run(cmd),
-            Self::Rename => rename::run(cmd),
-            Self::NewFile => new_file::run(cmd),
-            Self::NewFolder => new_folder::run(cmd),
-            Self::Trash => trash::run(cmd),
-            Self::OpenWith => open_with::run(cmd),
-            Self::CopyPath => copy_path::run(cmd),
-            Self::CopyName => copy_name::run(cmd),
-            Self::CopyBase64 => copy_base64::run(cmd),
-            Self::CopyTarget => copy_target::run(cmd),
-            Self::Delete => delete::run(cmd),
-            Self::Properties => properties::run(cmd),
-            Self::Copy => copy::run(cmd),
-            Self::OpenFileLocation => open_file_location::run(cmd),
-            Self::PasteFiles => paste_files::run(cmd),
-            Self::GroupBy => group_by::run(cmd),
-            Self::SortBy => sort_by::run(cmd),
-            Self::Format => format::run(cmd),
-            Self::Eject => eject::run(cmd),
-            Self::PinToStart => pin_to_start::run_pin(cmd),
-            Self::UnpinFromStart => pin_to_start::run_unpin(cmd),
-            Self::AddToQuickAccess => quick_access::run_add(cmd),
-            Self::RemoveFromQuickAccess => quick_access::run_remove(cmd),
-            Self::AddToAutorun => autorun::run_add(cmd),
-            Self::RemoveFromAutorun => autorun::run_remove(cmd),
-            Self::AddToDesktop => desktop::add(cmd),
-            Self::RemoveFromDesktop => desktop::remove(cmd),
+            Self::Missing { name, expected } => {
+                write!(f, "missing argument '{name}' (expected {expected})")
+            }
+            Self::Invalid {
+                name,
+                value,
+                expected,
+            } => write!(
+                f,
+                "invalid value '{value}' for '{name}' (expected {expected})"
+            ),
+            Self::Failed { message } => f.write_str(message),
         }
     }
 }
 
-/// Return a unique path by appending ` (2)`, ` (3)`, … if the target
-/// already exists.
-pub(crate) fn unique_path(path: &std::path::Path) -> std::path::PathBuf {
-    if let Ok(p) = upath::upath(path) {
-        p
+impl std::error::Error for CmdError {}
+
+/// A native system command.
+///
+/// Implementors are stateless unit structs: arguments live in the payload, not
+/// in the command, so a single shared instance can serve every call. `Sync` is
+/// required so instances can live in the [`COMMANDS`] `static`.
+pub trait Command: Sync {
+    /// The `@`-prefixed identifier, e.g. `"@delete"`.
+    fn id(&self) -> &'static str;
+
+    /// Validate `payload`'s arguments and perform the work.
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError>;
+}
+
+/// Every registered system command.
+///
+/// Each entry is a shared instance of a stateless command struct. Lookup and
+/// dispatch are a plain scan; there is no enum or generated `match` to keep in
+/// sync.
+static COMMANDS: &[&dyn Command] = &[
+    &unzip::Unzip,
+    &zip::Zip,
+    &rename::Rename,
+    &new_file::NewFile,
+    &new_folder::NewFolder,
+    &trash::Trash,
+    &open_with::OpenWith,
+    &copy_path::CopyPath,
+    &copy_name::CopyName,
+    &copy_base64::CopyBase64,
+    &copy_target::CopyTarget,
+    &delete::Delete,
+    &properties::Properties,
+    &copy::CopyFiles,
+    &open_file_location::OpenFileLocation,
+    &paste_files::PasteFiles,
+    &group_by::GroupBy,
+    &sort_by::SortBy,
+    &format::Format,
+    &eject::Eject,
+    &pin_to_start::PinToStart,
+    &pin_to_start::UnpinFromStart,
+    &quick_access::AddToQuickAccess,
+    &quick_access::RemoveFromQuickAccess,
+    &autorun::AddToAutorun,
+    &autorun::RemoveFromAutorun,
+    &desktop::AddToDesktop,
+    &desktop::RemoveFromDesktop,
+];
+
+/// Run the system command named `id`.
+///
+/// Returns `None` when `id` is not registered, `Some(Ok(message))` on success
+/// and `Some(Err(error))` on failure. Mapping that to exit codes or output
+/// streams is the caller's job — see `crate::runner`.
+pub fn run(id: &str, payload: &CommandPayload) -> Option<Result<String, CmdError>> {
+    COMMANDS
+        .iter()
+        .find(|cmd| cmd.id() == id)
+        .map(|cmd| cmd.run(payload))
+}
+
+/// Resolve `cwd` to a directory path, defaulting to `.` when empty.
+pub(crate) fn cwd_dir(cwd: &str) -> PathBuf {
+    if cwd.is_empty() {
+        PathBuf::from(".")
     } else {
-        path.to_path_buf()
+        PathBuf::from(cwd)
     }
+}
+
+/// Return `path`, or a collision-safe variant with ` (2)`, ` (3)`, … appended.
+pub(crate) fn unique_path(path: &std::path::Path) -> PathBuf {
+    upath::upath(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// Check whether a command string is a system command (`@` prefix).
@@ -205,9 +206,31 @@ pub fn is_system_command(exe: &str) -> bool {
     exe.starts_with('@')
 }
 
+/// Extract a PowerShell error message: trimmed stderr, or `fallback` when empty.
+pub(crate) fn powershell_error(stderr: &[u8], fallback: &str) -> String {
+    let text = String::from_utf8_lossy(stderr);
+    let text = text.trim();
+    if text.is_empty() {
+        fallback.to_owned()
+    } else {
+        text.to_owned()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::WindowMode;
+
+    fn payload() -> CommandPayload {
+        CommandPayload {
+            cmd: String::new(),
+            args: Vec::new(),
+            cwd: String::new(),
+            admin: false,
+            window: WindowMode::default(),
+        }
+    }
 
     #[test]
     fn test_is_system_command() {
@@ -226,46 +249,36 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_system_command() {
+    fn command_ids_are_unique_and_prefixed() {
+        let mut ids: Vec<&str> = COMMANDS.iter().map(|cmd| cmd.id()).collect();
+        let count = ids.len();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), count, "command ids must be unique");
+        assert!(COMMANDS.iter().all(|cmd| cmd.id().starts_with('@')));
+    }
+
+    #[test]
+    fn known_ids_resolve_but_unknown_do_not() {
+        for cmd in COMMANDS {
+            assert!(
+                run(cmd.id(), &payload()).is_some(),
+                "{} should be registered",
+                cmd.id()
+            );
+        }
+        assert!(run("@nope", &payload()).is_none());
+    }
+
+    #[test]
+    fn errors_describe_the_expected_argument() {
         assert_eq!(
-            "@unzip".parse::<SystemCommand>().unwrap(),
-            SystemCommand::Unzip
-        );
-        assert_eq!("@zip".parse::<SystemCommand>().unwrap(), SystemCommand::Zip);
-        assert_eq!(
-            "@group-by".parse::<SystemCommand>().unwrap(),
-            SystemCommand::GroupBy
-        );
-        assert_eq!(
-            "@sort-by".parse::<SystemCommand>().unwrap(),
-            SystemCommand::SortBy
-        );
-        assert_eq!(
-            "@format".parse::<SystemCommand>().unwrap(),
-            SystemCommand::Format
-        );
-        assert_eq!(
-            "@eject".parse::<SystemCommand>().unwrap(),
-            SystemCommand::Eject
-        );
-        assert_eq!(
-            "@pin-to-start".parse::<SystemCommand>().unwrap(),
-            SystemCommand::PinToStart
-        );
-        assert_eq!(
-            "@unpin-from-start".parse::<SystemCommand>().unwrap(),
-            SystemCommand::UnpinFromStart
+            CmdError::missing("path", "a file path").to_string(),
+            "missing argument 'path' (expected a file path)"
         );
         assert_eq!(
-            "@add-to-quick-access".parse::<SystemCommand>().unwrap(),
-            SystemCommand::AddToQuickAccess
+            CmdError::invalid("key", "foo", "name | size").to_string(),
+            "invalid value 'foo' for 'key' (expected name | size)"
         );
-        assert_eq!(
-            "@remove-from-quick-access"
-                .parse::<SystemCommand>()
-                .unwrap(),
-            SystemCommand::RemoveFromQuickAccess
-        );
-        assert!("@unknown".parse::<SystemCommand>().is_err());
     }
 }

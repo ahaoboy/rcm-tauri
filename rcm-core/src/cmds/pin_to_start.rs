@@ -4,100 +4,121 @@
 //!
 //! Uses the [`startmenu`] crate for file-level API (no external shell).
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
-use startmenu::{self, Scope};
 use std::path::Path;
 
-/// Run `@pin-to-start` — create a shortcut in the Start Menu Programs folder.
-pub fn run_pin(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No file specified".into(),
-            };
-        }
-    };
+use startmenu::{self, Scope};
 
-    let target = Path::new(path);
-    let name = match target.file_stem().and_then(|s| s.to_str()) {
-        Some(s) => s,
-        None => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Cannot extract file name from '{path}'"),
-            };
-        }
-    };
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
 
-    crate::log::info(
-        "Rust::pin_to_start",
-        &format!("pinning '{path}' as '{name}'"),
-    );
+/// `@pin-to-start` — create a Start Menu shortcut for a file.
+pub struct PinToStart;
 
-    match startmenu::add(Scope::User, name, target, None) {
-        Ok(lnk_path) => {
-            crate::log::info("Rust::pin_to_start", "shortcut created OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Pinned to Start: {}", lnk_path.display()),
+/// Arguments for [`PinToStart`].
+struct Args {
+    /// File to pin.
+    path: String,
+    /// Shortcut name (the file stem).
+    name: String,
+}
+
+impl PinToStart {
+    /// Extract the path and derive the shortcut name.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let path = CmdArgs::of(payload).required(0, "path", "a file path")?;
+        let name = Path::new(path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| CmdError::invalid("path", path, "a path with a file name"))?;
+        Ok(Args {
+            path: path.to_owned(),
+            name: name.to_owned(),
+        })
+    }
+
+    /// Create the Start Menu shortcut.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info(
+            "Rust::pin_to_start",
+            &format!("pinning '{path}' as '{}'", args.name),
+        );
+
+        startmenu::add(Scope::User, &args.name, Path::new(path), None)
+            .map(|lnk| {
+                crate::log::info("Rust::pin_to_start", "shortcut created OK");
+                format!("Pinned to Start: {}", lnk.display())
+            })
+            .map_err(|e| {
+                crate::log::error("Rust::pin_to_start", &e.to_string());
+                CmdError::failed(e.to_string())
+            })
+    }
+}
+
+impl Command for PinToStart {
+    fn id(&self) -> &'static str {
+        "@pin-to-start"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
+
+/// `@unpin-from-start` — remove a Start Menu shortcut.
+pub struct UnpinFromStart;
+
+/// Arguments for [`UnpinFromStart`].
+struct UnpinArgs {
+    /// File whose Start Menu shortcut should be removed.
+    path: String,
+}
+
+impl UnpinFromStart {
+    /// Extract the file path.
+    fn args(payload: &CommandPayload) -> Result<UnpinArgs, CmdError> {
+        Ok(UnpinArgs {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file path")?
+                .to_owned(),
+        })
+    }
+
+    /// Remove the matching Start Menu shortcut.
+    fn execute(args: UnpinArgs) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info("Rust::unpin_from_start", &format!("unpinning '{path}'"));
+
+        match startmenu::remove(Path::new(path)) {
+            Ok(removed) if removed.is_empty() => {
+                crate::log::info("Rust::unpin_from_start", "no matching shortcut found");
+                Ok("Already not pinned".into())
             }
-        }
-        Err(e) => {
-            crate::log::error("Rust::pin_to_start", &e.to_string());
-            SystemCmdResult {
-                success: false,
-                message: e.to_string(),
+            Ok(removed) => {
+                crate::log::info("Rust::unpin_from_start", "shortcut removed OK");
+                let list = removed
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                Ok(format!("Unpinned from Start: {list}"))
+            }
+            Err(e) => {
+                crate::log::error("Rust::unpin_from_start", &e.to_string());
+                Err(CmdError::failed(e.to_string()))
             }
         }
     }
 }
 
-/// Run `@unpin-from-start` — remove the shortcut from the Start Menu.
-pub fn run_unpin(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No file specified".into(),
-            };
-        }
-    };
+impl Command for UnpinFromStart {
+    fn id(&self) -> &'static str {
+        "@unpin-from-start"
+    }
 
-    crate::log::info("Rust::unpin_from_start", &format!("unpinning '{path}'"));
-
-    match startmenu::remove(Path::new(path)) {
-        Ok(removed) if removed.is_empty() => {
-            crate::log::info("Rust::unpin_from_start", "no matching shortcut found");
-            SystemCmdResult {
-                success: true,
-                message: "Already not pinned".into(),
-            }
-        }
-        Ok(removed) => {
-            crate::log::info("Rust::unpin_from_start", "shortcut removed OK");
-            SystemCmdResult {
-                success: true,
-                message: format!(
-                    "Unpinned from Start: {}",
-                    removed
-                        .iter()
-                        .map(|p| p.display().to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
-            }
-        }
-        Err(e) => {
-            crate::log::error("Rust::unpin_from_start", &e.to_string());
-            SystemCmdResult {
-                success: false,
-                message: e.to_string(),
-            }
-        }
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 

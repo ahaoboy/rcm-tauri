@@ -2,75 +2,87 @@
 //! Uses clipboard-rs for cross-platform file-list retrieval.
 //! Mimics Windows Explorer: auto-renames on collision → "name (2).ext", …
 
-use super::{SystemCmdResult, unique_path};
-use crate::types::CommandPayload;
-use clipboard_rs::{Clipboard, ClipboardContext};
 use std::fs;
 use std::path::Path;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    if cmd.cwd.is_empty() {
-        return SystemCmdResult {
-            success: false,
-            message: "No destination directory".into(),
-        };
+use clipboard_rs::{Clipboard, ClipboardContext};
+
+use super::{CmdError, Command, unique_path};
+use crate::types::CommandPayload;
+
+/// `@paste-files` — copy the clipboard's files into `cwd`.
+pub struct PasteFiles;
+
+/// Arguments for [`PasteFiles`].
+struct Args {
+    /// Destination directory.
+    dest: String,
+}
+
+impl PasteFiles {
+    /// Extract the destination directory.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        if payload.cwd.is_empty() {
+            return Err(CmdError::missing("cwd", "a destination directory"));
+        }
+        Ok(Args {
+            dest: payload.cwd.clone(),
+        })
     }
 
-    let ctx = match ClipboardContext::new() {
-        Ok(c) => c,
-        Err(e) => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Failed to open clipboard: {e}"),
+    /// Copy every clipboard file into `dest`.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let ctx = ClipboardContext::new()
+            .map_err(|e| CmdError::failed(format!("Failed to open clipboard: {e}")))?;
+        let files = ctx
+            .get_files()
+            .map_err(|_| CmdError::failed("No files in clipboard"))?;
+
+        let dest = Path::new(&args.dest);
+        let mut copied = 0usize;
+        let mut errors = 0usize;
+
+        for path in &files {
+            let src = Path::new(path);
+            let file_name = src.file_name().unwrap_or_default();
+            // Windows-style auto-rename on collision: cookies.txt → cookies (2).txt
+            let dst = unique_path(&dest.join(file_name));
+
+            let result = if src.is_dir() {
+                copy_dir_recursive(src, &dst)
+            } else {
+                fs::copy(src, &dst).map(|_| ())
             };
-        }
-    };
 
-    let files = match ctx.get_files() {
-        Ok(f) => f,
-        Err(_) => {
-            return SystemCmdResult {
-                success: false,
-                message: "No files in clipboard".into(),
-            };
-        }
-    };
-
-    let mut copied: usize = 0;
-    let mut errors: usize = 0;
-    let dest = Path::new(&cmd.cwd);
-
-    for path_str in &files {
-        let src = Path::new(path_str);
-        let file_name = src.file_name().unwrap_or_default();
-        // Windows-style auto-rename on collision: cookies.txt → cookies (2).txt
-        let dst = unique_path(&dest.join(file_name));
-
-        if src.is_dir() {
-            match copy_dir_recursive(src, &dst) {
+            match result {
                 Ok(()) => copied += 1,
                 Err(_) => errors += 1,
             }
-        } else {
-            match fs::copy(src, &dst) {
-                Ok(_) => copied += 1,
-                Err(_) => errors += 1,
-            }
         }
-    }
 
-    let mut msg = format!("Pasted {copied} file(s)");
-    if errors > 0 {
-        msg.push_str(&format!(" ({errors} failed)"));
-    }
+        let mut message = format!("Pasted {copied} file(s)");
+        if errors > 0 {
+            message.push_str(&format!(" ({errors} failed)"));
+        }
 
-    SystemCmdResult {
-        success: copied > 0,
-        message: msg,
+        if copied == 0 {
+            return Err(CmdError::failed(message));
+        }
+        Ok(message)
     }
 }
 
-fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+impl Command for PasteFiles {
+    fn id(&self) -> &'static str {
+        "@paste-files"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
+
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;

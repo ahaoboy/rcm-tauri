@@ -1,50 +1,57 @@
 //! `@copy-path` — Copy file path(s) to clipboard (slash-separated).
 //! Falls back to the current directory path when no files are selected.
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
 use clipboard_rs::{Clipboard, ClipboardContext};
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    // Collect file paths or fall back to cwd
-    let mut paths: Vec<String> = cmd.args.iter().map(|s| s.as_str().to_owned()).collect();
+use super::{CmdError, Command};
+use crate::types::CommandPayload;
 
-    if paths.is_empty() {
-        // No file args → use cwd as fallback
-        if cmd.cwd.is_empty() {
-            return SystemCmdResult {
-                success: false,
-                message: "No path to copy".into(),
-            };
-        }
-        paths.push(cmd.cwd.clone());
+/// `@copy-path` — copy the selected paths (or the cwd) as forward-slash text.
+pub struct CopyPath;
+
+/// Arguments for [`CopyPath`].
+struct Args {
+    /// Paths to copy; falls back to `cwd` when nothing is selected.
+    paths: Vec<String>,
+}
+
+impl CopyPath {
+    /// Resolve the path list, defaulting to `cwd`.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let paths = if payload.args.is_empty() {
+            if payload.cwd.is_empty() {
+                return Err(CmdError::missing("path", "one or more paths"));
+            }
+            vec![payload.cwd.clone()]
+        } else {
+            payload.args.clone()
+        };
+        Ok(Args { paths })
     }
 
-    // Convert backslashes to forward slashes
-    let text = paths
-        .iter()
-        .map(|p| p.replace('\\', "/"))
-        .collect::<Vec<_>>()
-        .join("\n");
+    /// Put the forward-slash paths on the clipboard.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let text = args
+            .paths
+            .iter()
+            .map(|path| path.replace('\\', "/"))
+            .collect::<Vec<_>>()
+            .join("\n");
 
-    let ctx = match ClipboardContext::new() {
-        Ok(c) => c,
-        Err(e) => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Failed to open clipboard: {e}"),
-            };
-        }
-    };
+        let ctx = ClipboardContext::new()
+            .map_err(|e| CmdError::failed(format!("Failed to open clipboard: {e}")))?;
+        ctx.set_text(text)
+            .map_err(|e| CmdError::failed(format!("Failed to set clipboard: {e}")))?;
+        Ok(format!("Copied {} path(s) to clipboard", args.paths.len()))
+    }
+}
 
-    match ctx.set_text(text) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: format!("Copied {} path(s) to clipboard", paths.len()),
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Failed to set clipboard: {e}"),
-        },
+impl Command for CopyPath {
+    fn id(&self) -> &'static str {
+        "@copy-path"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }

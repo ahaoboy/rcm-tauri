@@ -1,45 +1,60 @@
 //! `@open-with` — Open the Windows "Open With → Choose another app" dialog.
 //!
-//! Spawns PowerShell in the background to invoke the `openas` shell verb
-//! via `Shell.Application` COM — the exact equivalent of right-click →
-//! "Open with" → "Choose another app" in Windows Explorer.
+//! Spawns PowerShell in the background to invoke the `openas` shell verb via
+//! `Shell.Application` COM — the exact equivalent of right-click → "Open with"
+//! → "Choose another app" in Windows Explorer.
 //!
-//! Uses `spawn` (fire-and-forget) rather than `output` to avoid blocking
-//! the Rust async runtime and to prevent the dialog activation from
-//! being misinterpreted as a new right-click event.
+//! Uses `spawn` (fire-and-forget) rather than `output` to avoid blocking the
+//! Rust async runtime and to prevent the dialog activation from being
+//! misinterpreted as a new right-click event.
 
-use super::SystemCmdResult;
+use super::{CmdArgs, CmdError, Command};
 use crate::types::CommandPayload;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = cmd.args.first().map(|s| s.as_str()).unwrap_or("");
+/// `@open-with` — show the "Choose another app" dialog for a file.
+pub struct OpenWith;
 
-    if path.is_empty() {
-        return SystemCmdResult {
-            success: false,
-            message: "@open-with requires a file path argument".into(),
-        };
+/// Arguments for [`OpenWith`].
+struct Args {
+    /// File to open the dialog for.
+    path: String,
+}
+
+impl OpenWith {
+    /// Extract the file path.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        Ok(Args {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file path")?
+                .to_owned(),
+        })
     }
 
-    // Escape single quotes for PowerShell string interpolation
-    let escaped = path.replace('\'', "''");
+    /// Launch the "openas" verb through PowerShell.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        // Escape single quotes for PowerShell string interpolation.
+        let escaped = path.replace('\'', "''");
+        let script = format!(
+            "$f=gi -LiteralPath '{escaped}';\
+             (New-Object -ComObject Shell.Application).Namespace($f.DirectoryName).ParseName($f.Name).InvokeVerb('openas')"
+        );
 
-    let script = format!(
-        "$f=gi -LiteralPath '{escaped}';\
-         (New-Object -ComObject Shell.Application).Namespace($f.DirectoryName).ParseName($f.Name).InvokeVerb('openas')"
-    );
+        crate::sys_cmd("powershell")
+            .args(["-NoProfile", "-Command", &script])
+            .spawn()
+            .map_err(|e| CmdError::failed(format!("OpenWith failed to launch: {e}")))?;
 
-    match crate::sys_cmd("powershell")
-        .args(["-NoProfile", "-Command", &script])
-        .spawn()
-    {
-        Ok(_) => SystemCmdResult {
-            success: true,
-            message: format!("OpenWith dialog launched for: {path}"),
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("OpenWith failed to launch: {e}"),
-        },
+        Ok(format!("OpenWith dialog launched for: {path}"))
+    }
+}
+
+impl Command for OpenWith {
+    fn id(&self) -> &'static str {
+        "@open-with"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }

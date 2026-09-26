@@ -1,36 +1,46 @@
 //! `@copy` — Copy selected file(s) to the system clipboard as file-drop data.
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
 use clipboard_rs::{Clipboard, ClipboardContext};
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let paths: Vec<&str> = cmd.args.iter().map(|s| s.as_str()).collect();
-    if paths.is_empty() {
-        return SystemCmdResult {
-            success: false,
-            message: "No files specified".into(),
-        };
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
+
+/// `@copy` — place the given files on the clipboard as file-drop data.
+pub struct CopyFiles;
+
+/// Arguments for [`CopyFiles`].
+struct Args {
+    /// Files to place on the clipboard.
+    paths: Vec<String>,
+}
+
+impl CopyFiles {
+    /// Extract the files to copy.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        Ok(Args {
+            paths: CmdArgs::of(payload)
+                .all("path", "one or more file paths")?
+                .to_vec(),
+        })
     }
 
-    let ctx = match ClipboardContext::new() {
-        Ok(c) => c,
-        Err(e) => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Failed to open clipboard: {e}"),
-            };
-        }
-    };
+    /// Put the files on the clipboard.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let count = args.paths.len();
+        let ctx = ClipboardContext::new()
+            .map_err(|e| CmdError::failed(format!("Failed to open clipboard: {e}")))?;
+        ctx.set_files(args.paths)
+            .map_err(|e| CmdError::failed(format!("Failed to copy to clipboard: {e}")))?;
+        Ok(format!("Copied {count} item(s) to clipboard"))
+    }
+}
 
-    match ctx.set_files(paths.iter().map(|s| s.to_string()).collect()) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: format!("Copied {} item(s) to clipboard", paths.len()),
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Failed to copy to clipboard: {e}"),
-        },
+impl Command for CopyFiles {
+    fn id(&self) -> &'static str {
+        "@copy"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }

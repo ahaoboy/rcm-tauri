@@ -13,83 +13,88 @@
 //! | fmtID     | 0xFFFF   | SHFMT_ID_DEFAULT — all opts  |
 //! | options   | 0        | SHFMT_OPT_DEFAULT            |
 
-use super::SystemCmdResult;
+use super::{CmdArgs, CmdError, Command, powershell_error};
 use crate::types::CommandPayload;
 
-/// Convert a drive path like `"C:\\"` or `"C:"` to `SHFormatDrive` drive index.
-/// A: = 0, B: = 1, C: = 2, …
-fn drive_index(path: &str) -> Option<u32> {
-    let letter = path.trim_start().chars().next()?;
-    if !letter.is_ascii_alphabetic() {
-        return None;
-    }
-    Some(letter.to_ascii_uppercase() as u32 - 'A' as u32)
+/// Expected form of the `drive` argument, reused by both error sites.
+const DRIVE_EXPECTED: &str = "a drive letter (e.g. C:)";
+
+/// `@format` — open the format dialog for the drive at `path`.
+pub struct Format;
+
+/// Arguments for [`Format`].
+struct Args {
+    /// Original drive path, for logging.
+    path: String,
+    /// Zero-based drive index for `SHFormatDrive`.
+    drive: u32,
 }
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No drive specified".into(),
-            };
-        }
-    };
+impl Format {
+    /// Extract the drive path and index.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let path = CmdArgs::of(payload).required(0, "drive", DRIVE_EXPECTED)?;
+        let drive = drive_index(path)
+            .ok_or_else(|| CmdError::invalid("drive", path, DRIVE_EXPECTED))?;
+        Ok(Args {
+            path: path.to_owned(),
+            drive,
+        })
+    }
 
-    let drive = match drive_index(path) {
-        Some(d) => d,
-        None => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Could not parse drive letter from '{path}'"),
-            };
-        }
-    };
+    /// Invoke `SHFormatDrive` through PowerShell.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        let drive = args.drive;
+        crate::log::info(
+            "Rust::format",
+            &format!("opening format dialog for '{path}' (drive index {drive})"),
+        );
 
-    crate::log::info(
-        "Rust::format",
-        &format!("opening format dialog for '{path}' (drive index {drive})"),
-    );
+        // P/Invoke SHFormatDrive via powershell.exe Add-Type.
+        // fmtID = 0xFFFF (SHFMT_ID_DEFAULT)  → show all formatting options.
+        // options = 0 (SHFMT_OPT_DEFAULT)    → default behaviour.
+        let script = format!(
+            r#"$code='[DllImport("shell32.dll")]public static extern uint SHFormatDrive(IntPtr hwnd,uint drive,uint fmtID,uint options);';$t=Add-Type -MemberDefinition $code -Name 'Fmt' -Namespace 'Win32' -PassThru;$t::SHFormatDrive([IntPtr]::Zero,{drive},0xFFFF,0)|Out-Null"#
+        );
 
-    // P/Invoke SHFormatDrive via powershell.exe Add-Type.
-    // fmtID = 0xFFFF (SHFMT_ID_DEFAULT)  → show all formatting options.
-    // options = 0 (SHFMT_OPT_DEFAULT)    → default behaviour.
-    let script = format!(
-        r#"$code='[DllImport("shell32.dll")]public static extern uint SHFormatDrive(IntPtr hwnd,uint drive,uint fmtID,uint options);';$t=Add-Type -MemberDefinition $code -Name 'Fmt' -Namespace 'Win32' -PassThru;$t::SHFormatDrive([IntPtr]::Zero,{drive},0xFFFF,0)|Out-Null"#
-    );
-
-    match crate::sys_cmd("powershell")
-        .args(["-NoProfile", "-Command", &script])
-        .output()
-    {
-        Ok(output) if output.status.success() => {
-            crate::log::info("Rust::format", "powershell SHFormatDrive OK");
-            SystemCmdResult {
-                success: true,
-                message: "Format dialog opened".into(),
+        match crate::sys_cmd("powershell")
+            .args(["-NoProfile", "-Command", &script])
+            .output()
+        {
+            Ok(output) if output.status.success() => {
+                crate::log::info("Rust::format", "powershell SHFormatDrive OK");
+                Ok("Format dialog opened".into())
             }
-        }
-        Ok(output) => {
-            let err = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let msg = if err.is_empty() {
-                "powershell exited non-zero".into()
-            } else {
-                err
-            };
-            crate::log::error("Rust::format", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
+            Ok(output) => {
+                let message = powershell_error(&output.stderr, "powershell exited non-zero");
+                crate::log::error("Rust::format", &message);
+                Err(CmdError::failed(message))
             }
-        }
-        Err(e) => {
-            let msg = format!("failed to spawn powershell: {e}");
-            crate::log::error("Rust::format", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
+            Err(e) => {
+                let message = format!("failed to spawn powershell: {e}");
+                crate::log::error("Rust::format", &message);
+                Err(CmdError::failed(message))
             }
         }
     }
+}
+
+impl Command for Format {
+    fn id(&self) -> &'static str {
+        "@format"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
+
+/// Convert a drive path like `"C:\\"` or `"C:"` to its `SHFormatDrive` index:
+/// `A:` = 0, `B:` = 1, `C:` = 2, …
+fn drive_index(path: &str) -> Option<u32> {
+    let letter = path.trim_start().chars().next()?;
+    letter
+        .is_ascii_alphabetic()
+        .then(|| letter.to_ascii_uppercase() as u32 - 'A' as u32)
 }

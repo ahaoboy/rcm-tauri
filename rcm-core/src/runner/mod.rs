@@ -21,7 +21,7 @@ pub struct ExecResult {
 /// Execute a command and capture its stdout/stderr.
 ///
 /// System commands (prefixed with `@`) are intercepted and handled
-/// natively via [`cmds::SystemCommand`].
+/// natively via [`cmds::run`].
 pub async fn execute(cmd: &CommandPayload) -> ExecResult {
     if cmds::is_system_command(&cmd.cmd) {
         return run_system_cmd(cmd);
@@ -63,31 +63,35 @@ pub async fn execute(cmd: &CommandPayload) -> ExecResult {
 }
 
 /// Run a `@xxx` system command and convert its result to [`ExecResult`].
+///
+/// This is the boundary that owns the transport shape: a successful message
+/// goes to stdout, a [`cmds::CmdError`] goes to stderr, and both imply an exit
+/// code. `cmds` itself stays free of these concerns.
 fn run_system_cmd(cmd: &CommandPayload) -> ExecResult {
-    match cmd.cmd.parse::<cmds::SystemCommand>() {
-        Ok(sys_cmd) => {
-            let result = sys_cmd.run(cmd);
-            ExecResult {
-                success: result.success,
-                stdout: if result.success {
-                    result.message.clone()
-                } else {
-                    String::new()
-                },
-                stderr: if result.success {
-                    String::new()
-                } else {
-                    result.message.clone()
-                },
-                exit_code: if result.success { Some(0) } else { Some(1) },
-            }
-        }
-        Err(e) => ExecResult {
-            success: false,
-            stdout: String::new(),
-            stderr: e,
-            exit_code: Some(1),
-        },
+    match cmds::run(&cmd.cmd, cmd) {
+        Some(Ok(message)) => system_ok(message),
+        Some(Err(error)) => system_err(error.to_string()),
+        None => system_err(format!("unknown system command: {}", cmd.cmd)),
+    }
+}
+
+/// A successful built-in command result.
+fn system_ok(message: String) -> ExecResult {
+    ExecResult {
+        success: true,
+        stdout: message,
+        stderr: String::new(),
+        exit_code: Some(0),
+    }
+}
+
+/// A failed built-in command result.
+fn system_err(message: String) -> ExecResult {
+    ExecResult {
+        success: false,
+        stdout: String::new(),
+        stderr: message,
+        exit_code: Some(1),
     }
 }
 

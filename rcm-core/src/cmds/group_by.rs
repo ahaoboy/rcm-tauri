@@ -1,85 +1,91 @@
 //! `@group-by` - Change the Windows 11 Explorer group column for a directory.
 
-use crate::types::CommandPayload;
+use windows::Win32::Foundation::PROPERTYKEY;
+use windows::Win32::UI::Shell::IFolderView2;
 
-use super::SystemCmdResult;
 use super::shell_folder_view::{
     PKEY_NULL, default_ascending, property_key_from_arg, same_property_key, target_dir,
     with_folder_view,
 };
-use windows::Win32::Foundation::PROPERTYKEY;
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let group_key = match cmd.args.first() {
-        Some(arg) if !arg.is_empty() => arg.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No group key specified".into(),
-            };
-        }
-    };
+/// Accepted group keys: `property_key_from_arg`'s set plus `none`.
+const GROUP_KEY_EXPECTED: &str = "one of: name, date-modified, type, size, date-created, none";
 
-    let propkey = if group_key == "none" {
-        PKEY_NULL
-    } else {
-        match property_key_from_arg(group_key) {
-            Some(propkey) => propkey,
-            None => {
-                return SystemCmdResult {
-                    success: false,
-                    message: format!("Unsupported group key: {group_key}"),
-                };
-            }
-        }
-    };
+/// `@group-by` — set (and toggle) the Explorer group column for `cwd`.
+pub struct GroupBy;
 
-    let dir = match target_dir(&cmd.cwd) {
-        Ok(dir) => dir,
-        Err(message) => {
-            return SystemCmdResult {
-                success: false,
-                message,
-            };
-        }
-    };
+/// Arguments for [`GroupBy`].
+struct Args {
+    /// Requested group key, echoed back in the result.
+    key: String,
+    /// Resolved property key to group by.
+    propkey: PROPERTYKEY,
+    /// Directory whose view is updated.
+    cwd: String,
+}
 
-    match with_folder_view(&dir, |view| unsafe {
-        let ascending = if group_key == "none" {
-            false
+impl GroupBy {
+    /// Extract the group key and resolve it to a property key.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let key = CmdArgs::of(payload).required(0, "key", GROUP_KEY_EXPECTED)?;
+        let propkey = if key == "none" {
+            PKEY_NULL
         } else {
-            next_group_ascending(view, &propkey)
+            property_key_from_arg(key)
+                .ok_or_else(|| CmdError::invalid("key", key, GROUP_KEY_EXPECTED))?
         };
+        Ok(Args {
+            key: key.to_owned(),
+            propkey,
+            cwd: payload.cwd.clone(),
+        })
+    }
 
-        crate::log::info(
-            "Rust::group_by",
-            &format!(
-                "setting group-by '{group_key}' ({}) for '{}'",
-                direction_label(ascending),
-                dir.display()
-            ),
-        );
+    /// Apply the group column to the Explorer view.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let key = args.key.as_str();
+        let dir = target_dir(&args.cwd)?;
 
-        view.SetGroupBy(&propkey, ascending)
-    }) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: format!("Group by set to {group_key}"),
-        },
-        Err(message) => {
+        with_folder_view(&dir, |view| unsafe {
+            let ascending = if key == "none" {
+                false
+            } else {
+                next_group_ascending(view, &args.propkey)
+            };
+
+            crate::log::info(
+                "Rust::group_by",
+                &format!(
+                    "setting group-by '{key}' ({}) for '{}'",
+                    direction_label(ascending),
+                    dir.display()
+                ),
+            );
+
+            view.SetGroupBy(&args.propkey, ascending)
+        })
+        .map_err(|message| {
             crate::log::error("Rust::group_by", &message);
-            SystemCmdResult {
-                success: false,
-                message,
-            }
-        }
+            CmdError::failed(message)
+        })?;
+
+        Ok(format!("Group by set to {key}"))
     }
 }
 
-unsafe fn next_group_ascending(
-    view: &windows::Win32::UI::Shell::IFolderView2,
-    propkey: &PROPERTYKEY,
-) -> bool {
+impl Command for GroupBy {
+    fn id(&self) -> &'static str {
+        "@group-by"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
+
+unsafe fn next_group_ascending(view: &IFolderView2, propkey: &PROPERTYKEY) -> bool {
     let mut current_key = PROPERTYKEY::default();
     let mut current_ascending = windows::core::BOOL::default();
 

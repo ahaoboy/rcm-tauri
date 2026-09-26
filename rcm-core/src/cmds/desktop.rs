@@ -5,32 +5,106 @@
 //! names auto-renamed `a.lnk` → `a(1).lnk` by upath); `remove` deletes every
 //! desktop shortcut pointing at the target (user + machine scope).
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
-use desktop_com::Scope;
 use std::path::Path;
+
+use desktop_com::Scope;
+
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
 
 const TAG: &str = "desktop";
 
-fn ok(msg: impl Into<String>) -> SystemCmdResult {
-    SystemCmdResult {
-        success: true,
-        message: msg.into(),
+/// `@add-to-desktop` — create a desktop shortcut for a file.
+pub struct AddToDesktop;
+
+/// Arguments for [`AddToDesktop`].
+struct Args {
+    /// File to create a shortcut to.
+    path: String,
+    /// Shortcut name (the file stem).
+    name: String,
+}
+
+impl AddToDesktop {
+    /// Extract the path and derive the shortcut name.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let path = CmdArgs::of(payload).required(0, "path", "a file path")?;
+        let name = Path::new(path)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| CmdError::invalid("path", path, "a path with a file name"))?;
+        Ok(Args {
+            path: path.to_owned(),
+            name: name.to_owned(),
+        })
+    }
+
+    /// Create the desktop shortcut.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info(TAG, &format!("add '{path}'"));
+
+        desktop_com::add(Scope::User, &args.name, Path::new(path), None)
+            .map(|lnk| format!("Desktop shortcut: {}", lnk.display()))
+            .map_err(|e| {
+                crate::log::error(TAG, &e.to_string());
+                CmdError::failed(e.to_string())
+            })
     }
 }
 
-fn fail(msg: impl Into<String>) -> SystemCmdResult {
-    SystemCmdResult {
-        success: false,
-        message: msg.into(),
+impl Command for AddToDesktop {
+    fn id(&self) -> &'static str {
+        "@add-to-desktop"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 
-/// First non-empty arg, or an error result.
-fn first_arg(cmd: &CommandPayload) -> Result<&str, SystemCmdResult> {
-    match cmd.args.first() {
-        Some(p) if !p.is_empty() => Ok(p),
-        _ => Err(fail("No file specified")),
+/// `@remove-from-desktop` — remove every desktop shortcut to a file.
+pub struct RemoveFromDesktop;
+
+/// Arguments for [`RemoveFromDesktop`].
+struct RemoveArgs {
+    /// File whose desktop shortcuts should be removed.
+    path: String,
+}
+
+impl RemoveFromDesktop {
+    /// Extract the file path.
+    fn args(payload: &CommandPayload) -> Result<RemoveArgs, CmdError> {
+        Ok(RemoveArgs {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file path")?
+                .to_owned(),
+        })
+    }
+
+    /// Remove every desktop shortcut to the file.
+    fn execute(args: RemoveArgs) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info(TAG, &format!("remove '{path}'"));
+
+        match desktop_com::remove(Path::new(path)) {
+            Ok(list) if list.is_empty() => Ok("Not on desktop".into()),
+            Ok(list) => Ok(format!("Removed: {}", list.len())),
+            Err(e) => {
+                crate::log::error(TAG, &e.to_string());
+                Err(CmdError::failed(e.to_string()))
+            }
+        }
+    }
+}
+
+impl Command for RemoveFromDesktop {
+    fn id(&self) -> &'static str {
+        "@remove-from-desktop"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 
@@ -49,46 +123,6 @@ pub fn list() -> Vec<crate::types::Entry> {
         Err(e) => {
             crate::log::error(TAG, &format!("list failed: {e}"));
             Vec::new()
-        }
-    }
-}
-
-/// `@add-to-desktop` — desktop shortcut to the arg target.
-pub fn add(cmd: &CommandPayload) -> SystemCmdResult {
-    let p = match first_arg(cmd) {
-        Ok(p) => p,
-        Err(e) => return e,
-    };
-    let target = Path::new(p);
-    let name = match target.file_stem().and_then(|s| s.to_str()) {
-        Some(s) => s,
-        None => return fail(format!("Bad file name: '{p}'")),
-    };
-    crate::log::info(TAG, &format!("add '{p}'"));
-
-    match desktop_com::add(Scope::User, name, target, None) {
-        Ok(lnk) => ok(format!("Desktop shortcut: {}", lnk.display())),
-        Err(e) => {
-            crate::log::error(TAG, &e.to_string());
-            fail(e.to_string())
-        }
-    }
-}
-
-/// `@remove-from-desktop` — remove every desktop shortcut to the arg target.
-pub fn remove(cmd: &CommandPayload) -> SystemCmdResult {
-    let p = match first_arg(cmd) {
-        Ok(p) => p,
-        Err(e) => return e,
-    };
-    crate::log::info(TAG, &format!("remove '{p}'"));
-
-    match desktop_com::remove(Path::new(p)) {
-        Ok(list) if list.is_empty() => ok("Not on desktop"),
-        Ok(list) => ok(format!("Removed: {}", list.len())),
-        Err(e) => {
-            crate::log::error(TAG, &e.to_string());
-            fail(e.to_string())
         }
     }
 }

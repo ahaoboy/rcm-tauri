@@ -4,78 +4,102 @@
 //! Uses the `quick-access` library (direct COM calls via `IShellItem` /
 //! `IContextMenu`) instead of PowerShell.
 
-use super::SystemCmdResult;
+use super::{CmdArgs, CmdError, Command};
 use crate::types::CommandPayload;
 
-/// Run `@add-to-quick-access` — pin a file/folder to Quick Access.
-pub fn run_add(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No path specified".into(),
-            };
-        }
-    };
+/// `@add-to-quick-access` — pin a file/folder to Quick Access.
+pub struct AddToQuickAccess;
 
-    crate::log::info(
-        "Rust::add_to_quick_access",
-        &format!("adding '{path}' to Quick Access"),
-    );
+/// Arguments for [`AddToQuickAccess`].
+struct Args {
+    /// Path to pin.
+    path: String,
+}
 
-    match quick_access::add(path) {
-        Ok(()) => {
-            crate::log::info("Rust::add_to_quick_access", "pintohome OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Added to Quick Access: {path}"),
-            }
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            crate::log::error("Rust::add_to_quick_access", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
-            }
-        }
+impl AddToQuickAccess {
+    /// Extract the path to pin.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        Ok(Args {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file or folder path")?
+                .to_owned(),
+        })
+    }
+
+    /// Pin the path to Quick Access.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info(
+            "Rust::add_to_quick_access",
+            &format!("adding '{path}' to Quick Access"),
+        );
+
+        quick_access::add(path).map_err(|e| {
+            let message = e.to_string();
+            crate::log::error("Rust::add_to_quick_access", &message);
+            CmdError::failed(message)
+        })?;
+
+        crate::log::info("Rust::add_to_quick_access", "pintohome OK");
+        Ok(format!("Added to Quick Access: {path}"))
     }
 }
 
-/// Run `@remove-from-quick-access` — unpin a file/folder from Quick Access.
-pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No path specified".into(),
-            };
-        }
-    };
+impl Command for AddToQuickAccess {
+    fn id(&self) -> &'static str {
+        "@add-to-quick-access"
+    }
 
-    crate::log::info(
-        "Rust::remove_from_quick_access",
-        &format!("removing '{path}' from Quick Access"),
-    );
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
 
-    match quick_access::remove(path) {
-        Ok(()) => {
-            crate::log::info("Rust::remove_from_quick_access", "unpinfromhome OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Removed from Quick Access: {path}"),
-            }
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            crate::log::error("Rust::remove_from_quick_access", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
-            }
-        }
+/// `@remove-from-quick-access` — unpin a file/folder from Quick Access.
+pub struct RemoveFromQuickAccess;
+
+/// Arguments for [`RemoveFromQuickAccess`].
+struct RemoveArgs {
+    /// Path to unpin.
+    path: String,
+}
+
+impl RemoveFromQuickAccess {
+    /// Extract the path to unpin.
+    fn args(payload: &CommandPayload) -> Result<RemoveArgs, CmdError> {
+        Ok(RemoveArgs {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file or folder path")?
+                .to_owned(),
+        })
+    }
+
+    /// Unpin the path from Quick Access.
+    fn execute(args: RemoveArgs) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info(
+            "Rust::remove_from_quick_access",
+            &format!("removing '{path}' from Quick Access"),
+        );
+
+        quick_access::remove(path).map_err(|e| {
+            let message = e.to_string();
+            crate::log::error("Rust::remove_from_quick_access", &message);
+            CmdError::failed(message)
+        })?;
+
+        crate::log::info("Rust::remove_from_quick_access", "unpinfromhome OK");
+        Ok(format!("Removed from Quick Access: {path}"))
+    }
+}
+
+impl Command for RemoveFromQuickAccess {
+    fn id(&self) -> &'static str {
+        "@remove-from-quick-access"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 

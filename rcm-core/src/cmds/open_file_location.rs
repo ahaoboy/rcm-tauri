@@ -1,72 +1,81 @@
 //! `@open-file-location` — Open the containing folder in Explorer and
 //! select the file. For shortcut (.lnk) files, resolves the target first.
 
-use super::SystemCmdResult;
-use crate::types::CommandPayload;
 use std::path::Path;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No file specified".into(),
-            };
-        }
-    };
+use super::{CmdArgs, CmdError, Command};
+use crate::types::CommandPayload;
 
-    crate::log::info(
-        "Rust::open_file_location",
-        &format!("opening location for '{path}'"),
-    );
+/// `@open-file-location` — reveal a file in Explorer, resolving shortcuts.
+pub struct OpenFileLocation;
 
-    // Resolve shortcut target if it's a .lnk file
-    let target = if path.to_lowercase().ends_with(".lnk") {
-        match resolve_shortcut(path) {
-            Ok(t) => {
-                crate::log::info(
-                    "Rust::open_file_location",
-                    &format!("resolved shortcut '{path}' -> '{t}'"),
-                );
-                t
-            }
-            Err(e) => {
-                crate::log::info(
-                    "Rust::open_file_location",
-                    &format!("shortcut resolve failed: {e}, falling back to .lnk itself"),
-                );
-                path.to_string()
-            }
-        }
-    } else {
-        path.to_string()
-    };
+/// Arguments for [`OpenFileLocation`].
+struct Args {
+    /// File (or `.lnk`) to reveal.
+    path: String,
+}
 
-    // If the target is a directory, open it directly. Otherwise use /select
-    // to highlight the file in its parent folder.
-    let is_dir = Path::new(&target).is_dir();
-
-    let mut cmd = crate::sys_cmd("explorer");
-
-    if is_dir {
-        cmd.arg(&target);
-    } else {
-        cmd.arg("/select,").arg(&target);
+impl OpenFileLocation {
+    /// Extract the file path.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        Ok(Args {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "a file path")?
+                .to_owned(),
+        })
     }
 
-    match cmd.spawn() {
-        Ok(_) => {
-            crate::log::info("Rust::open_file_location", "explorer launched OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Opened location for: {target}"),
+    /// Open the containing folder, selecting the file.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        crate::log::info("Rust::open_file_location", &format!("opening location for '{path}'"));
+
+        // Resolve shortcut target if it's a .lnk file
+        let target = if path.to_lowercase().ends_with(".lnk") {
+            match resolve_shortcut(path) {
+                Ok(t) => {
+                    crate::log::info(
+                        "Rust::open_file_location",
+                        &format!("resolved shortcut '{path}' -> '{t}'"),
+                    );
+                    t
+                }
+                Err(e) => {
+                    crate::log::info(
+                        "Rust::open_file_location",
+                        &format!("shortcut resolve failed: {e}, falling back to .lnk itself"),
+                    );
+                    path.to_owned()
+                }
             }
+        } else {
+            path.to_owned()
+        };
+
+        // If the target is a directory, open it directly. Otherwise use /select
+        // to highlight the file in its parent folder.
+        let mut cmd = crate::sys_cmd("explorer");
+        if Path::new(&target).is_dir() {
+            cmd.arg(&target);
+        } else {
+            cmd.arg("/select,").arg(&target);
         }
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Failed to launch explorer: {e}"),
-        },
+
+        cmd.spawn()
+            .map_err(|e| CmdError::failed(format!("Failed to launch explorer: {e}")))?;
+
+        crate::log::info("Rust::open_file_location", "explorer launched OK");
+        Ok(format!("Opened location for: {target}"))
+    }
+}
+
+impl Command for OpenFileLocation {
+    fn id(&self) -> &'static str {
+        "@open-file-location"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 

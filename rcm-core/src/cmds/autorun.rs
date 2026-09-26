@@ -11,93 +11,107 @@
 
 use autorun::Entry;
 
-use super::SystemCmdResult;
+use super::{CmdArgs, CmdError, Command};
 use crate::types::CommandPayload;
 
-/// Run `@add-to-autorun` — add a program to Windows startup.
-///
-/// Expects `args[0]` = entry name (file stem), `args[1]` = full path.
-pub fn run_add(cmd: &CommandPayload) -> SystemCmdResult {
-    let (name, command) = match (cmd.args.first(), cmd.args.get(1)) {
-        (Some(n), Some(c)) if !n.is_empty() && !c.is_empty() => (n.as_str(), c.as_str()),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "Requires name and command arguments".into(),
-            };
-        }
-    };
+/// `@add-to-autorun` — add a program to Windows startup.
+pub struct AddToAutorun;
 
-    crate::log::info(
-        "Rust::add_to_autorun",
-        &format!("adding '{name}' → '{command}' to startup"),
-    );
+/// Arguments for [`AddToAutorun`].
+struct Args {
+    /// Startup entry name.
+    name: String,
+    /// Executable path to launch at startup.
+    command: String,
+}
 
-    match autorun::add(name, command, autorun::Scope::User) {
-        Ok(()) => {
-            crate::log::info("Rust::add_to_autorun", "add OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Added to startup: {name}"),
-            }
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            crate::log::error("Rust::add_to_autorun", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
-            }
-        }
+impl AddToAutorun {
+    /// Extract the entry name and command.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let args = CmdArgs::of(payload);
+        Ok(Args {
+            name: args.required(0, "name", "the startup entry name")?.to_owned(),
+            command: args.required(1, "command", "the executable path")?.to_owned(),
+        })
+    }
+
+    /// Register the program in the startup list.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        crate::log::info(
+            "Rust::add_to_autorun",
+            &format!("adding '{}' → '{}' to startup", args.name, args.command),
+        );
+
+        autorun::add(&args.name, &args.command, autorun::Scope::User).map_err(|e| {
+            let message = e.to_string();
+            crate::log::error("Rust::add_to_autorun", &message);
+            CmdError::failed(message)
+        })?;
+
+        crate::log::info("Rust::add_to_autorun", "add OK");
+        Ok(format!("Added to startup: {}", args.name))
     }
 }
 
-/// Run `@remove-from-autorun` — remove a program from Windows startup.
-///
-/// Expects `args[0]` = full path of the .exe (matched against stored commands).
-pub fn run_remove(cmd: &CommandPayload) -> SystemCmdResult {
-    let path = match cmd.args.first() {
-        Some(p) if !p.is_empty() => p.as_str(),
-        _ => {
-            return SystemCmdResult {
-                success: false,
-                message: "No path specified".into(),
-            };
-        }
-    };
+impl Command for AddToAutorun {
+    fn id(&self) -> &'static str {
+        "@add-to-autorun"
+    }
 
-    // Find the entry by matching the command path.
-    let entry = match find_entry_name_by_command(path) {
-        Some(e) => e,
-        None => {
-            return SystemCmdResult {
-                success: false,
-                message: format!("Not found in startup: {path}"),
-            };
-        }
-    };
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
+    }
+}
 
-    crate::log::info(
-        "Rust::remove_from_autorun",
-        &format!("removing '{}' ({path}) from startup", entry.name),
-    );
+/// `@remove-from-autorun` — remove a program from Windows startup.
+pub struct RemoveFromAutorun;
 
-    match entry.remove() {
-        Ok(()) => {
-            crate::log::info("Rust::remove_from_autorun", "remove OK");
-            SystemCmdResult {
-                success: true,
-                message: format!("Removed from startup: {path}"),
-            }
-        }
-        Err(e) => {
-            let msg = e.to_string();
-            crate::log::error("Rust::remove_from_autorun", &msg);
-            SystemCmdResult {
-                success: false,
-                message: msg,
-            }
-        }
+/// Arguments for [`RemoveFromAutorun`].
+struct RemoveArgs {
+    /// Executable path to unregister.
+    path: String,
+}
+
+impl RemoveFromAutorun {
+    /// Extract the executable path.
+    fn args(payload: &CommandPayload) -> Result<RemoveArgs, CmdError> {
+        Ok(RemoveArgs {
+            path: CmdArgs::of(payload)
+                .required(0, "path", "the executable path")?
+                .to_owned(),
+        })
+    }
+
+    /// Remove the matching startup entry.
+    fn execute(args: RemoveArgs) -> Result<String, CmdError> {
+        let path = args.path.as_str();
+        // Resolve the entry by matching the stored command path.
+        let entry = find_entry_name_by_command(path)
+            .ok_or_else(|| CmdError::failed(format!("Not found in startup: {path}")))?;
+
+        crate::log::info(
+            "Rust::remove_from_autorun",
+            &format!("removing '{}' ({path}) from startup", entry.name),
+        );
+
+        entry.remove().map_err(|e| {
+            let message = e.to_string();
+            crate::log::error("Rust::remove_from_autorun", &message);
+            CmdError::failed(message)
+        })?;
+
+        crate::log::info("Rust::remove_from_autorun", "remove OK");
+        Ok(format!("Removed from startup: {path}"))
+    }
+}
+
+impl Command for RemoveFromAutorun {
+    fn id(&self) -> &'static str {
+        "@remove-from-autorun"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }
 

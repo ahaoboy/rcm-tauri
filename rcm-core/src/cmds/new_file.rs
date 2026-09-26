@@ -1,41 +1,71 @@
 //! `@new-file` — Create a new empty file.
 //!
-//! If the first argument starts with `.` (e.g. `.txt`), it is treated
-//! as a file extension and the base name defaults to `New File`.
-//! Otherwise the argument is used as the full file name.  The final
-//! path is resolved relative to `cmd.cwd` with collision avoidance.
+//! If the first argument starts with `.` (e.g. `.txt`), it is treated as a
+//! file extension and the base name defaults to `New File`. Otherwise the
+//! argument is the full file name. The final path is resolved relative to
+//! `cwd` with collision avoidance.
 
-use super::{SystemCmdResult, unique_path};
+use std::path::{Path, PathBuf};
+
+use super::{CmdArgs, CmdError, Command, cwd_dir, unique_path};
 use crate::types::CommandPayload;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let base = cmd.args.first().map(|s| s.as_str()).unwrap_or("New File");
+/// `@new-file` — create an empty file in `cwd`.
+pub struct NewFile;
 
-    let (name, ext) = if let Some(stripped) = base.strip_prefix('.') {
-        ("New File", stripped)
-    } else {
-        let p = std::path::Path::new(base);
-        let stem = p.file_stem().and_then(|s| s.to_str()).unwrap_or("New File");
-        let e = p.extension().and_then(|s| s.to_str()).unwrap_or("");
-        (stem, e)
-    };
+/// Arguments for [`NewFile`].
+struct Args {
+    /// Directory the file is created in.
+    dir: PathBuf,
+    /// Resolved file name (extension included).
+    filename: String,
+}
 
-    let filename = if ext.is_empty() {
-        name.to_string()
-    } else {
-        format!("{name}.{ext}")
-    };
-    let dir = if cmd.cwd.is_empty() { "." } else { &cmd.cwd };
-    let path = unique_path(&std::path::Path::new(dir).join(&filename));
+impl NewFile {
+    /// Resolve the target name and directory.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        let base = CmdArgs::of(payload).optional(0).unwrap_or("New File");
 
-    match std::fs::File::create(&path) {
-        Ok(_) => SystemCmdResult {
-            success: true,
-            message: format!("Created: {}", path.display()),
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Create file failed: {e}"),
-        },
+        let (name, ext) = match base.strip_prefix('.') {
+            Some(ext) => ("New File", ext),
+            None => {
+                let path = Path::new(base);
+                let name = path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("New File");
+                let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+                (name, ext)
+            }
+        };
+
+        let filename = if ext.is_empty() {
+            name.to_string()
+        } else {
+            format!("{name}.{ext}")
+        };
+
+        Ok(Args {
+            dir: cwd_dir(&payload.cwd),
+            filename,
+        })
+    }
+
+    /// Create the file with collision avoidance.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let path = unique_path(&args.dir.join(&args.filename));
+        std::fs::File::create(&path)
+            .map_err(|e| CmdError::failed(format!("Create file failed: {e}")))?;
+        Ok(format!("Created: {}", path.display()))
+    }
+}
+
+impl Command for NewFile {
+    fn id(&self) -> &'static str {
+        "@new-file"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }

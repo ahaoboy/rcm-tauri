@@ -1,25 +1,42 @@
 //! `@trash` — Move file(s) to the recycle bin using the `trash` crate.
 
-use super::SystemCmdResult;
+use super::{CmdArgs, CmdError, Command};
 use crate::types::CommandPayload;
 
-pub fn run(cmd: &CommandPayload) -> SystemCmdResult {
-    let paths: Vec<&str> = cmd.args.iter().map(|s| s.as_str()).collect();
-    if paths.is_empty() {
-        return SystemCmdResult {
-            success: false,
-            message: "No files specified".into(),
-        };
+/// `@trash` — send the given files/folders to the recycle bin.
+pub struct Trash;
+
+/// Arguments for [`Trash`].
+struct Args {
+    /// Paths to send to the recycle bin.
+    paths: Vec<String>,
+}
+
+impl Trash {
+    /// Extract the paths to trash.
+    fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
+        Ok(Args {
+            paths: CmdArgs::of(payload)
+                .all("path", "one or more file or folder paths")?
+                .to_vec(),
+        })
     }
 
-    match trash::delete_all(&paths) {
-        Ok(()) => SystemCmdResult {
-            success: true,
-            message: format!("Moved {} item(s) to recycle bin", paths.len()),
-        },
-        Err(e) => SystemCmdResult {
-            success: false,
-            message: format!("Failed to move to recycle bin: {e}"),
-        },
+    /// Move every path to the recycle bin.
+    fn execute(args: Args) -> Result<String, CmdError> {
+        let refs: Vec<&str> = args.paths.iter().map(String::as_str).collect();
+        trash::delete_all(&refs)
+            .map_err(|e| CmdError::failed(format!("Failed to move to recycle bin: {e}")))?;
+        Ok(format!("Moved {} item(s) to recycle bin", args.paths.len()))
+    }
+}
+
+impl Command for Trash {
+    fn id(&self) -> &'static str {
+        "@trash"
+    }
+
+    fn run(&self, payload: &CommandPayload) -> Result<String, CmdError> {
+        Self::execute(Self::args(payload)?)
     }
 }

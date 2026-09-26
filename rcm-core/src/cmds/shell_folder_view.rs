@@ -3,6 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+use super::CmdError;
 use windows::Win32::Foundation::PROPERTYKEY;
 use windows::Win32::System::Com::{
     CLSCTX_ALL, COINIT_APARTMENTTHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize,
@@ -94,18 +95,18 @@ pub(crate) fn default_ascending(propkey: &PROPERTYKEY) -> bool {
         || same_property_key(propkey, &PKEY_SIZE))
 }
 
-pub(crate) fn target_dir(cwd: &str) -> Result<PathBuf, String> {
+pub(crate) fn target_dir(cwd: &str) -> Result<PathBuf, CmdError> {
     if cwd.trim().is_empty() {
-        return Err("No directory specified".into());
+        return Err(CmdError::missing("cwd", "a directory path"));
     }
 
     let path = PathBuf::from(cwd);
     if !path.is_dir() {
-        return Err(format!("Target is not a directory: {cwd}"));
+        return Err(CmdError::invalid("cwd", cwd, "an existing directory"));
     }
 
     path.canonicalize()
-        .map_err(|e| format!("Failed to resolve directory '{cwd}': {e}"))
+        .map_err(|e| CmdError::failed(format!("Failed to resolve directory '{cwd}': {e}")))
 }
 
 pub(crate) fn with_folder_view<F>(dir: &Path, f: F) -> Result<(), String>

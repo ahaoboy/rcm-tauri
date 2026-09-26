@@ -210,11 +210,11 @@ fn resolve_exe(exe: &str) -> String {
     match which::which(exe) {
         Ok(full) => {
             let resolved = full.to_string_lossy().into_owned();
-            eprintln!("resolve_exe: '{}' -> '{}'", exe, resolved);
+            crate::log::info("Runner::resolve_exe", &format!("'{exe}' -> '{resolved}'"));
             resolved
         }
         Err(_) => {
-            eprintln!("resolve_exe: '{}' not found in PATH", exe);
+            crate::log::warn("Runner::resolve_exe", &format!("'{exe}' not found in PATH"));
             exe.to_string()
         }
     }
