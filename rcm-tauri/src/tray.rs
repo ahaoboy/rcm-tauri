@@ -6,7 +6,7 @@
 //! event to emit to the frontend.
 
 use rcm_core::actions::{self, ids, text};
-use rcm_core::{config, log};
+use rcm_core::config;
 use rcm_reg::MenuStyle;
 use tauri::{
     App, Emitter,
@@ -88,25 +88,6 @@ fn handle_theme<R: tauri::Runtime>(
     let _ = light.set_checked(theme == config::Theme::Light);
     let _ = dark.set_checked(theme == config::Theme::Dark);
     let _ = app.emit("theme-changed", theme.as_str());
-}
-
-fn handle_pull<R: tauri::Runtime>(app: &tauri::AppHandle<R>, file: &str) {
-    let Some(file) = actions::PullFile::parse(file) else {
-        log::error("Tray", &format!("unknown pull target: {file}"));
-        return;
-    };
-
-    match actions::pull(file) {
-        Ok(outcome) => {
-            // The frontend styles itself from CSS, so broadcast the new sheet.
-            if let Some(css) = outcome.style_css() {
-                let _ = app.emit("style-changed", css);
-            }
-        }
-        Err(e) => {
-            let _ = crate::show_error_window(app, &format!("Pull {} Failed", file.file_name()), &e);
-        }
-    }
 }
 
 fn handle_apply() {
@@ -206,10 +187,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         rcm_core::registry::is_autostart_enabled(),
         None::<&str>,
     )?;
-    let pull_js_i = MenuItem::with_id(app, ids::PULL_JS, text::PULL_JS, true, None::<&str>)?;
-    let pull_css_i = MenuItem::with_id(app, ids::PULL_CSS, text::PULL_CSS, true, None::<&str>)?;
-    let pull_config_i =
-        MenuItem::with_id(app, ids::PULL_CONFIG, text::PULL_CONFIG, true, None::<&str>)?;
     let config_i = MenuItem::with_id(app, ids::CONFIG, text::CONFIG, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, ids::RESET, text::RESET, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, ids::APPLY, text::APPLY, true, None::<&str>)?;
@@ -238,8 +215,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Auto Start
     //   Theme ▸
     //   ─────────
-    //   Pull ▸                       ← only when a remote URL is configured
-    //     Config / Reset / Apply / Quit
+    //   Config / Reset / Apply / Quit
 
     let is_debug = cfg!(debug_assertions);
     let separator_prefs = PredefinedMenuItem::separator(app)?;
@@ -250,12 +226,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
         text::THEME,
         true,
         &[&theme_sys_i, &theme_light_i, &theme_dark_i],
-    )?;
-    let pull_menu = Submenu::with_items(
-        app,
-        text::PULL,
-        true,
-        &[&pull_js_i, &pull_css_i, &pull_config_i],
     )?;
 
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
@@ -276,9 +246,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     items.push(&theme_menu);
 
     items.push(&separator_system);
-    if actions::has_remote() {
-        items.push(&pull_menu);
-    }
     items.push(&config_i);
     items.push(&reset_i);
     items.push(&apply_i);
@@ -333,9 +300,6 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 &theme_dark_clone,
             ),
             ids::APPLY => handle_apply(),
-            ids::PULL_JS => handle_pull(app, "js"),
-            ids::PULL_CSS => handle_pull(app, "css"),
-            ids::PULL_CONFIG => handle_pull(app, "config"),
             ids::CONFIG => {
                 let app_handle = app.clone();
                 tauri::async_runtime::spawn(async move {
