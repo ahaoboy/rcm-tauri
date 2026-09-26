@@ -6,6 +6,7 @@ import { getStyleCss } from "./api/menuEvents"
 import App from "./App"
 import { ConfigEditor } from "./components/ConfigEditor"
 import { ErrorPage } from "./components/ErrorPage"
+import { ShellExtensionPage } from "./components/ShellExtensionPage"
 import { SubmenuApp } from "./components/SubmenuApp"
 import { WarmupPage } from "./components/WarmupPage"
 
@@ -17,6 +18,7 @@ const routes: [string | null, React.FC, boolean][] = [
   ["#submenu-", SubmenuApp, true],
   ["#config/", ConfigEditor, false],
   ["#error/", ErrorPage, false],
+  ["#shell-ext/", ShellExtensionPage, false],
   [null, App, true],
 ]
 

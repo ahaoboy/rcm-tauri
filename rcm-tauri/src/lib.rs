@@ -181,19 +181,50 @@ async fn show_error(app: tauri::AppHandle, message: String) -> Result<(), String
     show_error_window(&app, "RCM Error", &message)
 }
 
+/// Default error-window size — fits a short one or two line message.
+const ERROR_WINDOW_SIZE: (f64, f64) = (440.0, 220.0);
+
 fn show_error_window<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     title: &str,
     message: &str,
 ) -> Result<(), String> {
+    let url = format!("index.html#error/{}", urlencoding(message));
+    create_message_window(app, title, &url, ERROR_WINDOW_SIZE)
+}
+
+/// Open the shell-extension diagnostic window.
+///
+/// Uses its own route (`#shell-ext/…`) rather than the generic `#error/` page,
+/// because this one is interactive: it offers a **Retry** button so the user can
+/// reconnect after registering the extension and restarting Explorer.
+fn show_shell_extension_window<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    report: &str,
+) -> Result<(), String> {
+    let url = format!("index.html#shell-ext/{}", urlencoding(report));
+    create_message_window(
+        app,
+        "RCM Shell Extension Not Running",
+        &url,
+        (640.0, 560.0),
+    )
+}
+
+/// Create a standalone webview window showing `url`.
+fn create_message_window<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    title: &str,
+    url: &str,
+    (width, height): (f64, f64),
+) -> Result<(), String> {
     static COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
     let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let url = format!("index.html#error/{}", urlencoding(message));
     let label = format!("rcm-error-{n}");
     tauri::WebviewWindowBuilder::new(app, &label, tauri::WebviewUrl::App(url.into()))
         .title(title)
-        .inner_size(440.0, 220.0)
-        .resizable(false)
+        .inner_size(width, height)
+        .resizable(true)
         .center()
         .decorations(true)
         .transparent(false)
@@ -206,6 +237,96 @@ fn show_error_window<R: tauri::Runtime>(
         })?;
     Ok(())
 }
+
+/// Build a detailed report for a failed shell-extension handshake.
+///
+/// The `rcm_com` pipe lives inside Explorer (it is created by the shell
+/// extension DLL when it loads), so a connection failure means the DLL is not
+/// loaded — or not registered at all.
+///
+/// The report is deliberately terse: only the *problems* are listed (never the
+/// healthy checks), packed onto a single line each, so the whole thing stays
+/// three lines long no matter how the registry looks.
+fn shell_extension_report(err: &dyn std::fmt::Display) -> String {
+    let dll = rcm_core::exe_dir().join("rcm_com.dll");
+    let mut issues: Vec<String> = Vec::new();
+
+    if !dll.exists() {
+        issues.push(format!("DLL missing ({})", dll.display()));
+    }
+
+    match rcm_com::cmd::status() {
+        Ok(s) => {
+            if !s.clsid_exists {
+                issues.push("CLSID not registered".into());
+            } else if s.inproc_path.is_none() {
+                issues.push("InProcServer32 missing".into());
+            }
+            let missing: Vec<&str> = s
+                .handlers
+                .iter()
+                .filter(|h| !h.ok)
+                .map(|h| h.label.as_str())
+                .collect();
+            if !missing.is_empty() {
+                issues.push(format!("handlers missing: {}", missing.join(", ")));
+            }
+            if !s.is_approved {
+                issues.push("not in Approved list".into());
+            }
+        }
+        Err(e) => issues.push(format!("status unavailable ({e})")),
+    }
+
+    let issues = if issues.is_empty() {
+        "none — registration looks correct, the DLL is just not loaded yet".to_string()
+    } else {
+        issues.join("; ")
+    };
+
+    // Drop the crate's generic "Environment Error: " prefix so the line reads
+    // as a plain sentence.
+    let raw = err.to_string();
+    let reason = raw.strip_prefix("Environment Error: ").unwrap_or(&raw);
+
+    format!(
+        "Shell extension not loaded — {reason}\n\
+         Issues: {issues}\n\
+         Fix: tray → Register → Apply → right-click a folder → Retry"
+    )
+}
+
+/// Outcome of a Retry attempt from the shell-extension window.
+#[derive(serde::Serialize)]
+struct RetryResult {
+    /// `true` when the pipe connected (the menu is now live).
+    ok: bool,
+    /// Fresh report to display when `ok` is `false`; empty on success.
+    report: String,
+}
+
+/// Re-probe the shell extension after the user has registered it and restarted
+/// Explorer. Called by the Retry button in the diagnostic window.
+#[tauri::command]
+fn retry_shell_extension() -> RetryResult {
+    match rcm_com::enable() {
+        Ok(()) => {
+            log::info("Startup", "retry: shell extension connected");
+            RetryResult {
+                ok: true,
+                report: String::new(),
+            }
+        }
+        Err(e) => {
+            log::error("Startup", &format!("retry failed: {e}"));
+            RetryResult {
+                ok: false,
+                report: shell_extension_report(&e),
+            }
+        }
+    }
+}
+
 
 fn urlencoding(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
@@ -246,22 +367,14 @@ fn run_app() {
                 let _ = root.hide();
             }
 
+
             // Probe the shell extension. It owns the `rcm_com` pipe, so without
             // it no right-click event can ever reach us — the app would look
-            // broken (blank window, no menu ever appears). Tell the user what to
-            // do rather than failing silently.
+            // broken (blank window, no menu ever appears). Report the DLL path,
+            // registry status and the fix instead of failing silently.
             if let Err(e) = rcm_com::enable() {
                 log::error("Startup", &format!("rcm_com::enable failed: {e}"));
-                let _ = show_error_window(
-                    app.app_handle(),
-                    "RCM Shell Extension Not Running",
-                    &format!(
-                        "The RCM shell extension is not loaded, so the right-click \
-                         menu cannot appear.\n\n{e}\n\n\
-                         Open the tray menu and choose Register, then Apply \
-                         (restarts Explorer) to load the extension."
-                    ),
-                );
+                let _ = show_shell_extension_window(app.app_handle(), &shell_extension_report(&e));
             }
             tray::setup_tray(app)?;
 
@@ -355,6 +468,7 @@ fn run_app() {
             pull_css,
             pull_config,
             get_env_vars,
+            retry_shell_extension,
             show_error,
         ])
         .run(tauri::generate_context!())

@@ -141,6 +141,26 @@ export function getEnvVars(): Promise<EnvVar[]> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Shell extension diagnostics
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Outcome of a Retry attempt against the shell extension. */
+export interface RetryResult {
+  /** `true` when the pipe connected — the right-click menu is live. */
+  ok: boolean
+  /** Fresh diagnostic report when `ok` is `false`; empty on success. */
+  report: string
+}
+
+/**
+ * Re-probe the shell extension after registering it and restarting Explorer.
+ * Resolves with the new state so the caller can update its report.
+ */
+export function retryShellExtension(): Promise<RetryResult> {
+  return invoke<RetryResult>("retry_shell_extension")
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Pull — download latest files from configured remote URLs
 // ═══════════════════════════════════════════════════════════════════════
 

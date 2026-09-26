@@ -36,15 +36,18 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     height: "100vh",
+    overflow: "auto",
+    padding: 16,
     fontFamily: "'Segoe UI', system-ui, sans-serif",
     background: "#1e1e1e",
     color: "#d4d4d4",
   },
   card: {
     textAlign: "center" as const,
-    padding: "40px 56px",
+    padding: "32px 40px",
     borderRadius: 12,
     background: "#1e1e1e",
+    maxWidth: 720,
   },
   icon: {
     fontSize: 48,
@@ -57,10 +60,18 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#f44747",
   },
   message: {
-    fontSize: 14,
+    // Long diagnostics (multi-line reports) must keep their line breaks and
+    // remain readable: left-aligned, monospace, scrollable when tall.
+    fontSize: 13,
     color: "#aaa",
     margin: "0 0 24px 0",
     lineHeight: 1.5,
+    textAlign: "left",
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    fontFamily: "Consolas, 'Cascadia Mono', monospace",
+    maxHeight: "60vh",
+    overflow: "auto",
   },
   btn: {
     padding: "8px 24px",
