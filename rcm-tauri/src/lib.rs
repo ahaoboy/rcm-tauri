@@ -237,8 +237,31 @@ fn run_app() {
         }))
         .setup(move |app| {
             config::init();
+
+            // The root window is declared `visible` in tauri.conf.json purely so
+            // WebView2 starts warming up; it must not stay on screen, because
+            // with no menu data it renders an empty page. The menu controller
+            // reveals it (via `place_window`) on the first right-click event.
+            if let Some(root) = app.get_webview_window(events::ROOT_LABEL) {
+                let _ = root.hide();
+            }
+
+            // Probe the shell extension. It owns the `rcm_com` pipe, so without
+            // it no right-click event can ever reach us — the app would look
+            // broken (blank window, no menu ever appears). Tell the user what to
+            // do rather than failing silently.
             if let Err(e) = rcm_com::enable() {
                 log::error("Startup", &format!("rcm_com::enable failed: {e}"));
+                let _ = show_error_window(
+                    app.app_handle(),
+                    "RCM Shell Extension Not Running",
+                    &format!(
+                        "The RCM shell extension is not loaded, so the right-click \
+                         menu cannot appear.\n\n{e}\n\n\
+                         Open the tray menu and choose Register, then Apply \
+                         (restarts Explorer) to load the extension."
+                    ),
+                );
             }
             tray::setup_tray(app)?;
 
