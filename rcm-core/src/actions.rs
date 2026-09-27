@@ -41,6 +41,7 @@ pub mod ids {
     pub const PULL_JS: &str = "pull_js";
     pub const PULL_CSS: &str = "pull_css";
     pub const PULL_CONFIG: &str = "pull_config";
+    pub const ABOUT: &str = "about";
 }
 
 /// Display labels for the tray entries.
@@ -66,6 +67,7 @@ pub mod text {
     pub const THEME_SYSTEM: &str = "System";
     pub const THEME_LIGHT: &str = "Light";
     pub const THEME_DARK: &str = "Dark";
+    pub const ABOUT: &str = "About";
 }
 
 /// Whether the compact Windows 11 context menu is active.

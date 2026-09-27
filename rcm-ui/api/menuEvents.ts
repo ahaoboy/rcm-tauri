@@ -201,3 +201,29 @@ export function onDevMode(handler: (dev: boolean) => void): Promise<UnlistenFn> 
 export function onIconsChanged(handler: (icons: boolean) => void): Promise<UnlistenFn> {
   return listen<boolean>("icons-changed", (e) => handler(e.payload))
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// About
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * The runtime facts the About page displays.
+ *
+ * Only what the webview cannot read for itself. The page's own content — name,
+ * description, wording and layout — is defined in the frontend.
+ */
+export interface RuntimePaths {
+  version: string
+  exe_dir: string
+  config_path: string
+  log_path: string
+}
+
+export function getRuntimePaths(): Promise<RuntimePaths> {
+  return invoke<RuntimePaths>("get_runtime_paths")
+}
+
+/** Open the folder holding the executable and its config files. */
+export function openConfigFolder(): Promise<void> {
+  return invoke("open_config_folder")
+}

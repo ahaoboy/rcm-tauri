@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client"
 
 import { getStyleCss } from "./api/menuEvents"
 import App from "./App"
+import { AboutPage } from "./components/AboutPage"
 import { ConfigEditor } from "./components/ConfigEditor"
 import { ErrorPage } from "./components/ErrorPage"
 import { ShellExtensionPage } from "./components/ShellExtensionPage"
@@ -19,6 +20,7 @@ const routes: [string | null, React.FC, boolean][] = [
   ["#config/", ConfigEditor, false],
   ["#error/", ErrorPage, false],
   ["#shell-ext/", ShellExtensionPage, false],
+  ["#about", AboutPage, false],
   [null, App, true],
 ]
 

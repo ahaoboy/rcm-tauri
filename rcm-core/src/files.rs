@@ -43,11 +43,7 @@ pub fn save_config_file(name: &str, content: &str) -> Result<(), String> {
 /// Open a config file with the operating system's default program.
 pub fn open_config_file(name: &str) -> Result<(), String> {
     let path = config_file_path(name)?;
-    crate::sys_cmd("cmd")
-        .args(["/c", "start", "", &path.to_string_lossy()])
-        .spawn()
-        .map_err(|e| format!("Open failed: {e}"))?;
-    Ok(())
+    crate::open_path(&path.to_string_lossy())
 }
 
 #[cfg(test)]

@@ -37,3 +37,19 @@ pub fn exe_dir() -> std::path::PathBuf {
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .unwrap_or_else(|| std::path::PathBuf::from("."))
 }
+
+/// Open a file, directory or URL with the system default handler.
+///
+/// One place for "hand this to the shell", so nothing else has to spawn
+/// `cmd /c start` itself.
+///
+/// The empty argument after `/c start` is required, not decoration: `start`
+/// treats its first *quoted* argument as a window title, so a quoted path would
+/// otherwise be swallowed as the title and nothing would open.
+pub fn open_path(target: &str) -> Result<(), String> {
+    sys_cmd("cmd")
+        .args(["/c", "start", "", target])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("Failed to open '{target}': {e}"))
+}

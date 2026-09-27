@@ -7,6 +7,7 @@
 
 use rcm_core::actions::{self, ids, text};
 use rcm_core::config;
+use rcm_core::log;
 use rcm_reg::MenuStyle;
 use tauri::{
     App, Emitter,
@@ -190,6 +191,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let config_i = MenuItem::with_id(app, ids::CONFIG, text::CONFIG, true, None::<&str>)?;
     let reset_i = MenuItem::with_id(app, ids::RESET, text::RESET, true, None::<&str>)?;
     let apply_i = MenuItem::with_id(app, ids::APPLY, text::APPLY, true, None::<&str>)?;
+    let about_i = MenuItem::with_id(app, ids::ABOUT, text::ABOUT, true, None::<&str>)?;
     let quit_i = MenuItem::with_id(app, ids::QUIT, text::QUIT, true, None::<&str>)?;
 
     // ── Clones for the event handler ─────────────────────────────────
@@ -215,7 +217,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     //   ✓ Auto Start
     //   Theme ▸
     //   ─────────
-    //   Config / Reset / Apply / Quit
+    //   Config / Reset / Apply / About / Quit
 
     let is_debug = cfg!(debug_assertions);
     let separator_prefs = PredefinedMenuItem::separator(app)?;
@@ -249,6 +251,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     items.push(&config_i);
     items.push(&reset_i);
     items.push(&apply_i);
+    items.push(&about_i);
     items.push(&quit_i);
 
     let menu = Menu::with_items(app, &items)?;
@@ -307,6 +310,14 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 });
             }
             ids::RESET => actions::reset(),
+            ids::ABOUT => {
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = crate::create_about_window(app_handle).await {
+                        log::error("About", &e);
+                    }
+                });
+            }
             _ => {}
         })
         .build(app)?;

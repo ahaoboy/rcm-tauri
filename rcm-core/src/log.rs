@@ -16,7 +16,11 @@ pub static FILE_LOGGING: AtomicBool = AtomicBool::new(false);
 /// Guards concurrent writes to the log file.
 static FILE_MUTEX: Mutex<()> = Mutex::new(());
 
-fn log_path() -> PathBuf {
+/// Path of the log file this module appends to.
+///
+/// `<exe_name>.log` next to the executable. The file only exists while
+/// [`FILE_LOGGING`] is enabled.
+pub fn log_path() -> PathBuf {
     let exe_name = std::env::current_exe()
         .ok()
         .and_then(|p| p.file_stem().map(|s| s.to_os_string()))

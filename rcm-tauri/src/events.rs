@@ -54,6 +54,39 @@ pub struct ConfigPayload {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// About payload (for frontend)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// The facts only the backend knows, for the About page to display.
+///
+/// The page's own content — its name, description, layout and wording — lives in
+/// the frontend. This carries just the runtime state the webview cannot read for
+/// itself.
+#[derive(Debug, Clone, Serialize)]
+pub struct RuntimePaths {
+    /// Version of the running binary.
+    pub version: String,
+    /// Directory holding the executable and its config files.
+    pub exe_dir: String,
+    /// Path of `rcm.config.json`.
+    pub config_path: String,
+    /// Path of the log file (written only while file logging is enabled).
+    pub log_path: String,
+}
+
+impl RuntimePaths {
+    pub fn current() -> Self {
+        let dir = rcm_core::exe_dir();
+        Self {
+            version: env!("CARGO_PKG_VERSION").to_string(),
+            config_path: dir.join("rcm.config.json").to_string_lossy().into_owned(),
+            log_path: rcm_core::log::log_path().to_string_lossy().into_owned(),
+            exe_dir: dir.to_string_lossy().into_owned(),
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Event payloads — Rust → Frontend
 // ═══════════════════════════════════════════════════════════════════════════
 

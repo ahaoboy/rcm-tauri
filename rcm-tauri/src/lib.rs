@@ -36,6 +36,44 @@ fn get_config() -> ConfigPayload {
 fn get_style_css() -> String {
     rcm_core::style::load_style_css()
 }
+
+// ── About ────────────────────────────────────────────────────────────────
+
+/// The runtime facts the About page displays; the page's content is the
+/// frontend's own.
+#[tauri::command]
+fn get_runtime_paths() -> crate::events::RuntimePaths {
+    crate::events::RuntimePaths::current()
+}
+
+/// Open the folder holding the executable and its config files.
+#[tauri::command]
+fn open_config_folder() -> Result<(), String> {
+    rcm_core::open_path(&rcm_core::exe_dir().to_string_lossy())
+}
+
+/// Create (or focus) the About window.
+#[tauri::command]
+async fn create_about_window(app: tauri::AppHandle) -> Result<(), String> {
+    let label = "about";
+    // Already open — bring the existing window forward instead of making a second one.
+    if let Some(win) = app.get_webview_window(label) {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return Ok(());
+    }
+
+    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App("index.html#about".into()))
+        .title("About RCM")
+        .inner_size(520.0, 420.0)
+        .resizable(false)
+        .center()
+        .build()
+        .map_err(|e| format!("Failed to create window: {e}"))?;
+
+    Ok(())
+}
+
 // ── Config editor commands ───────────────────────────────────────────────
 
 /// Read a config file from the exe directory.
@@ -459,6 +497,9 @@ fn run_app() {
         .invoke_handler(tauri::generate_handler![
             get_config,
             get_style_css,
+            get_runtime_paths,
+            open_config_folder,
+            create_about_window,
             read_config_file,
             save_config_file,
             open_in_editor,
