@@ -184,63 +184,10 @@ fn get_env_vars() -> Vec<EnvVar> {
 // Application entry point
 // ═══════════════════════════════════════════════════════════════════════════
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    // Step 1: check if another RCM process is already running
-    if rcm_core::process::is_rcm_process_running() {
-        eprintln!("rcm-tauri: another instance is already running");
-        run_error();
-        return;
-    }
-    run_app()
-}
-
-/// Minimal Tauri app that only shows the "already running" error window.
-///
-/// This runs in a *second* process while the first one is still alive, so it
-/// must not share WebView2's user-data folder with it: two environments on the
-/// same folder abort with `RPC_E_DISCONNECTED` ("the object invoked has
-/// disconnected from its clients"). Pointing this window at its own folder
-/// under the temp dir keeps the two WebView2 environments independent.
-///
-/// A failed setup is logged rather than panicking — there is no UI to report
-/// to, and a clean exit is better than a crash dump.
-fn run_error() {
-    let url = error_url(&UiError::AlreadyRunning);
-    let data_dir = std::env::temp_dir().join("rcm-error-webview");
-
-    let result = tauri::Builder::default()
-        .setup(move |app| {
-            tauri::WebviewWindowBuilder::new(app, "rcm-error", tauri::WebviewUrl::App(url.into()))
-                .title("RCM Error")
-                .inner_size(440.0, 220.0)
-                .resizable(false)
-                .center()
-                .data_directory(data_dir)
-                .build()?;
-            Ok(())
-        })
-        .run(tauri::generate_context!());
-
-    if let Err(e) = result {
-        log::error("ErrorWindow", &format!("error window failed: {e}"));
-    }
-}
-
 /// Show a small error window (non-blocking).
 #[tauri::command]
 async fn show_error(app: tauri::AppHandle, message: String) -> Result<(), String> {
     show_error_window(&app, "RCM Error", &UiError::Message { message })
-}
-
-/// Default error-window size — fits a short one or two line message.
-const ERROR_WINDOW_SIZE: (f64, f64) = (440.0, 220.0);
-
-/// Build the `index.html#error/<json>` URL for `payload`.
-fn error_url(payload: &UiError) -> String {
-    let json = serde_json::to_string(payload)
-        .unwrap_or_else(|_| r#"{"kind":"message","message":"Unknown error"}"#.to_owned());
-    format!("index.html#error/{}", urlencoding(&json))
 }
 
 /// Show an error page in its own window.
@@ -249,7 +196,45 @@ pub(crate) fn show_error_window<R: tauri::Runtime>(
     title: &str,
     payload: &UiError,
 ) -> Result<(), String> {
-    create_message_window(app, title, &error_url(payload), ERROR_WINDOW_SIZE)
+    let json = serde_json::to_string(payload)
+        .unwrap_or_else(|_| r#"{"kind":"message","message":"Unknown error"}"#.to_owned());
+    let url = format!("index.html#error/{}", urlencoding(&json));
+    let size = window_size_for(app, 0.4, (420.0, 320.0), (680.0, 520.0));
+    create_message_window(app, title, &url, size)
+}
+
+/// A window size proportional to the primary monitor, clamped to `[min, max]`.
+///
+/// A fixed size looks tiny on a 4K display and cramped on a small one, so the
+/// window is a fraction of the screen instead.
+///
+/// Tauri's window sizes are **logical** pixels while [`Monitor`] reports
+/// **physical** ones, so the monitor size is divided by its scale factor first;
+/// this keeps the window the same *apparent* size across DPI settings.
+///
+/// Falls back to `min` when no monitor can be queried.
+///
+/// [`Monitor`]: tauri::window::Monitor
+fn window_size_for<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    fraction: f64,
+    min: (f64, f64),
+    max: (f64, f64),
+) -> (f64, f64) {
+    let Ok(Some(monitor)) = app.primary_monitor() else {
+        return min;
+    };
+    let scale = monitor.scale_factor();
+    if scale <= 0.0 {
+        return min;
+    }
+    let size = monitor.size();
+    let logical_w = size.width as f64 / scale;
+    let logical_h = size.height as f64 / scale;
+    (
+        (logical_w * fraction).clamp(min.0, max.0),
+        (logical_h * fraction).clamp(min.1, max.1),
+    )
 }
 /// Open the shell-extension diagnostic window.
 ///
@@ -261,12 +246,8 @@ fn show_shell_extension_window<R: tauri::Runtime>(
     report: &str,
 ) -> Result<(), String> {
     let url = format!("index.html#shell-ext/{}", urlencoding(report));
-    create_message_window(
-        app,
-        "RCM Shell Extension Not Running",
-        &url,
-        (640.0, 560.0),
-    )
+    let size = window_size_for(app, 0.6, (600.0, 520.0), (900.0, 760.0));
+    create_message_window(app, "RCM Shell Extension Not Running", &url, size)
 }
 
 /// Create a standalone webview window showing `url`.
@@ -404,7 +385,12 @@ fn urlencoding(s: &str) -> String {
     out
 }
 
-fn run_app() {
+/// Run the application.
+///
+/// Duplicate-instance handling is done by `tauri-plugin-single-instance`
+/// (registered below), which focuses the running window and exits this process
+/// gracefully — no second WebView2 needs to be created.
+pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

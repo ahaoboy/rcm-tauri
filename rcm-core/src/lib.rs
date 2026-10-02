@@ -9,7 +9,6 @@ pub mod log;
 pub mod menu;
 pub mod monitor;
 pub mod paths;
-pub mod process;
 pub mod registry;
 pub mod runner;
 pub mod style;

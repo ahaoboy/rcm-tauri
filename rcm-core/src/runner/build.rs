@@ -7,11 +7,9 @@
 use crate::types::{CommandPayload, WindowMode};
 use std::collections::HashMap;
 use tokio::process::Command;
+use windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE;
 
 const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-#[cfg(target_os = "windows")]
-use windows::Win32::UI::WindowsAndMessaging::SW_MINIMIZE;
 
 /// Path expansion helper — expand `%VAR%` references in a value (e.g.
 /// `%SystemRoot%`) using `cmdexpand`.
@@ -165,18 +163,12 @@ pub fn build_command(cmd: &CommandPayload) -> Command {
         }
         Minimized => {
             let mut command = build_raw(cmd, &exe);
-            #[cfg(target_os = "windows")]
-            {
-                command.creation_flags(SW_MINIMIZE.0 as u32);
-            }
+            command.creation_flags(SW_MINIMIZE.0 as u32);
             command
         }
         Hidden => {
             let mut command = build_raw(cmd, &exe);
-            #[cfg(target_os = "windows")]
-            {
-                command.creation_flags(CREATE_NO_WINDOW);
-            }
+            command.creation_flags(CREATE_NO_WINDOW);
             command
         }
     }

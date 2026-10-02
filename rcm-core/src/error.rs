@@ -17,13 +17,6 @@ use serde::Serialize;
 #[derive(Debug, thiserror::Error, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum UiError {
-    /// Another RCM process already holds the single-instance lock.
-    #[error(
-        "Another instance of RCM is already running.\n\n\
-         Please close it before starting a new one."
-    )]
-    AlreadyRunning,
-
     /// A menu action needs programs that are not resolvable on `PATH`.
     #[error("This action needs program(s) that are not installed, or not on PATH: {}", .programs.join(", "))]
     MissingPrograms {

@@ -4,24 +4,8 @@
 /// - `"zh"` for Chinese (Simplified & Traditional),
 /// - `"en"` for English (or anything else, which the i18n module falls back to).
 ///
-/// ## Detection strategy (Windows)
 /// Reads `HKCU\Control Panel\International\LocaleName` via the `winreg` crate.
-///
-/// ## Detection strategy (other platforms)
-/// Reads the `LANG` environment variable.
 pub fn system_lang() -> String {
-    #[cfg(target_os = "windows")]
-    {
-        windows_lang()
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        unix_lang()
-    }
-}
-
-#[cfg(target_os = "windows")]
-fn windows_lang() -> String {
     use winreg::RegKey;
     use winreg::enums::HKEY_CURRENT_USER;
 
@@ -34,16 +18,6 @@ fn windows_lang() -> String {
         Ok(v) => v,
         Err(_) => return "en".to_string(),
     };
-
-    locale_to_lang(&locale)
-}
-
-#[cfg(not(target_os = "windows"))]
-fn unix_lang() -> String {
-    let locale = std::env::var("LANG")
-        .or_else(|_| std::env::var("LC_ALL"))
-        .or_else(|_| std::env::var("LC_MESSAGES"))
-        .unwrap_or_else(|_| "en_US.UTF-8".to_string());
 
     locale_to_lang(&locale)
 }

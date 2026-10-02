@@ -18,7 +18,6 @@ import { BodyReset } from "./BodyReset"
  * Mirrors `rcm_core::UiError` (`#[serde(tag = "kind")]`).
  */
 export type UiError =
-  | { kind: "already-running" }
   | { kind: "missing-programs"; programs: string[] }
   | { kind: "message"; message: string }
 
@@ -46,17 +45,6 @@ function parsePayload(hash: string): UiError {
 /** Per-kind presentation: title + body, rendered inside the shared card. */
 function render(payload: UiError) {
   switch (payload.kind) {
-    case "already-running":
-      return {
-        title: "RCM Already Running",
-        body: (
-          <p style={styles.message}>
-            Another instance of RCM is already running.
-            {"\n\n"}Please close it before starting a new one.
-          </p>
-        ),
-      }
-
     case "missing-programs":
       return {
         title: "Missing Program",
@@ -106,24 +94,28 @@ export const ErrorPage: React.FC = () => {
 const styles: Record<string, React.CSSProperties> = {
   overlay: {
     display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    height: "100vh",
+    // minHeight (not height) + a card with `margin: auto` centres the card on
+    // both axes *and* lets it scroll into view when taller than the window.
+    // `align-items/justify-content: center` would clip the overflow instead.
+    minHeight: "100vh",
     overflow: "auto",
-    padding: 16,
+    overflowX: "hidden",
+    padding: "clamp(12px, 4vw, 24px)",
     fontFamily: "'Segoe UI', system-ui, sans-serif",
     background: "#1e1e1e",
     color: "#d4d4d4",
   },
   card: {
+    margin: "auto",
+    width: "100%",
+    maxWidth: 720,
     textAlign: "center" as const,
-    padding: "32px 40px",
+    padding: "clamp(20px, 5vw, 32px) clamp(16px, 6vw, 40px)",
     borderRadius: 12,
     background: "#1e1e1e",
-    maxWidth: 720,
   },
   icon: {
-    fontSize: 48,
+    fontSize: "clamp(32px, 8vw, 48px)",
     marginBottom: 12,
   },
   title: {
@@ -131,6 +123,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     margin: "0 0 8px 0",
     color: "#f44747",
+    overflowWrap: "break-word",
   },
   message: {
     // Long diagnostics (multi-line reports) must keep their line breaks and
@@ -141,9 +134,9 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
     textAlign: "left",
     whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
+    overflowWrap: "anywhere",
     fontFamily: "Consolas, 'Cascadia Mono', monospace",
-    maxHeight: "60vh",
+    maxHeight: "50vh",
     overflow: "auto",
   },
   lead: {
@@ -151,6 +144,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#aaa",
     margin: "0 0 12px 0",
     lineHeight: 1.5,
+    overflowWrap: "break-word",
   },
   list: {
     listStyle: "none",
@@ -163,6 +157,7 @@ const styles: Record<string, React.CSSProperties> = {
   listItem: {
     display: "flex",
     justifyContent: "center",
+    minWidth: 0,
   },
   code: {
     fontFamily: "Consolas, 'Cascadia Mono', monospace",
@@ -172,11 +167,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid #3c3c3c",
     borderRadius: 4,
     padding: "2px 10px",
+    // Let a long program name wrap rather than stretch the card.
+    maxWidth: "100%",
+    overflowWrap: "anywhere",
   },
   hint: {
     fontSize: 12,
     color: "#777",
     margin: "0 0 20px 0",
+    overflowWrap: "break-word",
   },
   btn: {
     padding: "8px 24px",
@@ -187,5 +186,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     fontSize: 13,
     fontFamily: "inherit",
+    maxWidth: "100%",
   },
 }
