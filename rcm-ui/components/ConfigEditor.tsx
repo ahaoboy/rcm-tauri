@@ -28,6 +28,7 @@ import {
   saveConfigFile,
   showError,
 } from "../api/menuEvents"
+import { setRoute } from "../router"
 import { BodyReset } from "./BodyReset"
 import {
   ENV_TAB,
@@ -137,7 +138,7 @@ export const ConfigEditor: React.FC = () => {
             <button
               key={f.key}
               onClick={() => {
-                window.location.hash = `config/${f.key}`
+                setRoute(`config/${f.key}`)
               }}
               style={{ ...styles.tab, ...(active === f.key ? styles.tabActive : {}) }}
             >

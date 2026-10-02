@@ -3,39 +3,30 @@ import { useEffect } from "react"
 import { ContextMenu } from "./components"
 import { useMenuWindow } from "./hooks/useMenuWindow"
 import { useTheme } from "./hooks/useTheme"
+import { useConfigStore, useMenuStore } from "./stores"
 
 function App() {
-  const theme = useTheme()
-  const { menu, devMode, showIcons, hide } = useMenuWindow({
-    depth: 0,
-    listenIcons: true,
-    tag: "App:root",
-  })
+  useTheme()
 
-  useEffect(() => {
-    document.documentElement.classList.remove("rcm-light", "rcm-dark")
-    document.documentElement.classList.add(`rcm-${theme}`)
-  }, [theme])
+  const menu = useMenuStore((s) => s.menu)
+  const showIcons = useConfigStore((s) => s.icons)
+  const { hide } = useMenuWindow({ depth: 0, tag: "App:root" })
 
-  // Disable browser native right-click menu in release mode
+  // Disable the browser's native right-click menu.
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      e.preventDefault()
-    }
+    const handler = (e: MouseEvent) => e.preventDefault()
     document.addEventListener("contextmenu", handler)
     return () => document.removeEventListener("contextmenu", handler)
   }, [])
 
-  // Close all on Escape
+  // Close on Escape (unless dev mode keeps the menu pinned).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !devMode.current) {
-        hide()
-      }
+      if (e.key === "Escape" && !useConfigStore.getState().dev) hide()
     }
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
-  }, [devMode, hide])
+  }, [hide])
 
   if (!menu) {
     return <div className="rcm-root" />

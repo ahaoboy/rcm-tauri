@@ -202,6 +202,11 @@ export function onIconsChanged(handler: (icons: boolean) => void): Promise<Unlis
   return listen<boolean>("icons-changed", (e) => handler(e.payload))
 }
 
+/** Theme preference changed ("system" | "light" | "dark"). */
+export function onThemeChanged(handler: (theme: string) => void): Promise<UnlistenFn> {
+  return listen<string>("theme-changed", (e) => handler(e.payload))
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // About
 // ═══════════════════════════════════════════════════════════════════════

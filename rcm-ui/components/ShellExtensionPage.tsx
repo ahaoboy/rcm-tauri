@@ -13,6 +13,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import React, { useCallback, useState } from "react"
 
 import { retryShellExtension } from "../api/menuEvents"
+import { getRoute } from "../router"
 import { BodyReset } from "./BodyReset"
 import { styles } from "./ShellExtensionPage.styles"
 
@@ -20,9 +21,8 @@ import { styles } from "./ShellExtensionPage.styles"
 const AUTO_CLOSE_MS = 1200
 
 export const ShellExtensionPage: React.FC = () => {
-  const [report, setReport] = useState(() =>
-    decodeURIComponent(window.location.hash.replace("#shell-ext/", "")),
-  )
+  const route = getRoute()
+  const [report, setReport] = useState(route.name === "shell-ext" ? route.report : "")
   const [busy, setBusy] = useState(false)
   const [connected, setConnected] = useState(false)
   const [checkedAt, setCheckedAt] = useState<string | null>(null)

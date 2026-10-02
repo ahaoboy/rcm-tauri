@@ -1,48 +1,20 @@
 /**
  * ErrorPage — the single window for every error/diagnostic.
  *
- * Route: `#error/<url-encoded-json>`
- *
- * The hash carries a [`UiError`] (mirroring `rcm_core::UiError`) whose `kind`
- * selects the layout. Anything that fails to parse falls back to a plain
- * message, so old links and hand-typed errors still display.
+ * Route: `#error/<url-encoded-json>` (see `router.ts`). The payload's `kind`
+ * selects the layout; anything that fails to parse degrades to a plain message.
  */
 
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import React from "react"
 
+import { getRoute } from "../router"
+import type { UiError } from "../types/error"
 import { BodyReset } from "./BodyReset"
 
-/**
- * JSON payload emitted by the Rust side.
- * Mirrors `rcm_core::UiError` (`#[serde(tag = "kind")]`).
- */
-export type UiError =
-  | { kind: "missing-programs"; programs: string[] }
-  | { kind: "message"; message: string }
+export type { UiError }
 
-/** Decode without throwing on malformed input. */
-function safeDecode(value: string): string {
-  try {
-    return decodeURIComponent(value)
-  } catch {
-    return value
-  }
-}
-
-/** Parse the `#error/…` hash into a [`UiError`]. */
-function parsePayload(hash: string): UiError {
-  const raw = hash.replace(/^#error\/?/, "")
-  try {
-    const data = JSON.parse(safeDecode(raw))
-    if (data && typeof data.kind === "string") return data as UiError
-  } catch {
-    // Not JSON — treat the whole thing as a message.
-  }
-  return { kind: "message", message: safeDecode(raw) }
-}
-
-/** Per-kind presentation: title + body, rendered inside the shared card. */
+/** Presentation for one error kind, rendered inside the shared card. */
 function render(payload: UiError) {
   switch (payload.kind) {
     case "missing-programs":
@@ -71,7 +43,8 @@ function render(payload: UiError) {
 }
 
 export const ErrorPage: React.FC = () => {
-  const payload = parsePayload(window.location.hash)
+  const route = getRoute()
+  const payload: UiError = route.name === "error" ? route.error : { kind: "message", message: "" }
   const { title, body } = render(payload)
 
   return (

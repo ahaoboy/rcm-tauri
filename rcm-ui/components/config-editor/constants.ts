@@ -7,6 +7,8 @@ import { javascript } from "@codemirror/lang-javascript"
 import { json } from "@codemirror/lang-json"
 import type { Extension } from "@codemirror/state"
 
+import { getRoute } from "../../router"
+
 /** Editable config files shown as tabs. */
 export const FILES = [
   { key: "rcm.config.json", label: "rcm.config.json", lang: "json" },
@@ -39,7 +41,8 @@ export const FILE_BY_KEY: Record<FileKey, (typeof FILES)[number]> = Object.fromE
 
 /** Resolve the active tab from `#config/<key>`; falls back to the config JSON. */
 export function tabFromHash(): TabKey {
-  const raw = window.location.hash.replace("#config/", "")
+  const route = getRoute()
+  const raw = route.name === "config" ? route.tab : "rcm.config.json"
   if (raw === ENV_TAB) return ENV_TAB
   return FILE_BY_KEY[raw as FileKey] ? (raw as FileKey) : "rcm.config.json"
 }

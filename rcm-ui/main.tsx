@@ -10,23 +10,29 @@ import { ErrorPage } from "./components/ErrorPage"
 import { ShellExtensionPage } from "./components/ShellExtensionPage"
 import { SubmenuApp } from "./components/SubmenuApp"
 import { WarmupPage } from "./components/WarmupPage"
+import { getRoute, type Route } from "./router"
+import { useConfigStore } from "./stores"
 
-const root = document.getElementById("root") as HTMLElement
-const hash = window.location.hash
+/**
+ * One page per route. `needsCss` marks the windows that load the user's
+ * `style.css`; standalone pages ship their own styles.
+ */
+const PAGES: Record<Route["name"], { Page: React.FC; needsCss: boolean }> = {
+  warmup: { Page: WarmupPage, needsCss: false },
+  "menu-root": { Page: App, needsCss: true },
+  submenu: { Page: SubmenuApp, needsCss: true },
+  config: { Page: ConfigEditor, needsCss: false },
+  error: { Page: ErrorPage, needsCss: false },
+  "shell-ext": { Page: ShellExtensionPage, needsCss: false },
+  about: { Page: AboutPage, needsCss: false },
+}
 
-const routes: [string | null, React.FC, boolean][] = [
-  ["#warmup", WarmupPage, false],
-  ["#submenu-", SubmenuApp, true],
-  ["#config/", ConfigEditor, false],
-  ["#error/", ErrorPage, false],
-  ["#shell-ext/", ShellExtensionPage, false],
-  ["#about", AboutPage, false],
-  [null, App, true],
-]
+const { Page, needsCss } = PAGES[getRoute().name]
 
-const [, Page, needsCss] = routes.find(([prefix]) => (prefix ? hash.startsWith(prefix) : true))!
+// Load shared config (dev mode, icons, theme) once for this window.
+useConfigStore.getState().init()
 
-// Menu windows (App, Submenu) need dynamic CSS; standalone pages don't
+// Menu windows need the user's style.css; standalone pages use their own styles.
 if (needsCss) {
   const applyCss = (css: string) => {
     const existing = document.getElementById("rcm-style") as HTMLStyleElement | null
@@ -40,11 +46,11 @@ if (needsCss) {
     document.head.appendChild(el)
   }
   getStyleCss().then(applyCss).catch(console.error)
-  // Live reload when style.css is saved in ConfigEditor
+  // Live reload when style.css is saved in the ConfigEditor.
   listen<string>("style-changed", (e) => applyCss(e.payload))
 }
 
-ReactDOM.createRoot(root).render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Page />
   </React.StrictMode>,
