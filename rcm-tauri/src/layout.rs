@@ -151,6 +151,23 @@ impl MenuManager {
     pub fn handle_execute(&self, payload: MenuExecutePayload) {
         let cmd = payload.command;
 
+        // Block the action when a declared dependency is missing: hand the
+        // program names to the frontend, which renders the message.
+        let missing = cmd.missing();
+        if !missing.is_empty() {
+            log::warn(
+                "Rust::execute",
+                &format!("blocked '{}': missing {missing:?}", cmd.cmd),
+            );
+            let _ = crate::show_error_window(
+                &self.app,
+                "Missing Program",
+                &rcm_core::UiError::MissingPrograms { programs: missing },
+            );
+            self.hide_all();
+            return;
+        }
+
         let close = with(|c| {
             refresh_settings(c);
             c.close_after_execute(&cmd)

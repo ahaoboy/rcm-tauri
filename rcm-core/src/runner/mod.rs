@@ -23,6 +23,15 @@ pub struct ExecResult {
 /// System commands (prefixed with `@`) are intercepted and handled
 /// natively via [`cmds::run`].
 pub async fn execute(cmd: &CommandPayload) -> ExecResult {
+    // Refuse to run when a declared dependency is missing, before any spawn.
+    // The stderr carries the bare program names; presentation (i18n, wording)
+    // is the frontend's job.
+    let missing = cmd.missing();
+    if !missing.is_empty() {
+        crate::log::warn("Runner", &format!("'{}' missing requirements: {missing:?}", cmd.cmd));
+        return system_err(missing.join("\n"));
+    }
+
     if cmds::is_system_command(&cmd.cmd) {
         return run_system_cmd(cmd);
     }
@@ -92,6 +101,23 @@ fn system_err(message: String) -> ExecResult {
         stdout: String::new(),
         stderr: message,
         exit_code: Some(1),
+    }
+}
+
+impl CommandPayload {
+    /// The required programs that are **not** resolvable on the current `PATH`.
+    ///
+    /// Returns the bare names, e.g. `["code", "mpv"]`. Callers decide how to
+    /// present them (message wording, i18n, exit codes).
+    ///
+    /// Resolution uses the `which` crate, so it honours `PATHEXT` on Windows
+    /// (`code` matches `code.cmd`, not just `code.exe`).
+    pub fn missing(&self) -> Vec<String> {
+        self.requires
+            .iter()
+            .filter(|name| which::which(name.as_str()).is_err())
+            .cloned()
+            .collect()
     }
 }
 

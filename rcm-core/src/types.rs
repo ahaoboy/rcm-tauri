@@ -85,6 +85,10 @@ pub struct CommandPayload {
     pub admin: bool,
     #[serde(default)]
     pub window: WindowMode,
+    /// External programs this command needs on `PATH`. Execution is refused
+    /// with a friendly error when any of them cannot be resolved.
+    #[serde(default)]
+    pub requires: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -64,7 +64,8 @@ export const MenuItemRow: React.FC<MenuItemRowProps> = ({ item, depth, indexPath
       }
 
       if (item.command) {
-        feLog.eventSend("menu-execute", `path=[${indexPath}] exe='${item.command.exe}'`)
+        feLog.eventSend("menu-execute", `path=[${indexPath}] cmd='${item.command.cmd}'`)
+        // The command carries its own `requires`; Rust verifies those before spawning.
         await emitMenuExecute(indexPath, item.command)
       } else {
         feLog.warn("MenuItemRow", `click dead item path=[${indexPath}]`)

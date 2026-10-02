@@ -5,11 +5,13 @@
 
 /** Serializable command payload sent to the Tauri `execute` command. */
 export interface CommandPayload {
-  exe: string
+  cmd: string
   args?: string[]
   cwd?: string
   admin?: boolean
   window?: string
+  /** Programs needed on `PATH`; missing ones block execution. */
+  requires?: string[]
 }
 
 /** A single item in the right-click menu (as received from the backend). */

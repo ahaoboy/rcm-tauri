@@ -83,6 +83,11 @@ export interface Command {
   cwd?: string
   admin?: boolean
   window?: WindowMode
+  /**
+   * Programs this command needs on `PATH` (e.g. `["code"]`). Missing ones
+   * block execution and are reported on the error page.
+   */
+  requires?: string[]
 }
 
 /** Callback signatures */

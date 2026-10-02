@@ -15,6 +15,7 @@ export function mpv(labelKey = "open.with.mpv"): MenuItem {
       cmd: "mpv",
       args: props.files.map((f) => f.path),
       cwd: props.cwd,
+      requires: ["mpv"],
     }),
   }
 }

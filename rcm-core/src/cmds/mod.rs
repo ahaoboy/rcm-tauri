@@ -20,7 +20,6 @@
 //! [`CmdError`] to its own result type.
 
 use crate::types::CommandPayload;
-use std::fmt;
 use std::path::PathBuf;
 
 mod args;
@@ -57,9 +56,10 @@ pub(crate) use args::CmdArgs;
 /// The variants distinguish *why* the command failed and carry enough detail
 /// for a useful message: argument errors name the argument, the offending value
 /// and the expected form, so the user can fix the call.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum CmdError {
     /// A required argument is absent.
+    #[error("missing argument '{name}' (expected {expected})")]
     Missing {
         /// Name of the argument, e.g. `"path"`.
         name: &'static str,
@@ -67,6 +67,7 @@ pub enum CmdError {
         expected: &'static str,
     },
     /// An argument is present but holds an unsupported value.
+    #[error("invalid value '{value}' for '{name}' (expected {expected})")]
     Invalid {
         /// Name of the argument.
         name: &'static str,
@@ -76,6 +77,7 @@ pub enum CmdError {
         expected: &'static str,
     },
     /// The command was valid but the underlying operation failed.
+    #[error("{message}")]
     Failed {
         /// Human-readable failure reason.
         message: String,
@@ -104,27 +106,6 @@ impl CmdError {
         }
     }
 }
-
-impl fmt::Display for CmdError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Missing { name, expected } => {
-                write!(f, "missing argument '{name}' (expected {expected})")
-            }
-            Self::Invalid {
-                name,
-                value,
-                expected,
-            } => write!(
-                f,
-                "invalid value '{value}' for '{name}' (expected {expected})"
-            ),
-            Self::Failed { message } => f.write_str(message),
-        }
-    }
-}
-
-impl std::error::Error for CmdError {}
 
 /// A native system command.
 ///
@@ -175,16 +156,18 @@ static COMMANDS: &[&dyn Command] = &[
     &desktop::RemoveFromDesktop,
 ];
 
+/// The command registered under `id`, if any — lookup without executing.
+fn find(id: &str) -> Option<&'static dyn Command> {
+    COMMANDS.iter().copied().find(|cmd| cmd.id() == id)
+}
+
 /// Run the system command named `id`.
 ///
 /// Returns `None` when `id` is not registered, `Some(Ok(message))` on success
 /// and `Some(Err(error))` on failure. Mapping that to exit codes or output
 /// streams is the caller's job — see `crate::runner`.
 pub fn run(id: &str, payload: &CommandPayload) -> Option<Result<String, CmdError>> {
-    COMMANDS
-        .iter()
-        .find(|cmd| cmd.id() == id)
-        .map(|cmd| cmd.run(payload))
+    find(id).map(|cmd| cmd.run(payload))
 }
 
 /// Resolve `cwd` to a directory path, defaulting to `.` when empty.
@@ -220,17 +203,6 @@ pub(crate) fn powershell_error(stderr: &[u8], fallback: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::WindowMode;
-
-    fn payload() -> CommandPayload {
-        CommandPayload {
-            cmd: String::new(),
-            args: Vec::new(),
-            cwd: String::new(),
-            admin: false,
-            window: WindowMode::default(),
-        }
-    }
 
     #[test]
     fn test_is_system_command() {
@@ -260,14 +232,11 @@ mod tests {
 
     #[test]
     fn known_ids_resolve_but_unknown_do_not() {
+        // Lookup only — running would have real side effects (@new-file, …).
         for cmd in COMMANDS {
-            assert!(
-                run(cmd.id(), &payload()).is_some(),
-                "{} should be registered",
-                cmd.id()
-            );
+            assert!(find(cmd.id()).is_some(), "{} should be registered", cmd.id());
         }
-        assert!(run("@nope", &payload()).is_none());
+        assert!(find("@nope").is_none());
     }
 
     #[test]

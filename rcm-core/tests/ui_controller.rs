@@ -887,6 +887,7 @@ fn execute_closes_the_menu_but_dev_mode_does_not() {
         cwd: String::new(),
         admin: false,
         window: WindowMode::default(),
+        requires: Vec::new(),
     };
 
     let (mut controller, _state) = showing(menu(vec![leaf("a")]), Point::new(0, 0));

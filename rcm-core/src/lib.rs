@@ -2,6 +2,7 @@ pub mod actions;
 pub mod clipboard;
 pub mod cmds;
 pub mod config;
+pub mod error;
 pub mod files;
 pub mod lang;
 pub mod log;
@@ -14,6 +15,7 @@ pub mod runner;
 pub mod style;
 pub mod types;
 pub mod ui;
+pub use error::UiError;
 pub use types::{
     CommandPayload, FileInfo, IndexPath, InvokeProps, Item, Menu, NavigateResult, WindowMode,
 };
