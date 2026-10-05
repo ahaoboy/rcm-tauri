@@ -16,13 +16,16 @@ import React, { useEffect, useRef } from "react"
 import { readConfigFile } from "../../api/menuEvents"
 import { FILE_BY_KEY, LANG, type FileKey } from "./constants"
 
-const SCROLLBAR_THEME = EditorView.theme({
+/**
+ * Layout for the editor instance.
+ *
+ * The scrollbar chrome is not set here: `BodyReset` already styles every scroll
+ * container in these pages (`*::-webkit-scrollbar`), and CodeMirror's scroller
+ * is one of them. Setting it in both places duplicated the exact same values.
+ */
+const EDITOR_LAYOUT = EditorView.theme({
   "&": { height: "100%" },
   ".cm-scroller": { overflow: "auto" },
-  ".cm-scroller::-webkit-scrollbar": { width: "8px", height: "8px" },
-  ".cm-scroller::-webkit-scrollbar-track": { background: "#1e1e1e" },
-  ".cm-scroller::-webkit-scrollbar-thumb": { background: "#424242", borderRadius: "4px" },
-  ".cm-scroller::-webkit-scrollbar-thumb:hover": { background: "#555" },
 })
 
 function createEditorState(
@@ -58,7 +61,7 @@ function createEditorState(
       EditorView.updateListener.of((u) => {
         if (u.docChanged) onContentChange(u.state.doc.toString())
       }),
-      SCROLLBAR_THEME,
+      EDITOR_LAYOUT,
     ],
   })
 }
