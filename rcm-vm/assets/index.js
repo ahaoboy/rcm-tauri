@@ -730,6 +730,9 @@ var filesArg = (props) => props.files.map((f) => f.path);
 function isSingleLnk(props) {
   return props.files.length === 1 && props.files[0].path.toLowerCase().endsWith(".lnk");
 }
+function isSingleFile(props) {
+  return props.files.length === 1 && !props.files[0].isDir;
+}
 function copyAsPath(label = t("copy.as.path")) {
   return {
     key: "copy-as-path",
@@ -759,7 +762,7 @@ function copyAsBase64(label = t("copy.as.base64")) {
     key: "copy-as-base64",
     label,
     icon: "🔐",
-    match: (props) => props.files.length === 1,
+    match: isSingleFile,
     action: (props) => ({
       cmd: COPY_BASE64,
       args: filesArg(props),
@@ -784,6 +787,7 @@ function copyAsContent(label = t("copy.as.content")) {
     key: "copy-as-content",
     label,
     icon: "📄",
+    match: isSingleFile,
     action: (props) => ({
       cmd: COPY_CONTENT,
       args: filesArg(props),

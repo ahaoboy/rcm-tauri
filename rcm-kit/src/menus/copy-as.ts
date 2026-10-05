@@ -5,9 +5,12 @@ import { copy } from "./clipboard"
 
 const filesArg = (props: InvokeProps) => props.files.map((f) => f.path)
 
-/** True when the selected file is a single .lnk shortcut. */
 function isSingleLnk(props: InvokeProps): boolean {
   return props.files.length === 1 && props.files[0].path.toLowerCase().endsWith(".lnk")
+}
+
+function isSingleFile(props: InvokeProps): boolean {
+  return props.files.length === 1 && !props.files[0].isDir
 }
 
 export function copyAsPath(label = t("copy.as.path")): MenuItem {
@@ -43,7 +46,7 @@ export function copyAsBase64(label = t("copy.as.base64")): MenuItem {
     key: "copy-as-base64",
     label,
     icon: "🔐",
-    match: (props: InvokeProps) => props.files.length === 1,
+    match: isSingleFile,
     action: (props: InvokeProps) => ({
       cmd: COPY_BASE64,
       args: filesArg(props),
@@ -72,6 +75,7 @@ export function copyAsContent(label = t("copy.as.content")): MenuItem {
     key: "copy-as-content",
     label,
     icon: "📄",
+    match: isSingleFile,
     action: (props: InvokeProps) => ({
       cmd: COPY_CONTENT,
       args: filesArg(props),
