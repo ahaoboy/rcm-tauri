@@ -26,6 +26,7 @@ mod args;
 pub mod autorun;
 pub mod copy;
 pub mod copy_base64;
+pub mod copy_content;
 pub mod copy_name;
 pub mod copy_path;
 pub mod copy_target;
@@ -136,6 +137,7 @@ static COMMANDS: &[&dyn Command] = &[
     &copy_path::CopyPath,
     &copy_name::CopyName,
     &copy_base64::CopyBase64,
+    &copy_content::CopyContent,
     &copy_target::CopyTarget,
     &delete::Delete,
     &properties::Properties,

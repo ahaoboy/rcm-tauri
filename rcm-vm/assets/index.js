@@ -71,6 +71,7 @@ addMessages("en", {
   "copy.as.name": "name",
   "copy.as.target": "target",
   "copy.as.base64": "base64",
+  "copy.as.content": "content",
   "create.shortcut": "Create shortcut",
   delete: "Delete",
   trash: "Trash",
@@ -148,6 +149,7 @@ addMessages("zh", {
   "copy.as.name": "名称",
   "copy.as.target": "目标",
   "copy.as.base64": "base64",
+  "copy.as.content": "内容",
   "create.shortcut": "创建快捷方式",
   delete: "删除",
   trash: "回收站",
@@ -236,6 +238,7 @@ var OPEN_WITH = "@open-with";
 var COPY_PATH = "@copy-path";
 var COPY_NAME = "@copy-name";
 var COPY_BASE64 = "@copy-base64";
+var COPY_CONTENT = "@copy-content";
 var COPY_TARGET = "@copy-target";
 var OPEN_FILE_LOCATION = "@open-file-location";
 var PASTE_FILES = "@paste-files";
@@ -776,6 +779,18 @@ function copyAsTarget(label = t("copy.as.target")) {
     })
   };
 }
+function copyAsContent(label = t("copy.as.content")) {
+  return {
+    key: "copy-as-content",
+    label,
+    icon: "📄",
+    action: (props) => ({
+      cmd: COPY_CONTENT,
+      args: filesArg(props),
+      cwd: props.cwd
+    })
+  };
+}
 function copyFile() {
   return copy("file");
 }
@@ -784,7 +799,14 @@ function copyAs(label = t("copy.as")) {
     key: "copy-as",
     label,
     icon: "📎",
-    items: [copyAsPath(), copyAsName(), copyAsTarget(), copyAsBase64(), copyFile()]
+    items: [
+      copyAsPath(),
+      copyAsName(),
+      copyAsTarget(),
+      copyAsBase64(),
+      copyAsContent(),
+      copyFile()
+    ]
   };
 }
 
@@ -1270,6 +1292,7 @@ export {
   AUDIO_EXTS,
   COPY,
   COPY_BASE64,
+  COPY_CONTENT,
   COPY_NAME,
   COPY_PATH,
   COPY_TARGET,
@@ -1309,6 +1332,7 @@ export {
   copy,
   copyAs,
   copyAsBase64,
+  copyAsContent,
   copyAsName,
   copyAsPath,
   copyAsTarget,

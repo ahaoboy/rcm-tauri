@@ -1,4 +1,4 @@
-import { COPY_PATH, COPY_NAME, COPY_BASE64, COPY_TARGET } from "../consts"
+import { COPY_PATH, COPY_NAME, COPY_BASE64, COPY_CONTENT, COPY_TARGET } from "../consts"
 import { t } from "../i18n"
 import type { MenuItem, InvokeProps } from "../types"
 import { copy } from "./clipboard"
@@ -66,6 +66,20 @@ export function copyAsTarget(label = t("copy.as.target")): MenuItem {
   }
 }
 
+/** Copy as content — the selected file(s) text content */
+export function copyAsContent(label = t("copy.as.content")): MenuItem {
+  return {
+    key: "copy-as-content",
+    label,
+    icon: "📄",
+    action: (props: InvokeProps) => ({
+      cmd: COPY_CONTENT,
+      args: filesArg(props),
+      cwd: props.cwd,
+    }),
+  }
+}
+
 export function copyFile(): MenuItem {
   return copy("file")
 }
@@ -77,12 +91,20 @@ export function copyFile(): MenuItem {
  *   • Copy as path  — full path(s) with Linux-style '/' separators
  *   • Copy as name  — file name(s) only
  *   • Copy as base64 — file content(s) encoded as base64
+ *   • Copy as content — file content(s) as plain text
  */
 export function copyAs(label = t("copy.as")): MenuItem {
   return {
     key: "copy-as",
     label,
     icon: "📎",
-    items: [copyAsPath(), copyAsName(), copyAsTarget(), copyAsBase64(), copyFile()],
+    items: [
+      copyAsPath(),
+      copyAsName(),
+      copyAsTarget(),
+      copyAsBase64(),
+      copyAsContent(),
+      copyFile(),
+    ],
   }
 }

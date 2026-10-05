@@ -53,6 +53,9 @@ export const COPY_NAME = "@copy-name"
 /** Copy the file content(s) as base64 to clipboard. */
 export const COPY_BASE64 = "@copy-base64"
 
+/** Copy the text content(s) of selected file(s) to clipboard. */
+export const COPY_CONTENT = "@copy-content"
+
 /** Resolve a .lnk shortcut target path and copy to clipboard. */
 export const COPY_TARGET = "@copy-target"
 
