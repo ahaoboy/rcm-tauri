@@ -32,6 +32,14 @@ interface ConfigState {
   ready: boolean
   /** Load config and subscribe to changes. Idempotent — safe to call often. */
   init: () => void
+  /**
+   * Apply a theme preference locally, without writing it.
+   *
+   * Used for the optimistic update when the settings tab changes the theme, so
+   * this window re-themes at once instead of waiting for Rust to echo the change
+   * back through `theme-changed`.
+   */
+  setTheme: (preference: string) => void
 }
 
 /** Resolve a preference (possibly `"system"`) to a concrete theme. */
@@ -49,6 +57,8 @@ export const useConfigStore = create<ConfigState>()((set) => ({
   themePreference: "system",
   theme: resolveTheme("system"),
   ready: false,
+
+  setTheme: (preference) => set({ themePreference: preference, theme: resolveTheme(preference) }),
 
   init: () => {
     if (started) return

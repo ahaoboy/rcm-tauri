@@ -232,3 +232,66 @@ export function getRuntimePaths(): Promise<RuntimePaths> {
 export function openConfigFolder(): Promise<void> {
   return invoke("open_config_folder")
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Settings (the tray's own options, editable from the settings tab)
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Context-menu style. */
+export type Style = "win11" | "classic"
+
+/** Menu theme preference. */
+export type ThemeName = "system" | "light" | "dark"
+
+/**
+ * Every user-facing setting, gathered from wherever it is stored.
+ *
+ * There is no single settings file: style and autostart live in the registry,
+ * registration in the shell extension, and the rest in `rcm.config.json`. Rust
+ * reads them all so the UI does not need to know.
+ *
+ * The remote-sync URLs are not here — the config editor already edits them as
+ * JSON, and a second form for the same values would just be a way to disagree.
+ */
+export interface Settings {
+  style: Style
+  theme: ThemeName
+  icons: boolean
+  dev: boolean
+  blocking: boolean
+  registered: boolean
+  /** Path Explorer will load the extension from. */
+  extension_dll: string
+  autostart: boolean
+}
+
+/**
+ * Settings to change. Omitted fields are left alone, so a caller can change one
+ * setting without echoing back values it never touched.
+ */
+export type SettingsPatch = Partial<Settings>
+
+export function getSettings(): Promise<Settings> {
+  return invoke<Settings>("get_settings")
+}
+
+/**
+ * Apply a change and resolve with the resulting state.
+ *
+ * The reply is the full state, not the requested values: registration, blocking
+ * and autostart can be refused by the OS, so callers should render what comes
+ * back rather than what they sent.
+ */
+export function updateSettings(patch: SettingsPatch): Promise<Settings> {
+  return invoke<Settings>("update_settings", { patch })
+}
+
+/** Restart Explorer so registration changes take effect. */
+export function applyChanges(): Promise<void> {
+  return invoke("apply_changes")
+}
+
+/** Restore every config file to the embedded defaults. */
+export function resetSettings(): Promise<Settings> {
+  return invoke<Settings>("reset_settings")
+}

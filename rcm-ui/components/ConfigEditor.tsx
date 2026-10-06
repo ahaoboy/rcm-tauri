@@ -12,10 +12,19 @@
  *   config-editor/constants.ts   — file list, tab routing
  *   config-editor/FileEditor.tsx — one CodeMirror instance per file
  *   config-editor/EnvView.tsx    — environment variable inspector
- *   config-editor/styles.ts      — shared inline styles
+ *   config-editor/SettingsView.tsx — the tray's options as a form
+ *
+ * Styling is MUI (`ThemeRoot` + `theme.ts`). Only this window uses MUI: the menu
+ * popups are styled by the user-editable `style.css`, so they must stay plain CSS.
  */
 
 import type { EditorView } from "@codemirror/view"
+import Box from "@mui/material/Box"
+import Button from "@mui/material/Button"
+import Stack from "@mui/material/Stack"
+import Tab from "@mui/material/Tab"
+import Tabs from "@mui/material/Tabs"
+import Typography from "@mui/material/Typography"
 import React, { useCallback, useEffect, useRef, useState } from "react"
 
 import {
@@ -28,11 +37,12 @@ import {
   saveConfigFile,
   showError,
 } from "../api/menuEvents"
+import { useTheme } from "../hooks/useTheme"
 import { setRoute } from "../router"
-import { BodyReset } from "./BodyReset"
 import {
   ENV_TAB,
   FILES,
+  SETTINGS_TAB,
   TABS,
   tabFromHash,
   type FileKey,
@@ -40,7 +50,8 @@ import {
 } from "./config-editor/constants"
 import { EnvView } from "./config-editor/EnvView"
 import { FileEditor } from "./config-editor/FileEditor"
-import { styles } from "./config-editor/styles"
+import { SettingsView } from "./config-editor/SettingsView"
+import { ThemeRoot } from "./ThemeRoot"
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ConfigEditor — parent that manages tabs & toolbar
@@ -50,28 +61,21 @@ export const ConfigEditor: React.FC = () => {
   const [saved, setSaved] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
-  const darkRef = useRef(window.matchMedia("(prefers-color-scheme: dark)").matches)
-  const [dark, setDark] = useState(darkRef.current)
+  // The RCM theme, not just the OS one: this window hosts the setting that
+  // chooses it, so it has to react to the change itself. `useTheme` also puts
+  // the `rcm-*` class on <html>, which is what re-colours the page.
+  const dark = useTheme() === "dark"
   const viewMapRef = useRef<Map<string, EditorView>>(new Map())
   const originalRef = useRef<Map<string, string>>(new Map())
   const [loaded, setLoaded] = useState(false)
   const [urls, setUrls] = useState<Record<string, string | null>>({})
 
   const isEnv = active === ENV_TAB
+  const isSettings = active === SETTINGS_TAB
+  // Tabs that are not an editable file: no toolbar, no editor instance.
+  const isPlainView = isEnv || isSettings
   // Narrow the active tab to a file key for the file-oriented handlers.
-  const activeFile = (isEnv ? "rcm.config.json" : active) as FileKey
-
-  // Track system theme
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)")
-    const handler = (e: MediaQueryListEvent) => {
-      darkRef.current = e.matches
-      setDark(e.matches)
-      setReloadKey((k) => k + 1)
-    }
-    mq.addEventListener("change", handler)
-    return () => mq.removeEventListener("change", handler)
-  }, [])
+  const activeFile = (isPlainView ? "rcm.config.json" : active) as FileKey
 
   // Hash → tab
   useEffect(() => {
@@ -130,57 +134,83 @@ export const ConfigEditor: React.FC = () => {
   }, [activeFile])
 
   return (
-    <>
-      <BodyReset />
-      <div style={styles.container}>
-        <div style={styles.tabs}>
+    <ThemeRoot>
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+        <Tabs
+          value={active}
+          onChange={(_, v: TabKey) => setRoute(`config/${v}`)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}
+        >
           {TABS.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => {
-                setRoute(`config/${f.key}`)
-              }}
-              style={{ ...styles.tab, ...(active === f.key ? styles.tabActive : {}) }}
-            >
-              {f.label}
-            </button>
+            <Tab key={f.key} value={f.key} label={f.label} />
           ))}
-        </div>
+        </Tabs>
 
-        {!isEnv && (
-          <div style={styles.toolbar}>
-            <button onClick={triggerSave} style={styles.btn}>
-              💾 Save
-            </button>
-            <button
+        {!isPlainView && (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: "center", px: 1.5, py: 1, borderBottom: 1, borderColor: "divider" }}
+          >
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<span>💾</span>}
+              onClick={triggerSave}
+            >
+              Save
+            </Button>
+            <Button
+              size="small"
+              startIcon={<span>⬇️</span>}
               onClick={handlePull}
               disabled={!canPull}
-              style={{ ...styles.btn, ...(canPull ? {} : styles.btnDisabled) }}
             >
-              ⬇️ Pull
-            </button>
-            <button onClick={() => setReloadKey((k) => k + 1)} style={styles.btn}>
-              🔄 Reload
-            </button>
-            <button
+              Pull
+            </Button>
+            <Button
+              size="small"
+              startIcon={<span>🔄</span>}
+              onClick={() => setReloadKey((k) => k + 1)}
+            >
+              Reload
+            </Button>
+            <Button
+              size="small"
+              startIcon={<span>📂</span>}
               onClick={() => {
                 openInEditor(activeFile).catch((e) => setError(String(e)))
               }}
-              style={styles.btn}
             >
-              📂 Open
-            </button>
-            {!saved && <span style={styles.unsaved}>● Unsaved</span>}
-            {error && <span style={styles.err}>{error}</span>}
-          </div>
+              Open
+            </Button>
+            {!saved && (
+              <Typography variant="caption" color="warning.main">
+                ● Unsaved
+              </Typography>
+            )}
+            {error && (
+              <Typography variant="caption" color="error" sx={{ overflow: "hidden" }}>
+                {error}
+              </Typography>
+            )}
+          </Stack>
         )}
 
         {isEnv ? (
           <EnvView />
+        ) : isSettings ? (
+          <SettingsView />
         ) : (
           <>
-            {!loaded && <div style={styles.loading}>Loading…</div>}
-            <div style={styles.editor}>
+            {!loaded && (
+              <Box sx={{ p: 2 }}>
+                <Typography color="text.secondary">Loading…</Typography>
+              </Box>
+            )}
+            <Box sx={{ flex: 1, overflow: "hidden" }}>
               {FILES.map((f) => (
                 <FileEditor
                   key={f.key}
@@ -201,10 +231,10 @@ export const ConfigEditor: React.FC = () => {
                   triggerSave={triggerSave}
                 />
               ))}
-            </div>
+            </Box>
           </>
         )}
-      </div>
-    </>
+      </Box>
+    </ThemeRoot>
   )
 }

@@ -7,7 +7,7 @@
  */
 
 import { indentWithTab } from "@codemirror/commands"
-import { EditorState } from "@codemirror/state"
+import { Compartment, EditorState } from "@codemirror/state"
 import { oneDark } from "@codemirror/theme-one-dark"
 import { EditorView, keymap } from "@codemirror/view"
 import { basicSetup } from "codemirror"
@@ -28,6 +28,14 @@ const EDITOR_LAYOUT = EditorView.theme({
   ".cm-scroller": { overflow: "auto" },
 })
 
+/**
+ * Holds the syntax theme, so it can be swapped after creation.
+ *
+ * Reconfiguring through a compartment restyles the editor in place, unlike
+ * remounting it — which would discard undo history and any unsaved edits.
+ */
+const themeCompartment = new Compartment()
+
 function createEditorState(
   doc: string,
   lang: string,
@@ -39,7 +47,7 @@ function createEditorState(
     doc,
     extensions: [
       basicSetup,
-      ...(isDark ? [oneDark] : []),
+      themeCompartment.of(isDark ? oneDark : []),
       LANG[lang]?.(),
       keymap.of([
         {
@@ -139,6 +147,14 @@ export const FileEditor: React.FC<{
       })
       .catch((e) => onError(String(e)))
   }, [reloadKey, fileKey, onError, onLoaded])
+
+  // Follow the theme setting: swap the syntax theme without touching the
+  // document, so undo history and unsaved edits survive.
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: themeCompartment.reconfigure(isDark ? oneDark : []),
+    })
+  }, [isDark])
 
   // Refresh layout when becoming visible (CodeMirror needs remeasure after display:none)
   useEffect(() => {

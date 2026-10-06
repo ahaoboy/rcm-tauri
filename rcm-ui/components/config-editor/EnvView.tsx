@@ -1,16 +1,26 @@
 /**
  * EnvView — read-only inspector for the process environment variables.
  *
- * `*PATH`-style variables holding `;`-separated entries are split into a
- * numbered list for readability; every other value is shown on one line.
- * Values (or individual path entries) can be copied with a click.
+ * `*PATH`-style variables holding `;`-separated entries are split into a numbered
+ * list for readability; every other value is shown on one line. Values (or
+ * individual path entries) can be copied with a click.
  */
 
+import Box from "@mui/material/Box"
+import Button from "@mui/material/Button"
+import Chip from "@mui/material/Chip"
+import IconButton from "@mui/material/IconButton"
+import List from "@mui/material/List"
+import ListItem from "@mui/material/ListItem"
+import ListItemText from "@mui/material/ListItemText"
+import Stack from "@mui/material/Stack"
+import TextField from "@mui/material/TextField"
+import Tooltip from "@mui/material/Tooltip"
+import Typography from "@mui/material/Typography"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 
 import { getEnvVars } from "../../api/menuEvents"
 import type { EnvVar } from "../../api/menuEvents"
-import { styles } from "./styles"
 
 /** A path-like value: a `*PATH` variable holding `;`-separated entries. */
 function isPathLike(key: string, value: string): boolean {
@@ -51,70 +61,124 @@ export const EnvView: React.FC = () => {
   }, [])
 
   return (
-    <div style={styles.envWrap}>
-      <div style={styles.envBar}>
-        <input
+    <Box sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: "center", p: 1, borderBottom: 1, borderColor: "divider" }}
+      >
+        <TextField
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter by name or value…"
-          style={styles.envFilter}
+          sx={{ flex: 1 }}
         />
-        <span style={styles.envCount}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ fontVariantNumeric: "tabular-nums" }}
+        >
           {shown.length} / {vars.length}
-        </span>
-        <button onClick={load} style={styles.btn}>
-          🔄 Refresh
-        </button>
-        {error && <span style={styles.err}>{error}</span>}
-      </div>
+        </Typography>
+        <Button size="small" onClick={load}>
+          Refresh
+        </Button>
+        {error && (
+          <Typography variant="caption" color="error">
+            {error}
+          </Typography>
+        )}
+      </Stack>
 
-      <div style={styles.envList}>
+      <List dense disablePadding sx={{ flex: 1, overflow: "auto" }}>
         {shown.map((v) => {
           const pathLike = isPathLike(v.key, v.value)
           const entries = pathLike ? v.value.split(";").filter(Boolean) : []
           return (
-            <div key={v.key} style={styles.envRow}>
-              <div style={styles.envHead}>
-                <span style={styles.envKey}>{v.key}</span>
-                {pathLike && <span style={styles.envBadge}>{entries.length} paths</span>}
-                <button
-                  onClick={() => copy(v.value, v.key)}
-                  style={styles.envCopy}
-                  title="Copy value"
+            <ListItem
+              key={v.key}
+              alignItems="flex-start"
+              sx={{ display: "block", borderBottom: 1, borderColor: "divider", px: 1.5, py: 0.75 }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ fontFamily: "monospace", fontWeight: 600, color: "primary.main" }}
                 >
-                  {copied === v.key ? "✓" : "⧉"}
-                </button>
-              </div>
+                  {v.key}
+                </Typography>
+                {pathLike && (
+                  <Chip size="small" variant="outlined" label={`${entries.length} paths`} />
+                )}
+                <Tooltip title="Copy value">
+                  <IconButton size="small" sx={{ ml: "auto" }} onClick={() => copy(v.value, v.key)}>
+                    <Typography variant="caption">{copied === v.key ? "✓" : "⧉"}</Typography>
+                  </IconButton>
+                </Tooltip>
+              </Box>
 
               {pathLike ? (
-                <ol style={styles.envPaths}>
-                  {entries.map((p, i) => (
-                    <li key={`${p}-${i}`} style={styles.envPathItem}>
-                      <span style={styles.envPathIdx}>{i + 1}</span>
-                      <span
-                        style={styles.envPathText}
-                        onClick={() => copy(p, `${v.key}#${i}`)}
-                        title="Click to copy"
+                <Box component="ol" sx={{ listStyle: "none", m: 0, mt: 0.5, p: 0 }}>
+                  {entries.map((p, i) => {
+                    const tag = `${v.key}#${i}`
+                    return (
+                      <Box
+                        key={tag}
+                        component="li"
+                        sx={{ display: "flex", gap: 1, alignItems: "baseline", py: 0.25 }}
                       >
-                        {copied === `${v.key}#${i}` ? "✓ copied" : p}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                        <Typography variant="caption" color="text.disabled" sx={{ minWidth: 18 }}>
+                          {i + 1}
+                        </Typography>
+                        <Tooltip title="Click to copy">
+                          <Typography
+                            variant="caption"
+                            onClick={() => copy(p, tag)}
+                            sx={{
+                              fontFamily: "monospace",
+                              cursor: "pointer",
+                              wordBreak: "break-all",
+                              "&:hover": { color: "primary.main" },
+                            }}
+                          >
+                            {copied === tag ? "✓ copied" : p}
+                          </Typography>
+                        </Tooltip>
+                      </Box>
+                    )
+                  })}
+                </Box>
               ) : (
-                <div
-                  style={styles.envValue}
-                  onClick={() => copy(v.value, v.key)}
-                  title="Click to copy"
-                >
-                  {v.value || <span style={styles.envEmpty}>(empty)</span>}
-                </div>
+                <Tooltip title="Click to copy">
+                  <Typography
+                    variant="caption"
+                    onClick={() => copy(v.value, v.key)}
+                    sx={{
+                      display: "block",
+                      mt: 0.5,
+                      fontFamily: "monospace",
+                      cursor: "pointer",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
+                      "&:hover": { color: "primary.main" },
+                    }}
+                  >
+                    {v.value || <em>(empty)</em>}
+                  </Typography>
+                </Tooltip>
               )}
-            </div>
+            </ListItem>
           )
         })}
-        {shown.length === 0 && <div style={styles.envEmptyBox}>No matching variables</div>}
-      </div>
-    </div>
+        {shown.length === 0 && (
+          <ListItem>
+            <ListItemText
+              primary="No matching variables"
+              slotProps={{ primary: { variant: "body2", color: "text.disabled" } }}
+            />
+          </ListItem>
+        )}
+      </List>
+    </Box>
   )
 }

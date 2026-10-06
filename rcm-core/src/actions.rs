@@ -22,13 +22,13 @@ use crate::{config, log, menu, registry};
 /// Shared so both frontends route clicks identically, and so the ids stay
 /// stable if a frontend is swapped.
 pub mod ids {
-    pub const WIN11_STYLE: &str = "style_win11";
-    pub const CLASSIC_STYLE: &str = "style_classic";
+    /// Merged entry for the Win11 / Classic pair — click switches style.
+    pub const STYLE_TOGGLE: &str = "style_toggle";
+    /// Merged entry for the enable / disable pair — click switches blocking.
+    pub const BLOCKING_TOGGLE: &str = "blocking_toggle";
+    /// Merged entry for the register / unregister pair — click switches it.
+    pub const REGISTER_TOGGLE: &str = "register_toggle";
     pub const APPLY: &str = "apply";
-    pub const REGISTER: &str = "register";
-    pub const UNREGISTER: &str = "unregister";
-    pub const ENABLE: &str = "enable";
-    pub const DISABLE: &str = "disable";
     pub const DEV: &str = "dev";
     pub const ICONS: &str = "icons";
     pub const THEME_SYSTEM: &str = "theme_system";
@@ -99,14 +99,96 @@ pub fn set_style(style: MenuStyle) -> Result<MenuStyle, String> {
     Ok(style)
 }
 
-/// Register or unregister the shell extension. Returns the resulting status.
-pub fn set_registered(register: bool) -> bool {
-    if register {
-        let _ = rcm_com::cmd::register();
+/// The style [`toggle_style`] would switch to.
+pub fn next_style() -> MenuStyle {
+    if is_win11() {
+        MenuStyle::Classic
     } else {
-        let _ = rcm_com::cmd::unregister();
+        MenuStyle::Windows11
     }
+}
+
+/// Flip the context-menu style. Returns the style that is now active.
+///
+/// The tray shows a single entry for the Win11 / Classic pair, so it needs one
+/// call that both decides and applies the switch. Mirrors the other `toggle_*`
+/// helpers.
+pub fn toggle_style() -> Result<MenuStyle, String> {
+    set_style(next_style())
+}
+
+/// Label for the merged style entry.
+///
+/// Names the style clicking *selects*, not the active one: a menu entry reads as
+/// the action it performs, so an entry labelled "Classic" means "switch to
+/// Classic". Which style is currently active is therefore readable from the
+/// entry without a checkmark.
+pub fn style_entry_label() -> &'static str {
+    match next_style() {
+        MenuStyle::Windows11 => text::WIN11,
+        MenuStyle::Classic => text::CLASSIC,
+    }
+}
+
+/// The blocking state [`toggle_blocking`] would switch to.
+pub fn next_blocking() -> bool {
+    !crate::ui::is_blocking_enabled()
+}
+
+/// Flip native context-menu blocking. Returns the new state.
+pub fn toggle_blocking() -> Result<bool, String> {
+    let next = next_blocking();
+    set_blocking(next).map(|_| next)
+}
+
+/// Label for the merged blocking entry. Names the action, like
+/// [`style_entry_label`].
+pub fn blocking_entry_label() -> &'static str {
+    if next_blocking() {
+        text::ENABLE
+    } else {
+        text::DISABLE
+    }
+}
+
+/// Register or unregister the shell extension. Returns the resulting status.
+/// Register or unregister the shell extension. Returns the resulting status.
+///
+/// The status is re-read rather than assumed, so a registration that silently
+/// failed reports the state that is actually in effect.
+pub fn set_registered(register: bool) -> bool {
+    let outcome = if register {
+        rcm_com::cmd::register()
+    } else {
+        rcm_com::cmd::unregister()
+    };
+
+    if let Err(e) = outcome {
+        let action = if register { "register" } else { "unregister" };
+        log::error("Tray", &format!("failed to {action} shell extension: {e}"));
+    }
+
     register_status()
+}
+
+/// The registration state [`toggle_registered`] would switch to.
+pub fn next_registered() -> bool {
+    !register_status()
+}
+
+/// Register or unregister the shell extension. Returns the new state.
+pub fn toggle_registered() -> bool {
+    set_registered(next_registered())
+}
+
+/// Label for the merged registration entry. Names the action, like
+/// [`style_entry_label`].
+pub fn register_entry_label() -> &'static str {
+    if next_registered() {
+        text::REGISTER
+    } else {
+        text::UNREGISTER
+    }
 }
 
 /// Enable or disable native context-menu blocking.
@@ -157,22 +239,19 @@ pub fn set_theme(theme: config::Theme) -> config::Theme {
     theme
 }
 
-/// Flip the "launch at startup" registration. Returns the new value.
-pub fn toggle_autostart() -> Result<bool, String> {
-    let (ok, enabled) = if registry::is_autostart_enabled() {
-        (registry::disable_autostart().is_ok(), false)
+/// Enable or disable the "launch at startup" registration. Returns the new value.
+pub fn set_autostart(enabled: bool) -> Result<bool, String> {
+    let result = if enabled {
+        registry::enable_autostart()
     } else {
-        (registry::enable_autostart().is_ok(), true)
+        registry::disable_autostart()
     };
 
-    if !ok {
-        let msg = if enabled {
-            "enable autostart failed"
-        } else {
-            "disable autostart failed"
-        };
-        log::error("Tray", msg);
-        return Err(msg.to_string());
+    if let Err(e) = result {
+        let action = if enabled { "enable" } else { "disable" };
+        let msg = format!("{action} autostart failed: {e}");
+        log::error("Tray", &msg);
+        return Err(msg);
     }
 
     log::info(
@@ -184,6 +263,11 @@ pub fn toggle_autostart() -> Result<bool, String> {
         },
     );
     Ok(enabled)
+}
+
+/// Flip the "launch at startup" registration. Returns the new value.
+pub fn toggle_autostart() -> Result<bool, String> {
+    set_autostart(!registry::is_autostart_enabled())
 }
 
 /// Which remote file to download.

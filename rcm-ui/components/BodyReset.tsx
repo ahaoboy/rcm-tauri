@@ -1,6 +1,10 @@
 /**
- * BodyReset — injects a minimal CSS reset for standalone pages.
- * Use at the top of page components to kill browser defaults.
+ * BodyReset — a minimal CSS reset for standalone pages.
+ *
+ * The config window no longer needs this: MUI's `CssBaseline` owns its reset and
+ * palette. What remains here is for the windows that have no theme provider —
+ * error, about and shell-extension — which would otherwise inherit browser
+ * defaults on a dark surface.
  */
 
 import React from "react"
@@ -8,13 +12,11 @@ import React from "react"
 const CSS = `
 html {
   /*
-   * These pages are dark-only, so tell the browser that up front. This is what
-   * makes native widgets — most visibly the scrollbar — render dark instead of
-   * the default white. Without it a scroll container that has no explicit
-   * \`::-webkit-scrollbar\` styling (such as the env inspector's list) gets a
-   * light scrollbar on a dark surface.
+   * Those windows are dark-only, so tell the browser up front. This is what makes
+   * native widgets — most visibly the scrollbar — render dark rather than white.
    */
   color-scheme: dark;
+  background: #1e1e1e;
 }
 body {
   margin: 0;
@@ -22,33 +24,11 @@ body {
   overflow: hidden;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   font-size: 14px;
+  color: #d4d4d4;
   -webkit-font-smoothing: antialiased;
 }
 *, *::before, *::after {
   box-sizing: border-box;
-}
-/*
- * One scrollbar look for every scroll container in these pages. The values
- * match the CodeMirror editor's chrome so the editor and the surrounding panes
- * agree.
- *
- * This lives here rather than beside a component's styles because
- * \`::-webkit-scrollbar\` is a pseudo-element: it cannot be expressed in a React
- * inline \`style\` object, so it needs a real stylesheet.
- */
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-*::-webkit-scrollbar-track {
-  background: #1e1e1e;
-}
-*::-webkit-scrollbar-thumb {
-  background: #424242;
-  border-radius: 4px;
-}
-*::-webkit-scrollbar-thumb:hover {
-  background: #555;
 }
 `
 

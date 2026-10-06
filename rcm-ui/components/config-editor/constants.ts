@@ -20,11 +20,16 @@ export type FileKey = (typeof FILES)[number]["key"]
 
 /** Special tab: read-only environment variable inspector (not a file). */
 export const ENV_TAB = "env"
-export type TabKey = FileKey | typeof ENV_TAB
 
-/** Tab bar entries — the editable files plus the env inspector. */
+/** Special tab: the tray's settings as a form (not a file). */
+export const SETTINGS_TAB = "settings"
+
+export type TabKey = FileKey | typeof ENV_TAB | typeof SETTINGS_TAB
+
+/** Tab bar entries — the editable files plus the non-file tabs. */
 export const TABS: { key: TabKey; label: string }[] = [
   ...FILES.map((f) => ({ key: f.key as TabKey, label: f.label })),
+  { key: SETTINGS_TAB, label: SETTINGS_TAB },
   { key: ENV_TAB, label: ENV_TAB },
 ]
 
@@ -44,5 +49,6 @@ export function tabFromHash(): TabKey {
   const route = getRoute()
   const raw = route.name === "config" ? route.tab : "rcm.config.json"
   if (raw === ENV_TAB) return ENV_TAB
+  if (raw === SETTINGS_TAB) return SETTINGS_TAB
   return FILE_BY_KEY[raw as FileKey] ? (raw as FileKey) : "rcm.config.json"
 }

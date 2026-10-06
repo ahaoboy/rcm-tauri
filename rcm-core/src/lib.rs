@@ -11,6 +11,7 @@ pub mod monitor;
 pub mod paths;
 pub mod registry;
 pub mod runner;
+pub mod settings;
 pub mod style;
 pub mod types;
 pub mod ui;

@@ -5,58 +5,47 @@
 //! this module is only the Tauri presentation: which item to tick, and which
 //! event to emit to the frontend.
 
+use std::sync::{Mutex, OnceLock};
+
 use rcm_core::actions::{self, ids, text};
 use rcm_core::config;
 use rcm_core::log;
-use rcm_reg::MenuStyle;
 use tauri::{
     App, Emitter,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
-    tray::TrayIconBuilder,
+    tray::{TrayIcon, TrayIconBuilder},
 };
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Checkmark helpers
-// ═══════════════════════════════════════════════════════════════════════════
-
-fn sync_style_checks<R: tauri::Runtime>(win11: &CheckMenuItem<R>, classic: &CheckMenuItem<R>) {
-    let win11_active = actions::is_win11();
-    let _ = win11.set_checked(win11_active);
-    let _ = classic.set_checked(!win11_active);
-}
-
-fn sync_blocking_checks<R: tauri::Runtime>(enable: &CheckMenuItem<R>, disable: &CheckMenuItem<R>) {
-    let enabled = rcm_core::ui::is_blocking_enabled();
-    let _ = enable.set_checked(enabled);
-    let _ = disable.set_checked(!enabled);
-}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Event handlers
 // ═══════════════════════════════════════════════════════════════════════════
 
-fn handle_style_switch<R: tauri::Runtime>(
-    style: MenuStyle,
-    win11: &CheckMenuItem<R>,
-    classic: &CheckMenuItem<R>,
-) {
-    if actions::set_style(style).is_ok() {
-        sync_style_checks(win11, classic);
+/// Switch the context-menu style and relabel the entry.
+///
+/// The entry names the style clicking selects, so it has to be relabelled after
+/// every switch — otherwise it would keep offering the style just chosen.
+fn handle_style_toggle<R: tauri::Runtime>(item: &MenuItem<R>) {
+    match actions::toggle_style() {
+        Ok(_) => {
+            let _ = item.set_text(actions::style_entry_label());
+        }
+        Err(e) => log::error("Tray", &e),
     }
 }
 
-fn handle_register_toggle<R: tauri::Runtime>(register: bool, item: &CheckMenuItem<R>) {
-    let _ = item.set_checked(actions::set_registered(register));
+/// Toggle native context-menu blocking and relabel the entry.
+fn handle_blocking_toggle<R: tauri::Runtime>(item: &MenuItem<R>) {
+    match actions::toggle_blocking() {
+        Ok(_) => {
+            let _ = item.set_text(actions::blocking_entry_label());
+        }
+        Err(e) => log::error("Tray", &e),
+    }
 }
 
-fn handle_blocking_toggle<R: tauri::Runtime>(
-    enable: bool,
-    enable_i: &CheckMenuItem<R>,
-    disable_i: &CheckMenuItem<R>,
-) {
-    if actions::set_blocking(enable).is_ok() {
-        sync_blocking_checks(enable_i, disable_i);
-    }
+fn handle_register_toggle<R: tauri::Runtime>(item: &MenuItem<R>) {
+    let _ = item.set_text(actions::register_entry_label());
+    let _ = actions::toggle_registered();
 }
 
 fn handle_icons_toggle<R: tauri::Runtime>(app: &tauri::AppHandle<R>, item: &CheckMenuItem<R>) {
@@ -99,44 +88,65 @@ fn handle_apply() {
 // Tray setup
 // ═══════════════════════════════════════════════════════════════════════════
 
-pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
-    // ── Create menu items ────────────────────────────────────────────
-    let win11_i = CheckMenuItem::with_id(
-        app,
-        ids::WIN11_STYLE,
-        text::WIN11,
-        true,
-        actions::is_win11(),
-        None::<&str>,
-    )?;
-    let classic_i = CheckMenuItem::with_id(
-        app,
-        ids::CLASSIC_STYLE,
-        text::CLASSIC,
-        true,
-        !actions::is_win11(),
-        None::<&str>,
-    )?;
-    let register_i = CheckMenuItem::with_id(
-        app,
-        ids::REGISTER,
-        text::REGISTER,
-        true,
-        actions::register_status(),
-        None::<&str>,
-    )?;
-    let unregister_i =
-        MenuItem::with_id(app, ids::UNREGISTER, text::UNREGISTER, true, None::<&str>)?;
+/// The app handle, kept so the tray can be rebuilt after a settings change.
+static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
 
-    let blocking = rcm_core::ui::is_blocking_enabled();
-    let enable_i =
-        CheckMenuItem::with_id(app, ids::ENABLE, text::ENABLE, true, blocking, None::<&str>)?;
-    let disable_i = CheckMenuItem::with_id(
+/// The live tray icon, replaced on every rebuild.
+static TRAY: Mutex<Option<TrayIcon>> = Mutex::new(None);
+
+/// Install the tray icon.
+pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
+    let _ = APP.set(app.handle().clone());
+    install()
+}
+
+/// Rebuild the tray so it matches the current settings.
+///
+/// The tray mirrors settings the settings tab can also change, and a menu item's
+/// label cannot be changed after its menu was built, so the tray is replaced
+/// wholesale. That keeps a single definition of "the tray matches the
+/// settings", rather than a second one that resyncs items in place and can drift
+/// from the first.
+///
+/// A no-op before [`setup_tray`] has run.
+pub fn refresh() {
+    if let Err(e) = install() {
+        log::error("Tray", &format!("refresh failed: {e}"));
+    }
+}
+
+fn install() -> Result<(), tauri::Error> {
+    let handle = match APP.get() {
+        Some(handle) => handle.clone(),
+        // Before setup there is no handle to build menu items with.
+        None => return Ok(()),
+    };
+    let app = &handle;
+
+    // ── Create menu items ───────────────────────────────────────────
+    //
+    // Style, registration and blocking are each a single entry: they are two
+    // states of one setting, so showing both (one ticked) only repeats what the
+    // label can say on its own.
+    let style_i = MenuItem::with_id(
         app,
-        ids::DISABLE,
-        text::DISABLE,
+        ids::STYLE_TOGGLE,
+        actions::style_entry_label(),
         true,
-        !blocking,
+        None::<&str>,
+    )?;
+    let register_i = MenuItem::with_id(
+        app,
+        ids::REGISTER_TOGGLE,
+        actions::register_entry_label(),
+        true,
+        None::<&str>,
+    )?;
+    let blocking_i = MenuItem::with_id(
+        app,
+        ids::BLOCKING_TOGGLE,
+        actions::blocking_entry_label(),
+        true,
         None::<&str>,
     )?;
 
@@ -195,11 +205,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     let quit_i = MenuItem::with_id(app, ids::QUIT, text::QUIT, true, None::<&str>)?;
 
     // ── Clones for the event handler ─────────────────────────────────
-    let win11_clone = win11_i.clone();
-    let classic_clone = classic_i.clone();
+    let style_clone = style_i.clone();
+    let blocking_clone = blocking_i.clone();
     let register_clone = register_i.clone();
-    let enable_clone = enable_i.clone();
-    let disable_clone = disable_i.clone();
     let dev_clone = dev_i.clone();
     let icons_clone = icons_i.clone();
     let autostart_clone = autostart_i.clone();
@@ -209,9 +217,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
     // ── Build the menu (3 groups) ────────────────────────────────────
     //
-    //   ✓ Win11 / Classic          ← Style
+    //   Classic                    ← Style (click switches to the other)
     //   ─────────
-    //     Register / Unregister    ← Preferences
+    //     Register                 ← Registration (click switches)
+    //   Disable                    ← Blocking (click switches to the other)
     //   ✓ Icons  (debug)
     //   ✓ Dev    (debug)
     //   ✓ Auto Start
@@ -231,13 +240,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     )?;
 
     let mut items: Vec<&dyn tauri::menu::IsMenuItem<_>> = vec![
-        &win11_i,
-        &classic_i,
+        &style_i,
         &separator_prefs,
         &register_i,
-        &unregister_i,
-        &enable_i,
-        &disable_i,
+        &blocking_i,
     ];
 
     if is_debug {
@@ -258,7 +264,7 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
 
     // ── Build the tray ───────────────────────────────────────────────
 
-    let _tray = TrayIconBuilder::new()
+    let tray = TrayIconBuilder::new()
         .tooltip(app.config().product_name.as_deref().unwrap_or("rcm-tauri"))
         .icon(app.default_window_icon().unwrap().clone())
         .menu(&menu)
@@ -268,16 +274,9 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
                 let _ = actions::shutdown();
                 app.exit(0);
             }
-            ids::WIN11_STYLE => {
-                handle_style_switch(MenuStyle::Windows11, &win11_clone, &classic_clone)
-            }
-            ids::CLASSIC_STYLE => {
-                handle_style_switch(MenuStyle::Classic, &win11_clone, &classic_clone)
-            }
-            ids::REGISTER => handle_register_toggle(true, &register_clone),
-            ids::UNREGISTER => handle_register_toggle(false, &register_clone),
-            ids::ENABLE => handle_blocking_toggle(true, &enable_clone, &disable_clone),
-            ids::DISABLE => handle_blocking_toggle(false, &enable_clone, &disable_clone),
+            ids::STYLE_TOGGLE => handle_style_toggle(&style_clone),
+            ids::REGISTER_TOGGLE => handle_register_toggle(&register_clone),
+            ids::BLOCKING_TOGGLE => handle_blocking_toggle(&blocking_clone),
             ids::ICONS => handle_icons_toggle(app, &icons_clone),
             ids::DEV => handle_dev_toggle(app, &dev_clone),
             ids::AUTOSTART => handle_autostart_toggle(&autostart_clone),
@@ -321,6 +320,13 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
             _ => {}
         })
         .build(app)?;
+
+    // Hide the previous icon before dropping it, so the shell cannot briefly
+    // show two.
+    let previous = TRAY.lock().ok().and_then(|mut slot| slot.replace(tray));
+    if let Some(previous) = previous {
+        let _ = previous.set_visible(false);
+    }
 
     Ok(())
 }

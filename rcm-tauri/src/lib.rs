@@ -53,6 +53,62 @@ fn open_config_folder() -> Result<(), String> {
     rcm_core::open_path(&rcm_core::exe_dir().to_string_lossy())
 }
 
+// ── Settings ─────────────────────────────────────────────────────────────
+
+/// Every user-facing setting, for the settings tab.
+#[tauri::command]
+fn get_settings() -> rcm_core::settings::Settings {
+    rcm_core::settings::Settings::current()
+}
+
+/// Apply a settings change and return the resulting state.
+///
+/// Returns the full snapshot, not the requested values: registration, blocking
+/// and the startup entry can be refused by the OS, so the UI is told what is
+/// actually in effect instead of what was asked for.
+#[tauri::command]
+fn update_settings(
+    app: tauri::AppHandle,
+    patch: rcm_core::settings::SettingsPatch,
+) -> Result<rcm_core::settings::Settings, String> {
+    // Read before `patch` is consumed, so the windows that cache these can be
+    // told exactly what changed.
+    let (icons, dev, theme) = (patch.icons, patch.dev, patch.theme);
+
+    let settings = rcm_core::settings::update(patch)?;
+
+    // Menu windows keep their own copy of these; tell them so they re-render
+    // without waiting for a reload.
+    if let Some(value) = icons {
+        let _ = app.emit("icons-changed", value);
+    }
+    if let Some(value) = dev {
+        let _ = app.emit("dev-mode", value);
+    }
+    if let Some(value) = theme {
+        let _ = app.emit("theme-changed", value.as_str());
+    }
+
+    // The tray shows these settings too, so rebuild it to match.
+    tray::refresh();
+
+    Ok(settings)
+}
+
+/// Restart Explorer so registry changes take effect.
+#[tauri::command]
+fn apply_changes() -> Result<(), String> {
+    rcm_core::actions::apply()
+}
+
+/// Reset every config and menu file to the embedded defaults.
+#[tauri::command]
+fn reset_settings() -> rcm_core::settings::Settings {
+    rcm_core::actions::reset();
+    tray::refresh();
+    rcm_core::settings::Settings::current()
+}
+
 /// Create (or focus) the About window.
 #[tauri::command]
 async fn create_about_window(app: tauri::AppHandle) -> Result<(), String> {
@@ -505,6 +561,10 @@ pub fn run() {
             get_style_css,
             get_runtime_paths,
             open_config_folder,
+            get_settings,
+            update_settings,
+            apply_changes,
+            reset_settings,
             create_about_window,
             read_config_file,
             save_config_file,
