@@ -207,6 +207,17 @@ export function onThemeChanged(handler: (theme: string) => void): Promise<Unlist
   return listen<string>("theme-changed", (e) => handler(e.payload))
 }
 
+/**
+ * Whether the shell extension has shown any sign of life.
+ *
+ * `true` once it has delivered an event over the pipe it connects to, which is
+ * the only proof it is loaded. Reads a global on the Rust side — it costs no
+ * pipe traffic — so the diagnostic window can poll it every second.
+ */
+export function shellExtensionConnected(): Promise<boolean> {
+  return invoke<boolean>("shell_extension_connected")
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // About
 // ═══════════════════════════════════════════════════════════════════════

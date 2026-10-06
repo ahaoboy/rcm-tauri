@@ -397,6 +397,16 @@ fn retry_shell_extension() -> RetryResult {
     }
 }
 
+/// Whether the shell extension has been heard from over the event pipe.
+///
+/// `true` once it has delivered an event, which is the only thing that proves it
+/// is loaded. Not a probe: the control pipe can be unreachable while the menu
+/// works fine. See [`crate::monitor::connected`].
+#[tauri::command]
+fn shell_extension_connected() -> bool {
+    crate::monitor::connected()
+}
+
 fn urlencoding(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
@@ -548,6 +558,7 @@ pub fn run() {
             pull_config,
             get_env_vars,
             retry_shell_extension,
+            shell_extension_connected,
             show_error,
         ])
         .run(tauri::generate_context!())

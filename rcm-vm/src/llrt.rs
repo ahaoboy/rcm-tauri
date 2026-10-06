@@ -144,10 +144,14 @@ fn invoke(ctx: &Ctx<'_>, props_json: &str) -> Result<String, String> {
     let parse: rquickjs::Function = json.get("parse").map_err(|e| js_error(ctx, e))?;
     let stringify: rquickjs::Function = json.get("stringify").map_err(|e| js_error(ctx, e))?;
 
-    let props: rquickjs::Value = parse
-        .call((props_json,))
-        .map_err(|e| js_error(ctx, e))?;
-    let invoke: rquickjs::Function = menu_obj.get("invoke").map_err(|e| js_error(ctx, e))?;
+    let props: rquickjs::Value = parse.call((props_json,)).map_err(|e| js_error(ctx, e))?;
+
+    // Checked before the conversion, so a menu that has no `invoke` is reported
+    // by name rather than as a type error from inside rquickjs.
+    let invoke_value: rquickjs::Value = menu_obj.get("invoke").map_err(|e| js_error(ctx, e))?;
+    let invoke = invoke_value
+        .into_function()
+        .ok_or_else(|| "menu module has no invoke() export".to_string())?;
 
     let result: rquickjs::Value = invoke
         .call((This(menu), props))
@@ -162,6 +166,11 @@ mod tests {
 
     /// The built-ins `rcm-kit` imports are registered by name, which is what makes
     /// `import * as fs from "fs"` resolve.
+    ///
+    /// The calls are the four the bundled runtime actually makes
+    /// (`os.homedir`, `path.join`, `fs.readdirSync`, `fs.readFileSync`) — llrt's
+    /// modules are not a complete `node:fs`, so anything else would test an API
+    /// the real menu never touches.
     #[test]
     fn the_builtin_node_modules_resolve_and_work() {
         let json = evaluate_once::<QuickJsEngine>(
@@ -172,7 +181,7 @@ mod tests {
                  iconItems: [],
                  groups: [{
                    key: path.join("a", "b"),
-                   label: fs.existsSync(os.homedir()) ? "yes" : "no",
+                   label: fs.readdirSync(os.homedir()).length > 0 ? "yes" : "no",
                  }],
                }) };"#,
         )

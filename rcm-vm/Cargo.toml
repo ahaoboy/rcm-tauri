@@ -44,3 +44,8 @@ llrt_modules = { workspace = true, optional = true }
 # FIXME: https://github.com/awslabs/llrt/issues/1808
 rsa = "=0.10.0-rc.18"
 pkcs1 = "=0.8.0-rc.4"
+
+[dev-dependencies]
+# For `the_host_can_be_used_from_an_async_runtime`, which pins down that the host
+# is safe to call from the tokio runtime the frontend already runs on.
+tokio = { workspace = true, features = ["rt", "macros"] }
