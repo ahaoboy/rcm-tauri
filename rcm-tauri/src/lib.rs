@@ -149,6 +149,7 @@ async fn create_config_window(app: tauri::AppHandle) -> Result<(), String> {
     tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App(url.into()))
         .title("RCM Config Editor")
         .inner_size(800.0, 550.0)
+        .center()
         .resizable(true)
         .build()
         .map_err(|e| format!("Failed to create window: {e}"))?;
