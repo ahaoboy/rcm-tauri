@@ -7,8 +7,20 @@ description = "RCM VM — JavaScript runtime execution engine for RCM menus"
 authors = ["ahaoboy"]
 
 [features]
-default = []
+default = ["deno"]
+# Extend the rquickjs engine with Node modules (fs/path/url/os) for menu scripts.
 llrt = ["dep:llrt_modules"]
+# Swap the engine for the full Deno runtime (V8 + node:fs/os/path/...).
+# Mutually exclusive with `llrt`.
+deno = [
+    "dep:deno_runtime",
+    "dep:deno_core",
+    "dep:deno_fs",
+    "dep:deno_permissions",
+    "dep:deno_resolver",
+    "dep:sys_traits",
+    "dep:tokio",
+]
 
 [dependencies]
 rcm-core = { path = "../rcm-core", version = "0.1" }
@@ -16,5 +28,12 @@ rcm-com = { workspace = true }
 rquickjs = { workspace = true, features = ["loader"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-llrt_modules = { workspace = true, optional = true }
 is-admin = { workspace = true }
+llrt_modules = { workspace = true, optional = true }
+deno_core = { workspace = true, optional = true }
+deno_runtime = { workspace = true, optional = true }
+deno_fs = { workspace = true, optional = true }
+deno_permissions = { workspace = true, optional = true }
+deno_resolver = { workspace = true, optional = true }
+sys_traits = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true, features = ["rt", "time"] }

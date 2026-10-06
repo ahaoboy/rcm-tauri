@@ -1,16 +1,64 @@
 //! RCM VM — JavaScript runtime execution engine.
-//! Evaluates RCM menu definitions using QuickJS (via rquickjs).
+//!
+//! Evaluates RCM menu definitions and returns the resulting `Menu`. Two
+//! interchangeable engines are available, selected by feature: `deno_runtime`
+//! (V8 + Deno/Node built-ins) behind the default `deno`, or `rquickjs` (QuickJS +
+//! Node modules) behind `llrt`. Exactly one is compiled, and both expose the same
+//! [`invoke`] because both implement [`engine::Engine`].
+//!
+//! Building a runtime costs far more than evaluating a menu, so the engine is
+//! created once and reused; [`init`] exists to pay for that build during startup
+//! instead of on the first menu.
+//!
 //! This crate is framework-agnostic and can be used with any frontend.
 
+#[cfg(all(feature = "deno", feature = "llrt"))]
+compile_error!(
+    "features `deno` and `llrt` are mutually exclusive: `llrt` extends the rquickjs engine"
+);
+
+#[cfg(not(any(feature = "deno", feature = "llrt")))]
+compile_error!(
+    "no engine selected: enable `deno` (V8 + Deno runtime) or `llrt` (QuickJS + Node modules)"
+);
+
+#[cfg(feature = "deno")]
+mod deno;
+mod engine;
 #[cfg(feature = "llrt")]
-use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule, url::UrlModule};
+mod llrt;
+
+/// The engine this build uses. Pointing this at another implementation is the
+/// whole of "add an engine".
+#[cfg(feature = "deno")]
+type Current = deno::DenoEngine;
+#[cfg(feature = "llrt")]
+type Current = llrt::QuickJsEngine;
+
+use std::sync::LazyLock;
+
+use engine::EngineHost;
 use rcm_core::{InvokeProps, Menu};
 use rcm_core::{clipboard, lang};
-use rquickjs::function::This;
-use rquickjs::{
-    Context, Ctx, Function, Module, Runtime,
-    loader::{BuiltinLoader, BuiltinResolver, ModuleLoader},
-};
+
+/// The one runtime in the process: built at init, reused by every right-click.
+static ENGINE: LazyLock<EngineHost> = LazyLock::new(EngineHost::init::<Current>);
+
+/// Create the engine, eagerly.
+///
+/// Call this once at startup. Building the runtime is the most expensive thing
+/// `invoke` ever does (~1 s for the `deno` engine), and doing it during init
+/// keeps it off the first menu's critical path. Later calls have no effect.
+pub fn init() {
+    let _ = &*ENGINE;
+}
+
+/// Evaluate the current menu module and return the `Menu` it produces.
+pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
+    let props_json = serde_json::to_string(props)?;
+    let menu_json = ENGINE.evaluate(&props_json)?;
+    serde_json::from_str(&menu_json).map_err(Into::into)
+}
 
 /// The `rcm-kit` runtime, bundled into the binary.
 ///
@@ -20,153 +68,14 @@ use rquickjs::{
 ///
 /// The file is generated from `rcm-kit` by `bun build:rcm`; CI verifies it has
 /// not gone stale.
-const LIB_MODULE: &str = include_str!("../assets/index.js");
-const LIB_NAME: &str = "rcm-kit";
-const MENU_NAME: &str = "rcm-menu";
-fn print(s: String) {
-    println!("{s}")
-}
+pub(crate) const LIB_MODULE: &str = include_str!("../assets/index.js");
 
-pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::error::Error>> {
-    println!("props: {:?}", props);
+/// Specifier the menu source imports the runtime from
+/// (`import { … } from "rcm-kit"`).
+pub(crate) const LIB_NAME: &str = "rcm-kit";
 
-    let rt = Runtime::new()?;
-
-    let resolver = BuiltinResolver::default().with_module(LIB_NAME);
-    let loader = (
-        BuiltinLoader::default().with_module(LIB_NAME, LIB_MODULE),
-        ModuleLoader::default(),
-    );
-
-    // Shadow the bindings when `llrt` is enabled. Doing it here instead of with
-    // `mut` keeps both feature configurations free of `unused_mut` warnings.
-    #[cfg(feature = "llrt")]
-    let (resolver, loader) = (
-        resolver
-            .with_module("fs")
-            .with_module("path")
-            .with_module("url")
-            .with_module("os"),
-        (
-            loader.0,
-            loader
-                .1
-                .with_module("fs", FsModule)
-                .with_module("path", PathModule)
-                .with_module("url", UrlModule)
-                .with_module("os", OsModule),
-        ),
-    );
-
-    rt.set_loader(resolver, loader);
-
-    let ctx = Context::full(&rt)?;
-    let menu_src = rcm_core::menu::load_menu_module();
-
-    // `String` boxes into `Box<dyn Error>` directly, so the public signature is unchanged.
-    ctx.with(|ctx| eval_menu(&ctx, &menu_src, props))
-        .map_err(Into::into)
-}
-
-/// Evaluate the menu module `menu_src` in `ctx` and run its `invoke` with `props`.
-///
-/// Split out of [`invoke`] so the failure paths can be tested without touching the
-/// menu file on disk.
-fn eval_menu<'js>(
-    ctx: &Ctx<'js>,
-    menu_src: &str,
-    props: &InvokeProps,
-) -> std::result::Result<Menu, String> {
-    // A JS failure surfaces as `Error::Exception`, a bare marker whose payload
-    // (message + stack) stays pending in the context and is only reachable through
-    // `catch()`. Propagating the raw error would print just the word "Exception".
-    let js_err = |e: rquickjs::Error| rquickjs::CaughtError::from_error(ctx, e).to_string();
-
-    let global = ctx.globals();
-
-    global
-        .set("print", Function::new(ctx.clone(), print))
-        .map_err(js_err)?;
-
-    // Declare the rcm index.js module
-    let module = Module::declare(ctx.clone(), LIB_NAME, LIB_MODULE).map_err(js_err)?;
-    let (_, promise) = module.eval().map_err(js_err)?;
-    promise.finish::<()>().map_err(js_err)?;
-
-    // Declare the menu module (from disk or embedded default)
-    let module = Module::declare(ctx.clone(), MENU_NAME, menu_src).map_err(js_err)?;
-    let (eval_module, promise) = module.eval().map_err(js_err)?;
-    promise.finish::<()>().map_err(js_err)?;
-
-    // Extract the default exported object (the Menu provider instance)
-    let default_export: rquickjs::Value = eval_module.get("default").map_err(js_err)?;
-
-    let props_str = serde_json::to_string(props).map_err(|e| e.to_string())?;
-
-    // Cross the Rust/JS boundary with the context's own JSON, so the module sees
-    // a real object rather than a string.
-    let json_obj: rquickjs::Object = ctx.globals().get("JSON").map_err(js_err)?;
-    let parse: rquickjs::Function = json_obj.get("parse").map_err(js_err)?;
-    let stringify: rquickjs::Function = json_obj.get("stringify").map_err(js_err)?;
-    let js_props: rquickjs::Value = parse.call((props_str,)).map_err(js_err)?;
-
-    let default_obj: rquickjs::Object = default_export
-        .clone()
-        .into_object()
-        .ok_or_else(|| "menu module default export is not an object".to_string())?;
-    let invoke_fn: rquickjs::Function = default_obj.get("invoke").map_err(js_err)?;
-
-    let invoke_result: rquickjs::Value = invoke_fn
-        .call((This(default_export.clone()), js_props))
-        .map_err(js_err)?;
-
-    let json_str: String = stringify.call((invoke_result,)).map_err(js_err)?;
-
-    serde_json::from_str(&json_str).map_err(|e| e.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Evaluate `menu_src` in a fresh runtime and return the error message, if any.
-    fn error_for(menu_src: &str) -> String {
-        let rt = Runtime::new().unwrap();
-        let ctx = Context::full(&rt).unwrap();
-        let props = InvokeProps {
-            files: Vec::new(),
-            cwd: String::new(),
-            env: std::collections::HashMap::new(),
-            admin: false,
-            lang: "en".to_string(),
-            clipboard: Default::default(),
-            startmenu: Default::default(),
-            quick_access: Default::default(),
-            autorun: Default::default(),
-            desktop: Default::default(),
-        };
-        ctx.with(|ctx| eval_menu(&ctx, menu_src, &props))
-            .expect_err("expected the module to fail")
-    }
-
-    #[test]
-    fn a_thrown_error_reports_its_message() {
-        let msg = error_for("export default { invoke() { throw new Error('boom') } }");
-        assert!(msg.contains("boom"), "message lost, got: {msg}");
-    }
-
-    #[test]
-    fn a_syntax_error_reports_its_location() {
-        let msg = error_for("export default { invoke( { } }");
-        assert!(msg.contains("rcm-menu"), "location lost, got: {msg}");
-    }
-
-    #[test]
-    fn a_missing_invoke_export_is_reported() {
-        let msg = error_for("export default {}");
-        assert!(msg.contains("invoke"), "message lost, got: {msg}");
-    }
-}
+/// Specifier the menu source itself is loaded under.
+pub(crate) const MENU_NAME: &str = "rcm-menu";
 
 /// Build a `Menu` from a raw `ContextMenuInfo` event received from the shell.
 pub fn from_info(
@@ -210,4 +119,20 @@ pub fn from_info(
     };
 
     invoke(&props)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The whole public path, against the menu the app actually ships — the
+    /// engine tests use toy menus and never touch the bundled `rcm-kit`.
+    #[test]
+    fn invoke_builds_the_bundled_menu() {
+        let menu = invoke(&engine::test_props()).expect("invoke");
+        assert!(
+            !menu.groups.is_empty(),
+            "the bundled menu produced no groups"
+        );
+    }
 }

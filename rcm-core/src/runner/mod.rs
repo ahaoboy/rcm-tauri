@@ -28,7 +28,10 @@ pub async fn execute(cmd: &CommandPayload) -> ExecResult {
     // is the frontend's job.
     let missing = cmd.missing();
     if !missing.is_empty() {
-        crate::log::warn("Runner", &format!("'{}' missing requirements: {missing:?}", cmd.cmd));
+        crate::log::warn(
+            "Runner",
+            &format!("'{}' missing requirements: {missing:?}", cmd.cmd),
+        );
         return system_err(missing.join("\n"));
     }
 

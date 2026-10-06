@@ -13,6 +13,11 @@ use crate::layout::MenuManager;
 /// Start listening for external right-click events from the rcm_com pipe.
 /// This runs in a background task and never returns.
 pub fn start_monitoring(manager: MenuManager) {
+    // Build the menu runtime now rather than during the first right-click: for
+    // the `deno` engine that build dominates the click-to-menu latency. It runs
+    // on the blocking pool, so it neither blocks this setup nor delays listening.
+    tauri::async_runtime::spawn_blocking(rcm_vm::init);
+
     log::info("Rust::monitor", "begin listening for rcm_com events");
     tauri::async_runtime::spawn(async move {
         if let Err(e) = rcm_com::server::listen(move |event| {

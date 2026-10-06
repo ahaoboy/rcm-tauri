@@ -36,8 +36,8 @@ impl Zip {
     fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
         let args = CmdArgs::of(payload);
         let ext = args.required(0, "format", FORMAT_EXPECTED)?;
-        let fmt = Fmt::guess(ext)
-            .ok_or_else(|| CmdError::invalid("format", ext, FORMAT_EXPECTED))?;
+        let fmt =
+            Fmt::guess(ext).ok_or_else(|| CmdError::invalid("format", ext, FORMAT_EXPECTED))?;
         Ok(Args {
             ext: ext.to_owned(),
             fmt,

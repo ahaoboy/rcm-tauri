@@ -162,10 +162,7 @@ impl<W: Copy + Ord> MenuState<W> {
     /// handles, which keeps this decoupled from the toolkit.
     pub fn take_deeper_than(&mut self, depth: usize) -> Vec<W> {
         self.deepest = depth;
-        self.windows
-            .split_off(&(depth + 1))
-            .into_values()
-            .collect()
+        self.windows.split_off(&(depth + 1)).into_values().collect()
     }
 
     /// Remove and return every open window, resetting all bookkeeping.

@@ -50,7 +50,10 @@ pub fn setup_tray(app: &mut App) -> Result<(), tauri::Error> {
     if let Some(icon) = app.default_window_icon() {
         builder = builder.icon(icon.clone());
     } else {
-        log::warn("Tray", "no window icon configured; the tray entry may be blank");
+        log::warn(
+            "Tray",
+            "no window icon configured; the tray entry may be blank",
+        );
     }
 
     builder.build(app)?;

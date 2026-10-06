@@ -30,8 +30,12 @@ impl AddToAutorun {
     fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
         let args = CmdArgs::of(payload);
         Ok(Args {
-            name: args.required(0, "name", "the startup entry name")?.to_owned(),
-            command: args.required(1, "command", "the executable path")?.to_owned(),
+            name: args
+                .required(0, "name", "the startup entry name")?
+                .to_owned(),
+            command: args
+                .required(1, "command", "the executable path")?
+                .to_owned(),
         })
     }
 

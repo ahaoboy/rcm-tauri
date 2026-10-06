@@ -34,8 +34,8 @@ impl Format {
     /// Extract the drive path and index.
     fn args(payload: &CommandPayload) -> Result<Args, CmdError> {
         let path = CmdArgs::of(payload).required(0, "drive", DRIVE_EXPECTED)?;
-        let drive = drive_index(path)
-            .ok_or_else(|| CmdError::invalid("drive", path, DRIVE_EXPECTED))?;
+        let drive =
+            drive_index(path).ok_or_else(|| CmdError::invalid("drive", path, DRIVE_EXPECTED))?;
         Ok(Args {
             path: path.to_owned(),
             drive,

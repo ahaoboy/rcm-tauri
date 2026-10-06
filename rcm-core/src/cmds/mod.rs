@@ -236,7 +236,11 @@ mod tests {
     fn known_ids_resolve_but_unknown_do_not() {
         // Lookup only — running would have real side effects (@new-file, …).
         for cmd in COMMANDS {
-            assert!(find(cmd.id()).is_some(), "{} should be registered", cmd.id());
+            assert!(
+                find(cmd.id()).is_some(),
+                "{} should be registered",
+                cmd.id()
+            );
         }
         assert!(find("@nope").is_none());
     }

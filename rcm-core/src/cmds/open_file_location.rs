@@ -28,7 +28,10 @@ impl OpenFileLocation {
     /// Open the containing folder, selecting the file.
     fn execute(args: Args) -> Result<String, CmdError> {
         let path = args.path.as_str();
-        crate::log::info("Rust::open_file_location", &format!("opening location for '{path}'"));
+        crate::log::info(
+            "Rust::open_file_location",
+            &format!("opening location for '{path}'"),
+        );
 
         // Resolve shortcut target if it's a .lnk file
         let target = if path.to_lowercase().ends_with(".lnk") {

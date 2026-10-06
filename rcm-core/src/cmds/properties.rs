@@ -30,7 +30,10 @@ impl Properties {
     /// Invoke the shell "properties" verb.
     fn execute(args: Args) -> Result<String, CmdError> {
         let path = args.path.as_str();
-        crate::log::info("Rust::properties", &format!("opening properties for '{path}'"));
+        crate::log::info(
+            "Rust::properties",
+            &format!("opening properties for '{path}'"),
+        );
 
         // Encode path and "properties" verb as UTF-16 null-terminated strings.
         let wide_path: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();

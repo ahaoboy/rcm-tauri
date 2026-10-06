@@ -743,12 +743,18 @@ fn blur_only_dismisses_when_focus_left_the_menu_entirely() {
     controller.place(1, Measurement::exact(Size::new(200, 60)));
 
     // The submenu now holds focus, which is the normal state while it is open.
-    assert!(!controller.handle_idle(true), "a menu window still has focus");
+    assert!(
+        !controller.handle_idle(true),
+        "a menu window still has focus"
+    );
     assert!(controller.has_levels());
 
     // Focus left every menu window: the first miss is still tolerated, because
     // the OS may just be reassigning focus after a level closed.
-    assert!(!controller.handle_idle(false), "the first miss is tolerated");
+    assert!(
+        !controller.handle_idle(false),
+        "the first miss is tolerated"
+    );
     assert!(controller.has_levels());
 
     assert!(controller.handle_idle(false), "the second miss dismisses");
@@ -772,7 +778,10 @@ fn a_blur_storm_while_the_pointer_moves_through_the_menu_does_not_dismiss() {
     assert_eq!(hover_row(&mut controller, 0, vec![0, 1]), HoverResult::Leaf);
 
     // The hidden submenu's blur now arrives. Focus has not left the menu.
-    assert!(!controller.handle_idle(false), "a stale blur must not dismiss");
+    assert!(
+        !controller.handle_idle(false),
+        "a stale blur must not dismiss"
+    );
     assert!(controller.has_levels(), "the root menu is still open");
     assert_eq!(controller.deepest(), 0);
 
@@ -817,7 +826,10 @@ fn a_submenu_never_dismisses_its_parent() {
 
     // A blur while the parent hands focus to the child, and the child reporting
     // focus, must both leave the menu standing.
-    assert!(!controller.handle_idle(false), "the parent's blur is tolerated");
+    assert!(
+        !controller.handle_idle(false),
+        "the parent's blur is tolerated"
+    );
     assert!(!controller.handle_idle(true), "the child holds focus");
     assert!(controller.has_levels());
 }

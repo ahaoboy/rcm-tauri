@@ -12,9 +12,14 @@ const MENU_FILE: &str = "rcm.js";
 const STYLE_FILE: &str = "style.css";
 const CONFIG_FILE: &str = "rcm.config.json";
 
+/// Path of the menu script next to the executable.
+fn menu_path() -> std::path::PathBuf {
+    crate::exe_dir().join(MENU_FILE)
+}
+
 /// Write the embedded default menu JS file next to the exe.
 pub fn write_menu_defaults() {
-    let path = crate::exe_dir().join(MENU_FILE);
+    let path = menu_path();
     if let Err(e) = std::fs::write(&path, DEFAULT_MODULE) {
         eprintln!("write_menu_defaults: write {} failed: {e}", path.display());
     } else {
@@ -26,15 +31,12 @@ pub fn write_menu_defaults() {
 /// If it exists it is used as-is (allowing user customisation);
 /// otherwise the embedded default is written to disk and returned.
 pub fn load_menu_module() -> String {
-    let file_path = crate::exe_dir().join(MENU_FILE);
+    let file_path = menu_path();
 
     // Already on disk — use it
     if file_path.exists() {
         match std::fs::read_to_string(&file_path) {
-            Ok(src) => {
-                println!("load_menu_module: using rcm.js from disk");
-                return src;
-            }
+            Ok(src) => return src,
             Err(e) => eprintln!("load_menu_module: read {} failed: {e}", file_path.display()),
         }
     }
