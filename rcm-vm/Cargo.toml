@@ -7,7 +7,7 @@ description = "RCM VM — JavaScript runtime execution engine for RCM menus"
 authors = ["ahaoboy"]
 
 [features]
-default = ["llrt"]
+default = []
 llrt = ["dep:llrt_modules"]
 
 [dependencies]
