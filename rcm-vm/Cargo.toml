@@ -33,10 +33,14 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 is-admin = { workspace = true }
 llrt_modules = { workspace = true, optional = true }
-deno_core = { workspace = true, optional = true }
-deno_runtime = { workspace = true, optional = true }
-deno_fs = { workspace = true, optional = true }
-deno_permissions = { workspace = true, optional = true }
-deno_resolver = { workspace = true, optional = true }
-sys_traits = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true, features = ["rt", "time"] }
+# deno_core = { workspace = true, optional = true }
+# deno_runtime = { workspace = true, optional = true }
+# deno_fs = { workspace = true, optional = true }
+# deno_permissions = { workspace = true, optional = true }
+# deno_resolver = { workspace = true, optional = true }
+# sys_traits = { workspace = true, optional = true }
+# tokio = { workspace = true, optional = true, features = ["rt", "time"] }
+
+# FIXME: https://github.com/awslabs/llrt/issues/1808
+rsa = "=0.10.0-rc.18"
+pkcs1 = "=0.8.0-rc.4"

@@ -78,7 +78,7 @@ easy-archive = { version = "0.2", git = "https://github.com/ahaoboy/easy-archive
   "fmt",
 ] }
 
-# rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false, version = "0.12" }
+# rquickjs = { git = "https://github.com/DelSkayn/rquickjs", default-features = false, version = "0.14" }
 rquickjs = { default-features = false, version = "0.14" }
 # ── Deno engine ────────────────────────────────────────────────────────
 # `deno_runtime` is the full Deno runtime. It depends on `deno_core` with
