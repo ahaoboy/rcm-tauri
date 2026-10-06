@@ -15,10 +15,9 @@
  *   `#warmup`                hidden WebView2 warm-up window
  *   _(no hash)_              the root menu window
  *   `#submenu-<n>`           submenu window n
- *   `#config/<tab>`          config editor; tab is a file name or `env`
+ *   `#config/<tab>`          config editor; tab is a file name, `settings`, `env` or `about`
  *   `#error/<json>`          error window; json is a {@link UiError}
  *   `#shell-ext/<report>`    shell-extension diagnostics
- *   `#about`                 about window
  */
 
 import type { UiError } from "./types/error"
@@ -31,7 +30,6 @@ export type Route =
   | { name: "config"; tab: string }
   | { name: "error"; error: UiError }
   | { name: "shell-ext"; report: string }
-  | { name: "about" }
 
 /** `decodeURIComponent` that returns the input unchanged when malformed. */
 function safeDecode(value: string): string {
@@ -63,7 +61,6 @@ export function parseRoute(hash: string): Route {
   const path = hash.startsWith("#") ? hash.slice(1) : hash
 
   if (path === "warmup") return { name: "warmup" }
-  if (path === "about") return { name: "about" }
   if (path.startsWith("submenu-")) {
     const level = Number.parseInt(path.slice("submenu-".length), 10)
     return { name: "submenu", level: Number.isFinite(level) ? level : 0 }

@@ -8,7 +8,7 @@ use rcm_core::{InvokeProps, Menu};
 use rcm_core::{clipboard, lang};
 use rquickjs::function::This;
 use rquickjs::{
-    Context, Function, Module, Runtime,
+    Context, Ctx, Function, Module, Runtime,
     loader::{BuiltinLoader, BuiltinResolver, ModuleLoader},
 };
 
@@ -32,81 +32,140 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
 
     let rt = Runtime::new()?;
 
-    let mut resolver = BuiltinResolver::default().with_module(LIB_NAME);
-    let mut loader = (
+    let resolver = BuiltinResolver::default().with_module(LIB_NAME);
+    let loader = (
         BuiltinLoader::default().with_module(LIB_NAME, LIB_MODULE),
         ModuleLoader::default(),
     );
 
+    // Shadow the bindings when `llrt` is enabled. Doing it here instead of with
+    // `mut` keeps both feature configurations free of `unused_mut` warnings.
     #[cfg(feature = "llrt")]
-    {
-        resolver = resolver
+    let (resolver, loader) = (
+        resolver
             .with_module("fs")
             .with_module("path")
             .with_module("url")
-            .with_module("os");
-        loader.1 = loader
-            .1
-            .with_module("fs", FsModule)
-            .with_module("path", PathModule)
-            .with_module("url", UrlModule)
-            .with_module("os", OsModule);
-    }
+            .with_module("os"),
+        (
+            loader.0,
+            loader
+                .1
+                .with_module("fs", FsModule)
+                .with_module("path", PathModule)
+                .with_module("url", UrlModule)
+                .with_module("os", OsModule),
+        ),
+    );
 
     rt.set_loader(resolver, loader);
 
     let ctx = Context::full(&rt)?;
+    let menu_src = rcm_core::menu::load_menu_module();
 
-    ctx.with(
-        |ctx| -> std::result::Result<Menu, Box<dyn std::error::Error>> {
-            let global = ctx.globals();
+    // `String` boxes into `Box<dyn Error>` directly, so the public signature is unchanged.
+    ctx.with(|ctx| eval_menu(&ctx, &menu_src, props))
+        .map_err(Into::into)
+}
 
-            global
-                .set("print", Function::new(ctx.clone(), print))
-                .unwrap();
+/// Evaluate the menu module `menu_src` in `ctx` and run its `invoke` with `props`.
+///
+/// Split out of [`invoke`] so the failure paths can be tested without touching the
+/// menu file on disk.
+fn eval_menu<'js>(
+    ctx: &Ctx<'js>,
+    menu_src: &str,
+    props: &InvokeProps,
+) -> std::result::Result<Menu, String> {
+    // A JS failure surfaces as `Error::Exception`, a bare marker whose payload
+    // (message + stack) stays pending in the context and is only reachable through
+    // `catch()`. Propagating the raw error would print just the word "Exception".
+    let js_err = |e: rquickjs::Error| rquickjs::CaughtError::from_error(ctx, e).to_string();
 
-            // Declare the rcm index.js module
-            let module = Module::declare(ctx.clone(), LIB_NAME, LIB_MODULE)?;
-            let (_, promise) = module.eval()?;
-            promise.finish::<()>()?;
+    let global = ctx.globals();
 
-            // Declare the menu module (from disk or embedded default)
-            let menu_src = rcm_core::menu::load_menu_module();
-            let module = Module::declare(ctx.clone(), MENU_NAME, menu_src.as_str())?;
-            let (eval_module, promise) = module.eval()?;
-            promise.finish::<()>()?;
+    global
+        .set("print", Function::new(ctx.clone(), print))
+        .map_err(js_err)?;
 
-            // Extract the default exported object (the Menu provider instance)
-            let default_export: rquickjs::Value = eval_module.get("default")?;
+    // Declare the rcm index.js module
+    let module = Module::declare(ctx.clone(), LIB_NAME, LIB_MODULE).map_err(js_err)?;
+    let (_, promise) = module.eval().map_err(js_err)?;
+    promise.finish::<()>().map_err(js_err)?;
 
-            let props_str = serde_json::to_string(props).map_err(|e| e.to_string())?;
+    // Declare the menu module (from disk or embedded default)
+    let module = Module::declare(ctx.clone(), MENU_NAME, menu_src).map_err(js_err)?;
+    let (eval_module, promise) = module.eval().map_err(js_err)?;
+    promise.finish::<()>().map_err(js_err)?;
 
-            // Fetch global JSON object and serialize/deserialize tools
-            let json_obj: rquickjs::Object = ctx.globals().get("JSON")?;
-            let parse: rquickjs::Function = json_obj.get("parse")?;
-            let stringify: rquickjs::Function = json_obj.get("stringify")?;
+    // Extract the default exported object (the Menu provider instance)
+    let default_export: rquickjs::Value = eval_module.get("default").map_err(js_err)?;
 
-            // Convert Rust JSON string into native QuickJS properties object
-            let js_props: rquickjs::Value = parse.call((props_str,))?;
+    let props_str = serde_json::to_string(props).map_err(|e| e.to_string())?;
 
-            let default_obj: rquickjs::Object = default_export
-                .clone()
-                .into_object()
-                .ok_or("Default export is not an object")?;
-            let invoke_fn: rquickjs::Function = default_obj.get("invoke")?;
+    // Cross the Rust/JS boundary with the context's own JSON, so the module sees
+    // a real object rather than a string.
+    let json_obj: rquickjs::Object = ctx.globals().get("JSON").map_err(js_err)?;
+    let parse: rquickjs::Function = json_obj.get("parse").map_err(js_err)?;
+    let stringify: rquickjs::Function = json_obj.get("stringify").map_err(js_err)?;
+    let js_props: rquickjs::Value = parse.call((props_str,)).map_err(js_err)?;
 
-            // Native explicit invocation
-            let invoke_result: rquickjs::Value =
-                invoke_fn.call((This(default_export.clone()), js_props))?;
+    let default_obj: rquickjs::Object = default_export
+        .clone()
+        .into_object()
+        .ok_or_else(|| "menu module default export is not an object".to_string())?;
+    let invoke_fn: rquickjs::Function = default_obj.get("invoke").map_err(js_err)?;
 
-            // Stringify evaluating boundaries reliably back into Rust structured Menu
-            let json_str: String = stringify.call((invoke_result,))?;
+    let invoke_result: rquickjs::Value = invoke_fn
+        .call((This(default_export.clone()), js_props))
+        .map_err(js_err)?;
 
-            let menu_data: Menu = serde_json::from_str(&json_str)?;
+    let json_str: String = stringify.call((invoke_result,)).map_err(js_err)?;
 
-            Ok(menu_data)
-        },
-    )
+    serde_json::from_str(&json_str).map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Evaluate `menu_src` in a fresh runtime and return the error message, if any.
+    fn error_for(menu_src: &str) -> String {
+        let rt = Runtime::new().unwrap();
+        let ctx = Context::full(&rt).unwrap();
+        let props = InvokeProps {
+            files: Vec::new(),
+            cwd: String::new(),
+            env: std::collections::HashMap::new(),
+            admin: false,
+            lang: "en".to_string(),
+            clipboard: Default::default(),
+            startmenu: Default::default(),
+            quick_access: Default::default(),
+            autorun: Default::default(),
+            desktop: Default::default(),
+        };
+        ctx.with(|ctx| eval_menu(&ctx, menu_src, &props))
+            .expect_err("expected the module to fail")
+    }
+
+    #[test]
+    fn a_thrown_error_reports_its_message() {
+        let msg = error_for("export default { invoke() { throw new Error('boom') } }");
+        assert!(msg.contains("boom"), "message lost, got: {msg}");
+    }
+
+    #[test]
+    fn a_syntax_error_reports_its_location() {
+        let msg = error_for("export default { invoke( { } }");
+        assert!(msg.contains("rcm-menu"), "location lost, got: {msg}");
+    }
+
+    #[test]
+    fn a_missing_invoke_export_is_reported() {
+        let msg = error_for("export default {}");
+        assert!(msg.contains("invoke"), "message lost, got: {msg}");
+    }
 }
 
 /// Build a `Menu` from a raw `ContextMenuInfo` event received from the shell.

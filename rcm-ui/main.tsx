@@ -4,7 +4,6 @@ import ReactDOM from "react-dom/client"
 
 import { getStyleCss } from "./api/menuEvents"
 import App from "./App"
-import { AboutPage } from "./components/AboutPage"
 import { ConfigEditor } from "./components/ConfigEditor"
 import { ErrorPage } from "./components/ErrorPage"
 import { ShellExtensionPage } from "./components/ShellExtensionPage"
@@ -24,7 +23,6 @@ const PAGES: Record<Route["name"], { Page: React.FC; needsCss: boolean }> = {
   config: { Page: ConfigEditor, needsCss: false },
   error: { Page: ErrorPage, needsCss: false },
   "shell-ext": { Page: ShellExtensionPage, needsCss: false },
-  about: { Page: AboutPage, needsCss: false },
 }
 
 const { Page, needsCss } = PAGES[getRoute().name]

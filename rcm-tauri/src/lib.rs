@@ -38,9 +38,9 @@ fn get_style_css() -> String {
     rcm_core::style::load_style_css()
 }
 
-// ── About ────────────────────────────────────────────────────────────────
+// ── About tab ────────────────────────────────────────────────────────────
 
-/// The runtime facts the About page displays; the page's content is the
+/// The runtime facts the About tab displays; the tab's content is the
 /// frontend's own.
 #[tauri::command]
 fn get_runtime_paths() -> crate::events::RuntimePaths {
@@ -89,9 +89,6 @@ fn update_settings(
         let _ = app.emit("theme-changed", value.as_str());
     }
 
-    // The tray shows these settings too, so rebuild it to match.
-    tray::refresh();
-
     Ok(settings)
 }
 
@@ -105,30 +102,7 @@ fn apply_changes() -> Result<(), String> {
 #[tauri::command]
 fn reset_settings() -> rcm_core::settings::Settings {
     rcm_core::actions::reset();
-    tray::refresh();
     rcm_core::settings::Settings::current()
-}
-
-/// Create (or focus) the About window.
-#[tauri::command]
-async fn create_about_window(app: tauri::AppHandle) -> Result<(), String> {
-    let label = "about";
-    // Already open — bring the existing window forward instead of making a second one.
-    if let Some(win) = app.get_webview_window(label) {
-        let _ = win.show();
-        let _ = win.set_focus();
-        return Ok(());
-    }
-
-    tauri::WebviewWindowBuilder::new(&app, label, tauri::WebviewUrl::App("index.html#about".into()))
-        .title("About RCM")
-        .inner_size(520.0, 420.0)
-        .resizable(false)
-        .center()
-        .build()
-        .map_err(|e| format!("Failed to create window: {e}"))?;
-
-    Ok(())
 }
 
 // ── Config editor commands ───────────────────────────────────────────────
@@ -343,7 +317,7 @@ fn create_message_window<R: tauri::Runtime>(
 /// healthy checks), packed onto a single line each, so the whole thing stays
 /// three lines long no matter how the registry looks.
 fn shell_extension_report(err: &dyn std::fmt::Display) -> String {
-    let dll = rcm_core::exe_dir().join("rcm_com.dll");
+    let dll = rcm_core::exe_dir().join(rcm_core::settings::EXTENSION_DLL_FILE);
     let mut issues: Vec<String> = Vec::new();
 
     if !dll.exists() {
@@ -422,7 +396,6 @@ fn retry_shell_extension() -> RetryResult {
     }
 }
 
-
 fn urlencoding(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     for b in s.bytes() {
@@ -466,7 +439,6 @@ pub fn run() {
             if let Some(root) = app.get_webview_window(events::ROOT_LABEL) {
                 let _ = root.hide();
             }
-
 
             // Probe the shell extension. It owns the `rcm_com` pipe, so without
             // it no right-click event can ever reach us — the app would look
@@ -565,7 +537,6 @@ pub fn run() {
             update_settings,
             apply_changes,
             reset_settings,
-            create_about_window,
             read_config_file,
             save_config_file,
             open_in_editor,

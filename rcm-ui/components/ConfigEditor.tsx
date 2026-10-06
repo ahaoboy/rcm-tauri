@@ -6,13 +6,16 @@
  *   #config/rcm.config.json → rcm.config.json
  *   #config/rcm.js          → rcm.js
  *   #config/style.css       → style.css
- *   #config/env             → environment variable inspector (not a file)
+ *   #config/settings        → settings form     (not a file)
+ *   #config/env             → environment variables (not a file)
+ *   #config/about           → identity and paths  (not a file)
  *
  * The heavy lifting lives in sibling modules:
  *   config-editor/constants.ts   — file list, tab routing
  *   config-editor/FileEditor.tsx — one CodeMirror instance per file
  *   config-editor/EnvView.tsx    — environment variable inspector
  *   config-editor/SettingsView.tsx — the tray's options as a form
+ *   config-editor/AboutView.tsx  — identity, version and file locations
  *
  * Styling is MUI (`ThemeRoot` + `theme.ts`). Only this window uses MUI: the menu
  * popups are styled by the user-editable `style.css`, so they must stay plain CSS.
@@ -39,7 +42,9 @@ import {
 } from "../api/menuEvents"
 import { useTheme } from "../hooks/useTheme"
 import { setRoute } from "../router"
+import { AboutView } from "./config-editor/AboutView"
 import {
+  ABOUT_TAB,
   ENV_TAB,
   FILES,
   SETTINGS_TAB,
@@ -72,8 +77,9 @@ export const ConfigEditor: React.FC = () => {
 
   const isEnv = active === ENV_TAB
   const isSettings = active === SETTINGS_TAB
+  const isAbout = active === ABOUT_TAB
   // Tabs that are not an editable file: no toolbar, no editor instance.
-  const isPlainView = isEnv || isSettings
+  const isPlainView = isEnv || isSettings || isAbout
   // Narrow the active tab to a file key for the file-oriented handlers.
   const activeFile = (isPlainView ? "rcm.config.json" : active) as FileKey
 
@@ -203,6 +209,8 @@ export const ConfigEditor: React.FC = () => {
           <EnvView />
         ) : isSettings ? (
           <SettingsView />
+        ) : isAbout ? (
+          <AboutView />
         ) : (
           <>
             {!loaded && (

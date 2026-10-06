@@ -21,7 +21,9 @@ pub fn start_monitoring(manager: MenuManager) {
                     let menu = match rcm_vm::from_info(&event) {
                         Ok(menu) => menu,
                         Err(e) => {
-                            log::error("Rust::monitor", &format!("rcm error: {e:?}"));
+                            // Display, not Debug: a JS exception is only legible as
+                            // "Error: <message>\n<stack>"; Debug escapes the newlines.
+                            log::error("Rust::monitor", &format!("rcm error: {e}"));
                             return;
                         }
                     };
@@ -33,7 +35,7 @@ pub fn start_monitoring(manager: MenuManager) {
         })
         .await
         {
-            log::error("Rust::monitor", &format!("ERROR: {e}"));
+            log::error("Rust::monitor", &format!("rcm_com listener stopped: {e}"));
         }
     });
 }

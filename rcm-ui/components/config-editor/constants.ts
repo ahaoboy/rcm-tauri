@@ -24,14 +24,21 @@ export const ENV_TAB = "env"
 /** Special tab: the tray's settings as a form (not a file). */
 export const SETTINGS_TAB = "settings"
 
-export type TabKey = FileKey | typeof ENV_TAB | typeof SETTINGS_TAB
+/** Special tab: application identity, version and paths (not a file). */
+export const ABOUT_TAB = "about"
+
+export type TabKey = FileKey | typeof ENV_TAB | typeof SETTINGS_TAB | typeof ABOUT_TAB
 
 /** Tab bar entries — the editable files plus the non-file tabs. */
 export const TABS: { key: TabKey; label: string }[] = [
-  ...FILES.map((f) => ({ key: f.key as TabKey, label: f.label })),
+  ...FILES.map((f) => ({ key: f.key, label: f.label })),
   { key: SETTINGS_TAB, label: SETTINGS_TAB },
   { key: ENV_TAB, label: ENV_TAB },
+  { key: ABOUT_TAB, label: ABOUT_TAB },
 ]
+
+/** Every valid tab key, derived from {@link TABS} so a new tab needs no second edit. */
+const TAB_KEYS = new Set<string>(TABS.map((t) => t.key))
 
 /** CodeMirror language extension per file `lang` id. */
 export const LANG: Record<string, () => Extension> = {
@@ -47,8 +54,6 @@ export const FILE_BY_KEY: Record<FileKey, (typeof FILES)[number]> = Object.fromE
 /** Resolve the active tab from `#config/<key>`; falls back to the config JSON. */
 export function tabFromHash(): TabKey {
   const route = getRoute()
-  const raw = route.name === "config" ? route.tab : "rcm.config.json"
-  if (raw === ENV_TAB) return ENV_TAB
-  if (raw === SETTINGS_TAB) return SETTINGS_TAB
-  return FILE_BY_KEY[raw as FileKey] ? (raw as FileKey) : "rcm.config.json"
+  const raw = route.name === "config" ? route.tab : ""
+  return TAB_KEYS.has(raw) ? (raw as TabKey) : "rcm.config.json"
 }
