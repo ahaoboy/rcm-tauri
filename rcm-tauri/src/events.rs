@@ -66,6 +66,11 @@ pub struct ConfigPayload {
 pub struct RuntimePaths {
     /// Version of the running binary.
     pub version: String,
+    /// Short commit the binary was built from, with `-dirty` when the tree had
+    /// uncommitted changes. Empty when the build ran outside a git checkout (a
+    /// crates.io or vendored source tree), which is why the UI treats it as
+    /// optional.
+    pub commit: String,
     /// Directory holding the executable and its config files.
     pub exe_dir: String,
     /// Path of `rcm.config.json`.
@@ -74,11 +79,26 @@ pub struct RuntimePaths {
     pub log_path: String,
 }
 
+/// Short commit hash and dirty marker, resolved when this crate is compiled.
+///
+/// `--always` is required: this repo's only tag is lightweight, and `describe`
+/// refuses to use those by default, so without it the macro falls back to the
+/// empty string. `--abbrev=12` keeps the hash readable while staying
+/// unambiguous, and `--dirty` marks a build from a modified tree so a bug report
+/// can never point at a commit that does not contain the code that produced it.
+/// (Note the flag is `--abbrev`, not `--short`: the latter belongs to
+/// `rev-parse` and `describe` rejects it.)
+const GIT_COMMIT: &str = git_version::git_version!(
+    args = ["--always", "--abbrev=12", "--dirty"],
+    fallback = ""
+);
+
 impl RuntimePaths {
     pub fn current() -> Self {
         let dir = rcm_core::exe_dir();
         Self {
             version: env!("CARGO_PKG_VERSION").to_string(),
+            commit: GIT_COMMIT.to_string(),
             config_path: dir.join("rcm.config.json").to_string_lossy().into_owned(),
             log_path: rcm_core::log::log_path().to_string_lossy().into_owned(),
             exe_dir: dir.to_string_lossy().into_owned(),

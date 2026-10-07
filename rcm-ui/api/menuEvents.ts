@@ -230,6 +230,8 @@ export function shellExtensionConnected(): Promise<boolean> {
  */
 export interface RuntimePaths {
   version: string
+  /** Short git commit, `-dirty` if the tree was modified. Empty outside a git checkout. */
+  commit: string
   exe_dir: string
   config_path: string
   log_path: string
