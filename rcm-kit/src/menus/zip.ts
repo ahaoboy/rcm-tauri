@@ -1,6 +1,6 @@
 import { ZIP } from "../consts"
 import { t } from "../i18n"
-import { isZip } from "../tool"
+import { isEmptyDirTarget, isZip } from "../tool"
 import type { MenuItem } from "../types"
 
 /**
@@ -16,8 +16,11 @@ export function zip(): MenuItem {
     key: "zip",
     label: t("zip"),
     icon: "🗜️",
-    // Only hide when a single archive file is selected — pointless to re-archive it.
-    match: ({ files }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)),
+    // Two ways a zip is pointless: re-archiving a single archive, and archiving
+    // a folder that holds nothing.
+    match: ({ files, cwd }) =>
+      !(files.length === 1 && !files[0].isDir && isZip(files[0].path)) &&
+      !isEmptyDirTarget({ files, cwd }),
     action: (props) => ({
       cmd: ZIP,
       args: [".zip", ...props.files.map((f) => f.path)],

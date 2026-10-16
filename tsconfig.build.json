@@ -20,6 +20,7 @@
     "noEmitOnError": false,
     "declarationMap": false,
     "sourceMap": false,
+    "types": ["node"],
     "declaration": true
   },
   "include": ["${configDir}/src"],

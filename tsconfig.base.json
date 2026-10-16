@@ -19,6 +19,7 @@
     "jsx": "react",
     "declarationMap": false,
     "sourceMap": false,
+    "types": ["node"],
     "paths": {
       "rcm": ["./rcm/src"]
     }

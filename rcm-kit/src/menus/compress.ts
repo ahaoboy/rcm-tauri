@@ -1,6 +1,6 @@
 import { ZIP } from "../consts"
 import { t } from "../i18n"
-import { isZip } from "../tool"
+import { isEmptyDirTarget, isZip } from "../tool"
 import type { MenuItem, InvokeProps } from "../types"
 
 /** Archive formats offered by the "compress" submenu (Rust `Fmt::guess`). */
@@ -19,8 +19,11 @@ export function compress(): MenuItem {
     key: "compress",
     label: t("compress"),
     icon: "🗜️",
-    // Only hide when a single archive file is selected — pointless to re-archive it.
-    match: ({ files }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)),
+    // Two ways a new archive is pointless: re-archiving a single archive, and
+    // archiving a folder that holds nothing.
+    match: ({ files, cwd }) =>
+      !(files.length === 1 && !files[0].isDir && isZip(files[0].path)) &&
+      !isEmptyDirTarget({ files, cwd }),
     items: ARCHIVE_FORMATS.map((ext) => ({
       key: `compress-${ext}`,
       label: ext,

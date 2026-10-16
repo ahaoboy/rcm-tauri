@@ -510,6 +510,7 @@ function openWith() {
 }
 
 // src/tool.ts
+import { readdirSync, statSync } from "fs";
 var ARCHIVE_EXTS = [
   // TarGz
   ".tar.gz",
@@ -566,6 +567,24 @@ function hasShortcut(list, path2) {
   return list.some(
     (lnk) => lnk.target !== null && lnk.target.toLowerCase() === norm || fileStem(lnk.path) === stem
   );
+}
+function isDir(path2) {
+  try {
+    return statSync(path2).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function isEmptyDir(path2) {
+  try {
+    return isDir(path2) && readdirSync(path2).length === 0;
+  } catch {
+    return false;
+  }
+}
+function isEmptyDirTarget({ files, cwd }) {
+  if (files.length === 0) return isEmptyDir(cwd);
+  return files.every((f) => isEmptyDir(f.path));
 }
 
 // src/menus/edit.ts
@@ -1068,8 +1087,9 @@ function zip() {
     key: "zip",
     label: t("zip"),
     icon: "🗜️",
-    // Only hide when a single archive file is selected — pointless to re-archive it.
-    match: ({ files }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)),
+    // Two ways a zip is pointless: re-archiving a single archive, and archiving
+    // a folder that holds nothing.
+    match: ({ files, cwd }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)) && !isEmptyDirTarget({ files, cwd }),
     action: (props) => ({
       cmd: ZIP,
       args: [".zip", ...props.files.map((f) => f.path)],
@@ -1086,8 +1106,9 @@ function compress() {
     key: "compress",
     label: t("compress"),
     icon: "🗜️",
-    // Only hide when a single archive file is selected — pointless to re-archive it.
-    match: ({ files }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)),
+    // Two ways a new archive is pointless: re-archiving a single archive, and
+    // archiving a folder that holds nothing.
+    match: ({ files, cwd }) => !(files.length === 1 && !files[0].isDir && isZip(files[0].path)) && !isEmptyDirTarget({ files, cwd }),
     items: ARCHIVE_FORMATS.map((ext) => ({
       key: `compress-${ext}`,
       label: ext,
@@ -1351,6 +1372,9 @@ export {
   hasExt,
   hasShortcut,
   isAudio,
+  isDir,
+  isEmptyDir,
+  isEmptyDirTarget,
   isExecutable,
   isImage,
   isMedia,

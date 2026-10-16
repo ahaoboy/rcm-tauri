@@ -1,3 +1,5 @@
+import { readdirSync, statSync } from "fs"
+
 import {
   TEXT_EXTS,
   VIDEO_EXTS,
@@ -6,7 +8,7 @@ import {
   AUDIO_EXTS,
   SUBTITLE_EXTS,
 } from "./consts"
-import type { Entry } from "./types"
+import type { Entry, InvokeProps } from "./types"
 
 /**
  * Archive extensions supported by the Rust backend's `Fmt` enum.
@@ -98,4 +100,50 @@ export function hasShortcut(list: Entry[], path: string): boolean {
     (lnk) =>
       (lnk.target !== null && lnk.target.toLowerCase() === norm) || fileStem(lnk.path) === stem,
   )
+}
+
+// ── Directory helpers ───────────────────────────────────────────────
+
+/** Check whether `path` exists and is a directory. */
+export function isDir(path: string): boolean {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True when `path` is a directory that contains nothing at all.
+ *
+ * Non-recursive by design: a folder holding only subfolders is *not* empty,
+ * because it is not empty from the user's point of view.
+ *
+ * A path that cannot be read — missing, not a directory, or refused by
+ * `readdirSync` — reports `false`. Callers use this to *hide* menu items, and
+ * guessing "empty" for a path we cannot inspect would hide actions that might
+ * well have worked.
+ */
+export function isEmptyDir(path: string): boolean {
+  try {
+    return isDir(path) && readdirSync(path).length === 0
+  } catch {
+    return false
+  }
+}
+
+/**
+ * True when a right-click is aimed at nothing but empty folders.
+ *
+ * Covers both ways that happens: an explorer background click inside an empty
+ * folder (`files` is empty and `cwd` is that folder), and a selection made up
+ * solely of folders that hold nothing. Archiving either one produces an archive
+ * with no content, so items that would do exactly that stay hidden.
+ *
+ * An empty selection **outside** any directory is `false`: nothing to archive is
+ * a property of the folder, not of the click.
+ */
+export function isEmptyDirTarget({ files, cwd }: Pick<InvokeProps, "files" | "cwd">): boolean {
+  if (files.length === 0) return isEmptyDir(cwd)
+  return files.every((f) => isEmptyDir(f.path))
 }

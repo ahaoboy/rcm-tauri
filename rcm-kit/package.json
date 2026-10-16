@@ -30,6 +30,7 @@
     "typescript": "catalog:"
   },
   "devDependencies": {
+    "@types/node": "catalog:",
     "rcm-kit": "workspace:*",
     "vitest": "catalog:"
   }
