@@ -9,7 +9,9 @@
 //! `Context` owns its `Runtime`, so keeping it alive keeps the loader, the
 //! built-in modules and the evaluated menu alive with it.
 
+use llrt_modules::{console, url, util};
 use llrt_modules::{fs::FsModule, os::OsModule, path::PathModule};
+use llrt_utils::primordials::{BasePrimordials, Primordial};
 use rquickjs::function::This;
 use rquickjs::{
     Context, Ctx, Function, Module, Runtime,
@@ -40,13 +42,19 @@ impl Engine for QuickJsEngine {
             .with_module(LIB_NAME)
             .with_module("fs")
             .with_module("path")
-            .with_module("os");
+            .with_module("os")
+            .with_module("util")
+            .with_module("url");
         let loader = (
             BuiltinLoader::default().with_module(LIB_NAME, LIB_MODULE),
             ModuleLoader::default()
+                .with_module("url", url::UrlModule)
                 .with_module("fs", FsModule)
                 .with_module("path", PathModule)
-                .with_module("os", OsModule),
+                .with_module("os", OsModule)
+                .with_module("console", console::ConsoleModule)
+                .with_module("util", util::UtilModule)
+                ,
         );
         rt.set_loader(resolver, loader);
 
@@ -65,7 +73,9 @@ impl Engine for QuickJsEngine {
 
     fn evaluate(&mut self, menu_source: &str, props_json: &str) -> Result<String, String> {
         // The menu is declared and evaluated here, from the source just read, so
-        // whatever `rcm.js` holds now is what runs.
+        // whatever `rcm.js` holds now is what runs. The globals are set up once,
+        // in `init` — re-running them would rebuild `console` (dropping its
+        // counter/timer state) on every click.
         self.ctx.with(|ctx| {
             load_menu(&ctx, menu_source)?;
             invoke(&ctx, props_json)
@@ -87,8 +97,22 @@ fn js_error(ctx: &Ctx<'_>, e: rquickjs::Error) -> String {
     rquickjs::CaughtError::from_error(ctx, e).to_string()
 }
 
-/// Register the `print` global. Done once, before the first module is evaluated.
+/// Register the globals a menu expects — llrt's built-ins, `print` and `console`.
+///
+/// Done once, before the first module is evaluated.
+///
+/// `BasePrimordials` has to be initialized **first**: `llrt_console` formats every
+/// message through `llrt_logging::FormatOptions`, which reads those cached
+/// constructors and fails with "Userdata of BasePrimordials not initialized"
+/// if they are missing. Only some llrt modules set it up — `url` does so inside
+/// its module `evaluate`, and `fs`/`path`/`os` do not — which is why a menu that
+/// never imports `url` used to die on its first `console.log`. llrt's own
+/// `llrt_core::vm` initializes it up front for exactly this reason.
 fn globals(ctx: &Ctx<'_>) -> Result<(), String> {
+    BasePrimordials::init(ctx).map_err(|e| js_error(ctx, e))?;
+    util::init(ctx).map_err(|e| js_error(ctx, e))?;
+    url::init(ctx).map_err(|e| js_error(ctx, e))?;
+    console::init(ctx).map_err(|e| js_error(ctx, e))?;
     ctx.globals()
         .set("print", Function::new(ctx.clone(), print))
         .map_err(|e| js_error(ctx, e))

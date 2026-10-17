@@ -9,7 +9,7 @@ authors = ["ahaoboy"]
 [features]
 default = ["llrt"]
 # Extend the rquickjs engine with Node modules (fs/path/url/os) for menu scripts.
-llrt = ["dep:llrt_modules"]
+llrt = ["dep:llrt_modules", "dep:llrt_utils"]
 # Swap the engine for the full Deno runtime (V8 + node:fs/os/path/...).
 # Mutually exclusive with `llrt`.
 
@@ -33,6 +33,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 is-admin = { workspace = true }
 llrt_modules = { workspace = true, optional = true }
+llrt_utils = { workspace = true, optional = true }
 # deno_core = { workspace = true, optional = true }
 # deno_runtime = { workspace = true, optional = true }
 # deno_fs = { workspace = true, optional = true }
