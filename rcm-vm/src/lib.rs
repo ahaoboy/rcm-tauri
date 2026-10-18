@@ -12,19 +12,23 @@
 //!
 //! This crate is framework-agnostic and can be used with any frontend.
 
-#[cfg(all(feature = "deno", feature = "llrt"))]
-compile_error!(
-    "features `deno` and `llrt` are mutually exclusive: `llrt` extends the rquickjs engine"
-);
+#[cfg(any(
+    all(feature = "deno", feature = "llrt"),
+    all(feature = "deno", feature = "es6"),
+    all(feature = "llrt", feature = "es6")
+))]
+compile_error!("engines are mutually exclusive: enable exactly one of `deno`, `llrt` or `es6`");
 
-#[cfg(not(any(feature = "deno", feature = "llrt")))]
+#[cfg(not(any(feature = "deno", feature = "llrt", feature = "es6")))]
 compile_error!(
-    "no engine selected: enable `deno` (V8 + Deno runtime) or `llrt` (QuickJS + Node modules)"
+    "no engine selected: enable `deno` (V8 + Deno runtime), `llrt` (QuickJS + Node modules) or `es6` (in-tree engine)"
 );
 
 #[cfg(feature = "deno")]
 mod deno;
 mod engine;
+#[cfg(feature = "es6")]
+mod es6;
 #[cfg(feature = "llrt")]
 mod llrt;
 
@@ -32,6 +36,8 @@ mod llrt;
 /// whole of "add an engine".
 #[cfg(feature = "deno")]
 type Current = deno::DenoEngine;
+#[cfg(feature = "es6")]
+type Current = es6::Es6Engine;
 #[cfg(feature = "llrt")]
 type Current = llrt::QuickJsEngine;
 

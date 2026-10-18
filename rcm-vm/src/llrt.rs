@@ -53,8 +53,7 @@ impl Engine for QuickJsEngine {
                 .with_module("path", PathModule)
                 .with_module("os", OsModule)
                 .with_module("console", console::ConsoleModule)
-                .with_module("util", util::UtilModule)
-                ,
+                .with_module("util", util::UtilModule),
         );
         rt.set_loader(resolver, loader);
 

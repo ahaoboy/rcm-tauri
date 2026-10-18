@@ -7,9 +7,11 @@ description = "RCM VM — JavaScript runtime execution engine for RCM menus"
 authors = ["ahaoboy"]
 
 [features]
-default = ["llrt"]
+default = ["es6"]
 # Extend the rquickjs engine with Node modules (fs/path/url/os) for menu scripts.
 llrt = ["dep:llrt_modules", "dep:llrt_utils"]
+# Use the in-tree safe-Rust ECMAScript engine (`es6`) with host modules.
+es6 = ["dep:es6"]
 # Swap the engine for the full Deno runtime (V8 + node:fs/os/path/...).
 # Mutually exclusive with `llrt`.
 
@@ -34,6 +36,7 @@ serde_json = { workspace = true }
 is-admin = { workspace = true }
 llrt_modules = { workspace = true, optional = true }
 llrt_utils = { workspace = true, optional = true }
+es6 = { workspace = true, optional = true }
 # deno_core = { workspace = true, optional = true }
 # deno_runtime = { workspace = true, optional = true }
 # deno_fs = { workspace = true, optional = true }
