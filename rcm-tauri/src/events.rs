@@ -66,6 +66,14 @@ pub struct ConfigPayload {
 pub struct RuntimePaths {
     /// Version of the running binary.
     pub version: String,
+    /// Name of the JavaScript engine menus run on (`es6`, `llrt` or `deno`).
+    pub engine: String,
+    /// Version of that engine.
+    pub engine_version: String,
+    /// Commit that engine was built from; empty when it exposes no hash.
+    pub engine_commit: String,
+    /// Repository the engine's commit belongs to.
+    pub engine_repo: String,
     /// Short commit the binary was built from, with `-dirty` when the tree had
     /// uncommitted changes. Empty when the build ran outside a git checkout (a
     /// crates.io or vendored source tree), which is why the UI treats it as
@@ -98,6 +106,10 @@ impl RuntimePaths {
         let dir = rcm_core::exe_dir();
         Self {
             version: env!("CARGO_PKG_VERSION").to_string(),
+            engine: rcm_vm::engine().to_string(),
+            engine_version: rcm_vm::engine_version().to_string(),
+            engine_commit: rcm_vm::engine_commit().to_string(),
+            engine_repo: rcm_vm::engine_repo().to_string(),
             commit: GIT_COMMIT.to_string(),
             config_path: dir.join("rcm.config.json").to_string_lossy().into_owned(),
             log_path: rcm_core::log::log_path().to_string_lossy().into_owned(),

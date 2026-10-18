@@ -26,6 +26,18 @@ use std::sync::mpsc::{Receiver, Sender, SyncSender, channel, sync_channel};
 
 /// A JavaScript runtime that can evaluate the menu module.
 pub(crate) trait Engine: Sized {
+    /// Name of the runtime, for display. See [`crate::engine`].
+    const NAME: &'static str;
+
+    /// Version of the runtime, for display.
+    const VERSION: &'static str;
+
+    /// Commit the runtime was built from, or `""` when it exposes no hash.
+    const COMMIT: &'static str;
+
+    /// Repository `COMMIT` belongs to.
+    const REPO: &'static str;
+
     /// Build the runtime and load `menu_source` into it.
     ///
     /// The menu is loaded here rather than on first use so that a failed menu is
@@ -58,6 +70,9 @@ impl EngineHost {
 
         let spawned = std::thread::Builder::new()
             .name("rcm-vm".to_string())
+            // The in-tree interpreter uses the native stack for JS calls;
+            // give recursive menus the same headroom as the CLI.
+            .stack_size(32 * 1024 * 1024)
             .spawn(move || serve::<E>(jobs_rx, ready_tx));
 
         if let Err(e) = spawned {

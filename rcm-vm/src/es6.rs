@@ -26,6 +26,11 @@ pub(crate) struct Es6Engine {
 }
 
 impl Engine for Es6Engine {
+    const NAME: &'static str = "es6";
+    const VERSION: &'static str = es6::VERSION_STRING;
+    const COMMIT: &'static str = es6::GIT_COMMIT_HASH;
+    const REPO: &'static str = "https://github.com/ahaoboy/es6";
+
     fn init(menu_source: &str) -> Result<Self, String> {
         let runtime = Runtime::new().map_err(|e| e.to_string())?;
         let ctx = runtime.context();

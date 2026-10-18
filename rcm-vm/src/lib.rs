@@ -43,7 +43,7 @@ type Current = llrt::QuickJsEngine;
 
 use std::sync::LazyLock;
 
-use engine::EngineHost;
+use engine::{Engine, EngineHost};
 use rcm_core::{InvokeProps, Menu};
 use rcm_core::{clipboard, lang};
 
@@ -64,6 +64,26 @@ pub fn invoke(props: &InvokeProps) -> std::result::Result<Menu, Box<dyn std::err
     let props_json = serde_json::to_string(props)?;
     let menu_json = ENGINE.evaluate(&props_json)?;
     serde_json::from_str(&menu_json).map_err(Into::into)
+}
+
+/// Name of the engine this build runs menus on (`"es6"`, `"llrt"` or `"deno"`).
+pub fn engine() -> &'static str {
+    Current::NAME
+}
+
+/// Version of that engine.
+pub fn engine_version() -> &'static str {
+    Current::VERSION
+}
+
+/// Commit that engine was built from, or `""` when it exposes no hash.
+pub fn engine_commit() -> &'static str {
+    Current::COMMIT
+}
+
+/// Repository [`engine_commit`] belongs to.
+pub fn engine_repo() -> &'static str {
+    Current::REPO
 }
 
 /// The `rcm-kit` runtime, bundled into the binary.

@@ -35,6 +35,11 @@ pub(crate) struct QuickJsEngine {
 }
 
 impl Engine for QuickJsEngine {
+    const NAME: &'static str = "llrt";
+    const VERSION: &'static str = llrt_modules::VERSION;
+    const COMMIT: &'static str = "";
+    const REPO: &'static str = "https://github.com/awslabs/llrt";
+
     fn init(menu_source: &str) -> Result<Self, String> {
         let rt = Runtime::new().map_err(|e| e.to_string())?;
 

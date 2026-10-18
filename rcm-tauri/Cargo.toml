@@ -16,6 +16,13 @@ authors = ["ahaoboy"]
 name = "rcm_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[features]
+default = ["es6"]
+# JavaScript engine the menu runs on. Exactly one, mirroring `rcm-vm`:
+# `es6` is the in-tree engine, `llrt` the QuickJS one.
+es6 = ["rcm-vm/es6"]
+llrt = ["rcm-vm/llrt"]
+
 [build-dependencies]
 tauri-build = { workspace = true }
 

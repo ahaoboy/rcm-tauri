@@ -230,6 +230,14 @@ export function shellExtensionConnected(): Promise<boolean> {
  */
 export interface RuntimePaths {
   version: string
+  /** JavaScript engine menus run on: `es6`, `llrt` or `deno`. */
+  engine: string
+  /** Version of that engine. */
+  engine_version: string
+  /** Commit that engine was built from; empty when it exposes no hash. */
+  engine_commit: string
+  /** Repository the engine's commit belongs to. */
+  engine_repo: string
   /** Short git commit, `-dirty` if the tree was modified. Empty outside a git checkout. */
   commit: string
   exe_dir: string

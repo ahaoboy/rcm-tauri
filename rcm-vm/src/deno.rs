@@ -142,6 +142,11 @@ pub(crate) struct DenoEngine {
 }
 
 impl Engine for DenoEngine {
+    const NAME: &'static str = "deno";
+    const VERSION: &'static str = "0.267.0";
+    const COMMIT: &'static str = "";
+    const REPO: &'static str = "https://github.com/denoland/deno";
+
     fn init(menu_source: &str) -> Result<Self, String> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()

@@ -25,13 +25,13 @@ const REPO_URL = "https://github.com/ahaoboy/rcm-tauri"
 const LOGO_URL = "/icon.png"
 
 /** Commit-page URL for a `git describe` result, or `null` when there is none. */
-function commitLink(commit: string | undefined) {
-  if (!commit) return null
+function commitLink(repo: string | undefined, commit: string | undefined) {
+  if (!repo || !commit) return null
   // `describe` appends `-dirty`/`-modified` to a clean hash, and neither marker
   // is part of the object name — the link has to point at the commit alone.
   const hash = commit.replace(/-(dirty|modified|broken)$/, "")
   if (!/^[0-9a-f]{7,40}$/.test(hash)) return null
-  return { label: commit, url: `${REPO_URL}/commit/${hash}` }
+  return { label: commit, url: `${repo}/commit/${hash}` }
 }
 
 export const AboutView: React.FC = () => {
@@ -48,7 +48,8 @@ export const AboutView: React.FC = () => {
     openConfigFolder().catch((e) => setError(String(e)))
   }
 
-  const commit = commitLink(paths?.commit)
+  const commit = commitLink(REPO_URL, paths?.commit)
+  const engineCommit = commitLink(paths?.engine_repo, paths?.engine_commit)
 
   // `display: flex` + `m: auto` on the inner stack centres it on both axes while
   // still allowing the outer box to scroll if the content ever exceeds the viewport
@@ -92,6 +93,27 @@ export const AboutView: React.FC = () => {
                     </Box>
                   </Tooltip>
                 )}
+              </Fact>
+              <Fact label="Engine">
+                {paths?.engine ?? ""}{" "}
+                {paths?.engine_version &&
+                  (engineCommit ? (
+                    <Tooltip title={`Commit this engine was built from — ${engineCommit.url}`}>
+                      <Box
+                        component={Link}
+                        href={engineCommit.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        sx={styles.engineVersionLink}
+                      >
+                        {paths.engine_version}
+                      </Box>
+                    </Tooltip>
+                  ) : (
+                    <Box component="span" sx={styles.engineVersion}>
+                      {paths.engine_version}
+                    </Box>
+                  ))}
               </Fact>
               <Fact label="Folder" value={paths?.exe_dir} />
               <Fact label="Config" value={paths?.config_path} />
@@ -180,6 +202,28 @@ const styles = {
     whiteSpace: "nowrap",
   },
   path: { display: "block", overflow: "hidden", textOverflow: "ellipsis" },
+  engineVersion: {
+    ml: 1,
+    px: 0.75,
+    py: 0.25,
+    borderRadius: 1,
+    fontSize: 11,
+    color: "text.secondary",
+    background: "#252526",
+    border: "1px solid #3c3c3c",
+  },
+  engineVersionLink: {
+    ml: 1,
+    px: 0.75,
+    py: 0.25,
+    borderRadius: 1,
+    fontSize: 11,
+    color: "text.secondary",
+    background: "#252526",
+    border: "1px solid #3c3c3c",
+    textDecoration: "none",
+    "&:hover": { color: "text.primary", borderColor: "#5a5a5a" },
+  },
   commit: {
     ml: 1,
     px: 0.75,
